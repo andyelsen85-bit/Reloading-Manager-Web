@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+**/dist
+**/.git
+.git
+.replit
+replit.nix
+.local
+attached_assets
+**/.turbo
+
+# Dev-only packages
+artifacts/mockup-sandbox
