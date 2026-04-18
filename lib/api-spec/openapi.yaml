@@ -3,20 +3,32 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Reloading Manager API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: cartridges
+    description: Cartridge inventory
+  - name: bullets
+    description: Bullet inventory
+  - name: powders
+    description: Powder inventory
+  - name: primers
+    description: Primer inventory
+  - name: loads
+    description: Load records and workflow steps
+  - name: dashboard
+    description: Overview and reporting
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +36,476 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Cartridges ──────────────────────────────────────────────
+  /cartridges:
+    get:
+      operationId: listCartridges
+      tags: [cartridges]
+      summary: List all cartridge batches
+      responses:
+        "200":
+          description: List of cartridges
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Cartridge"
+    post:
+      operationId: createCartridge
+      tags: [cartridges]
+      summary: Add a cartridge batch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCartridgeBody"
+      responses:
+        "201":
+          description: Created cartridge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cartridge"
+
+  /cartridges/{id}:
+    get:
+      operationId: getCartridge
+      tags: [cartridges]
+      summary: Get a cartridge batch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cartridge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cartridge"
+    patch:
+      operationId: updateCartridge
+      tags: [cartridges]
+      summary: Update a cartridge batch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCartridgeBody"
+      responses:
+        "200":
+          description: Updated cartridge
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cartridge"
+    delete:
+      operationId: deleteCartridge
+      tags: [cartridges]
+      summary: Delete a cartridge batch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Bullets ─────────────────────────────────────────────────
+  /bullets:
+    get:
+      operationId: listBullets
+      tags: [bullets]
+      summary: List all bullets
+      responses:
+        "200":
+          description: List of bullets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bullet"
+    post:
+      operationId: createBullet
+      tags: [bullets]
+      summary: Add a bullet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBulletBody"
+      responses:
+        "201":
+          description: Created bullet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bullet"
+
+  /bullets/{id}:
+    patch:
+      operationId: updateBullet
+      tags: [bullets]
+      summary: Update a bullet
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBulletBody"
+      responses:
+        "200":
+          description: Updated bullet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bullet"
+    delete:
+      operationId: deleteBullet
+      tags: [bullets]
+      summary: Delete a bullet
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Powders ─────────────────────────────────────────────────
+  /powders:
+    get:
+      operationId: listPowders
+      tags: [powders]
+      summary: List all powders
+      responses:
+        "200":
+          description: List of powders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Powder"
+    post:
+      operationId: createPowder
+      tags: [powders]
+      summary: Add a powder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePowderBody"
+      responses:
+        "201":
+          description: Created powder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Powder"
+
+  /powders/{id}:
+    patch:
+      operationId: updatePowder
+      tags: [powders]
+      summary: Update a powder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePowderBody"
+      responses:
+        "200":
+          description: Updated powder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Powder"
+    delete:
+      operationId: deletePowder
+      tags: [powders]
+      summary: Delete a powder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Primers ─────────────────────────────────────────────────
+  /primers:
+    get:
+      operationId: listPrimers
+      tags: [primers]
+      summary: List all primers
+      responses:
+        "200":
+          description: List of primers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Primer"
+    post:
+      operationId: createPrimer
+      tags: [primers]
+      summary: Add a primer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePrimerBody"
+      responses:
+        "201":
+          description: Created primer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Primer"
+
+  /primers/{id}:
+    patch:
+      operationId: updatePrimer
+      tags: [primers]
+      summary: Update a primer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePrimerBody"
+      responses:
+        "200":
+          description: Updated primer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Primer"
+    delete:
+      operationId: deletePrimer
+      tags: [primers]
+      summary: Delete a primer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Loads ────────────────────────────────────────────────────
+  /loads:
+    get:
+      operationId: listLoads
+      tags: [loads]
+      summary: List all loads
+      responses:
+        "200":
+          description: List of loads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Load"
+    post:
+      operationId: createLoad
+      tags: [loads]
+      summary: Create a new load
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLoadBody"
+      responses:
+        "201":
+          description: Created load
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Load"
+
+  /loads/{id}:
+    get:
+      operationId: getLoad
+      tags: [loads]
+      summary: Get a load
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Load
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Load"
+    patch:
+      operationId: updateLoad
+      tags: [loads]
+      summary: Update load data / advance step
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLoadBody"
+      responses:
+        "200":
+          description: Updated load
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Load"
+    delete:
+      operationId: deleteLoad
+      tags: [loads]
+      summary: Delete a load
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /loads/{id}/complete:
+    post:
+      operationId: completeLoad
+      tags: [loads]
+      summary: Mark load as completed, deduct inventory
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Completed load
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Load"
+
+  /loads/{id}/fire:
+    post:
+      operationId: fireLoad
+      tags: [loads]
+      summary: Mark completed load as fired
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Fired load
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Load"
+
+  # ── Dashboard ────────────────────────────────────────────────
+  /dashboard/overview:
+    get:
+      operationId: getDashboardOverview
+      tags: [dashboard]
+      summary: Overview counts and low-stock warnings
+      responses:
+        "200":
+          description: Dashboard overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardOverview"
+
+  /dashboard/history:
+    get:
+      operationId: getReloadHistory
+      tags: [dashboard]
+      summary: Reload history summary per cartridge
+      responses:
+        "200":
+          description: History
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HistoryEntry"
+
+  /dashboard/export:
+    get:
+      operationId: exportData
+      tags: [dashboard]
+      summary: Export all data as JSON
+      responses:
+        "200":
+          description: All data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportData"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +513,407 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    Cartridge:
+      type: object
+      properties:
+        id:
+          type: integer
+        manufacturer:
+          type: string
+        caliber:
+          type: string
+        productionCharge:
+          type: string
+        timesFired:
+          type: integer
+        quantityTotal:
+          type: integer
+        quantityLoaded:
+          type: integer
+        currentStep:
+          type: string
+          enum: [New, Fired, Washing, Calibration, Trim, "Second Washing", Priming, Powder, "Bullet Seating", Completed]
+        l6In:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, manufacturer, caliber, productionCharge, timesFired, quantityTotal, quantityLoaded, currentStep, createdAt]
+
+    CreateCartridgeBody:
+      type: object
+      properties:
+        manufacturer:
+          type: string
+        caliber:
+          type: string
+        productionCharge:
+          type: string
+        quantityTotal:
+          type: integer
+        notes:
+          type: string
+      required: [manufacturer, caliber, productionCharge, quantityTotal]
+
+    UpdateCartridgeBody:
+      type: object
+      properties:
+        manufacturer:
+          type: string
+        caliber:
+          type: string
+        productionCharge:
+          type: string
+        quantityTotal:
+          type: integer
+        currentStep:
+          type: string
+        l6In:
+          type: string
+        notes:
+          type: string
+
+    Bullet:
+      type: object
+      properties:
+        id:
+          type: integer
+        manufacturer:
+          type: string
+        model:
+          type: string
+        weightGr:
+          type: number
+        diameterIn:
+          type: number
+        quantityAvailable:
+          type: integer
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, manufacturer, model, weightGr, diameterIn, quantityAvailable, createdAt]
+
+    CreateBulletBody:
+      type: object
+      properties:
+        manufacturer:
+          type: string
+        model:
+          type: string
+        weightGr:
+          type: number
+        diameterIn:
+          type: number
+        quantityAvailable:
+          type: integer
+        notes:
+          type: string
+      required: [manufacturer, model, weightGr, diameterIn, quantityAvailable]
+
+    UpdateBulletBody:
+      type: object
+      properties:
+        manufacturer:
+          type: string
+        model:
+          type: string
+        weightGr:
+          type: number
+        diameterIn:
+          type: number
+        quantityAvailable:
+          type: integer
+        notes:
+          type: string
+
+    Powder:
+      type: object
+      properties:
+        id:
+          type: integer
+        manufacturer:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        grainsAvailable:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, manufacturer, name, type, grainsAvailable, createdAt]
+
+    CreatePowderBody:
+      type: object
+      properties:
+        manufacturer:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        grainsAvailable:
+          type: number
+        notes:
+          type: string
+      required: [manufacturer, name, type, grainsAvailable]
+
+    UpdatePowderBody:
+      type: object
+      properties:
+        manufacturer:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        grainsAvailable:
+          type: number
+        notes:
+          type: string
+
+    Primer:
+      type: object
+      properties:
+        id:
+          type: integer
+        manufacturer:
+          type: string
+        type:
+          type: string
+        quantityAvailable:
+          type: integer
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, manufacturer, type, quantityAvailable, createdAt]
+
+    CreatePrimerBody:
+      type: object
+      properties:
+        manufacturer:
+          type: string
+        type:
+          type: string
+        quantityAvailable:
+          type: integer
+        notes:
+          type: string
+      required: [manufacturer, type, quantityAvailable]
+
+    UpdatePrimerBody:
+      type: object
+      properties:
+        manufacturer:
+          type: string
+        type:
+          type: string
+        quantityAvailable:
+          type: integer
+        notes:
+          type: string
+
+    Load:
+      type: object
+      properties:
+        id:
+          type: integer
+        userLoadId:
+          type: string
+        cartridgeId:
+          type: integer
+        cartridgeProductionCharge:
+          type: string
+        reloadingCycle:
+          type: integer
+        date:
+          type: string
+          format: date
+        caliber:
+          type: string
+        cartridgeQuantityUsed:
+          type: integer
+        primerId:
+          type: integer
+          nullable: true
+        primerQuantityUsed:
+          type: integer
+          nullable: true
+        powderId:
+          type: integer
+          nullable: true
+        powderChargeGr:
+          type: number
+          nullable: true
+        powderTotalUsedGr:
+          type: number
+          nullable: true
+        bulletId:
+          type: integer
+          nullable: true
+        bulletQuantityUsed:
+          type: integer
+          nullable: true
+        coalIn:
+          type: number
+          nullable: true
+        oalIn:
+          type: number
+          nullable: true
+        l6In:
+          type: number
+          nullable: true
+        washingMinutes:
+          type: integer
+          nullable: true
+        secondWashingMinutes:
+          type: integer
+          nullable: true
+        calibrationType:
+          type: string
+          nullable: true
+        completed:
+          type: boolean
+        fired:
+          type: boolean
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, userLoadId, cartridgeId, cartridgeProductionCharge, reloadingCycle, date, caliber, cartridgeQuantityUsed, completed, fired, createdAt]
+
+    CreateLoadBody:
+      type: object
+      properties:
+        cartridgeId:
+          type: integer
+        userLoadId:
+          type: string
+        cartridgeQuantityUsed:
+          type: integer
+        notes:
+          type: string
+      required: [cartridgeId, userLoadId, cartridgeQuantityUsed]
+
+    UpdateLoadBody:
+      type: object
+      properties:
+        primerId:
+          type: integer
+        primerQuantityUsed:
+          type: integer
+        powderId:
+          type: integer
+        powderChargeGr:
+          type: number
+        bulletId:
+          type: integer
+        bulletQuantityUsed:
+          type: integer
+        coalIn:
+          type: number
+        oalIn:
+          type: number
+        l6In:
+          type: number
+        washingMinutes:
+          type: integer
+        secondWashingMinutes:
+          type: integer
+        calibrationType:
+          type: string
+        notes:
+          type: string
+
+    DashboardOverview:
+      type: object
+      properties:
+        cartridgeBatches:
+          type: integer
+        bulletTypes:
+          type: integer
+        powderTypes:
+          type: integer
+        primerTypes:
+          type: integer
+        loadRecords:
+          type: integer
+        completedLoads:
+          type: integer
+        activeLoads:
+          type: integer
+        firedLoads:
+          type: integer
+        lowStockBullets:
+          type: array
+          items:
+            $ref: "#/components/schemas/Bullet"
+        lowStockPowders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Powder"
+        lowStockPrimers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Primer"
+      required: [cartridgeBatches, bulletTypes, powderTypes, primerTypes, loadRecords, completedLoads, activeLoads, firedLoads, lowStockBullets, lowStockPowders, lowStockPrimers]
+
+    HistoryEntry:
+      type: object
+      properties:
+        cartridgeId:
+          type: integer
+        caliber:
+          type: string
+        manufacturer:
+          type: string
+        timesFired:
+          type: integer
+        loadsCompleted:
+          type: integer
+        totalRoundsReloaded:
+          type: integer
+      required: [cartridgeId, caliber, manufacturer, timesFired, loadsCompleted, totalRoundsReloaded]
+
+    ExportData:
+      type: object
+      properties:
+        cartridges:
+          type: array
+          items:
+            $ref: "#/components/schemas/Cartridge"
+        bullets:
+          type: array
+          items:
+            $ref: "#/components/schemas/Bullet"
+        powders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Powder"
+        primers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Primer"
+        loads:
+          type: array
+          items:
+            $ref: "#/components/schemas/Load"
+      required: [cartridges, bullets, powders, primers, loads]

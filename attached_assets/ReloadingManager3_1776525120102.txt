@@ -1,0 +1,736 @@
+﻿<# 
+ReloadingManager3.ps1
+Enhanced version of ReloadingManager2.ps1
+Includes:
+- Full inventory and load management
+- Excel import/export support (COM-based)
+- Step-based reloading workflow
+- NEW features added at bottom (JSON export, low stock, backups, history recap, search)
+#>
+
+# -------------------------
+# Base paths and CSV files
+# -------------------------
+$BasePath = $PSScriptRoot
+if ([string]::IsNullOrEmpty($BasePath)) { $BasePath = (Get-Location).Path }
+
+$CartridgeFile = Join-Path $BasePath "Cartridges.csv"
+$BulletsFile   = Join-Path $BasePath "Bullets.csv"
+$PowdersFile   = Join-Path $BasePath "Powders.csv"
+$PrimersFile   = Join-Path $BasePath "Primers.csv"
+$LoadsFile     = Join-Path $BasePath "ReloadingData.csv"
+
+# -------------------------
+# Ensure CSVs exist with headers
+# -------------------------
+function Ensure-Files {
+    if (!(Test-Path $CartridgeFile)) {
+        "ID,Manufacturer,Caliber,ProductionCharge,TimesFired,QuantityTotal,QuantityLoaded,CurrentStep,L6_in,Notes" | Out-File $CartridgeFile -Encoding UTF8
+    }
+    if (!(Test-Path $BulletsFile)) {
+        "ID,Manufacturer,Model,Weight_gr,Diameter_in,QuantityAvailable,Notes" | Out-File $BulletsFile -Encoding UTF8
+    }
+    if (!(Test-Path $PowdersFile)) {
+        "ID,Manufacturer,Name,Type,GrainsAvailable,Notes" | Out-File $PowdersFile -Encoding UTF8
+    }
+    if (!(Test-Path $PrimersFile)) {
+        "ID,Manufacturer,Type,QuantityAvailable,Notes" | Out-File $PrimersFile -Encoding UTF8
+    }
+    if (!(Test-Path $LoadsFile)) {
+        "InventoryNumber,UserLoadID,CartridgeID,CartridgeProductionCharge,ReloadingCycle,Date,Caliber,CartridgeQuantityUsed,PrimerID,PrimerQuantityUsed,PowderID,PowderCharge_gr,PowderTotalUsed_gr,BulletID,BulletQuantityUsed,COAL_in,OAL_in,L6_in,Completed,Fired,Notes,WashingMinutes,SecondWashingMinutes,CalibrationType" | Out-File $LoadsFile -Encoding UTF8
+    }
+}
+
+# ============================================================
+# WINDOW: PRINT PREVIEW 
+# ============================================================
+function Show-Load-PreviewWindow {
+    param($load)
+    Add-Type -AssemblyName PresentationFramework
+    $text = Get-LoadDetailText $load
+    $window = New-Object System.Windows.Window
+    $window.Title = "Load Print Preview"
+    $window.Width = 700
+    $window.Height = 900
+    $window.WindowStartupLocation = "CenterScreen"
+
+    $grid = New-Object System.Windows.Controls.Grid
+    $grid.RowDefinitions.Add((New-Object System.Windows.Controls.RowDefinition -Property @{ Height = "*" }))
+    $grid.RowDefinitions.Add((New-Object System.Windows.Controls.RowDefinition -Property @{ Height = "Auto" }))
+
+    $scroll = New-Object System.Windows.Controls.ScrollViewer
+    $scroll.VerticalScrollBarVisibility = "Auto"
+    $textbox = New-Object System.Windows.Controls.TextBox
+    $textbox.FontFamily = "Consolas"
+    $textbox.FontSize = 14
+    $textbox.IsReadOnly = $true
+    $textbox.TextWrapping = "NoWrap"
+    $textbox.VerticalScrollBarVisibility = "Auto"
+    $textbox.Text = $text
+    $scroll.Content = $textbox
+
+    [System.Windows.Controls.Grid]::SetRow($scroll, 0)
+    $grid.Children.Add($scroll)
+
+    $buttonPanel = New-Object System.Windows.Controls.StackPanel
+    $buttonPanel.Orientation = "Horizontal"
+    $buttonPanel.HorizontalAlignment = "Center"
+    $buttonPanel.Margin = "0,10,0,10"
+
+    $printBtn = New-Object System.Windows.Controls.Button
+    $printBtn.Content = "Print"
+    $printBtn.Width = 120; $printBtn.Height = 35; $printBtn.Margin = "10"
+    $closeBtn = New-Object System.Windows.Controls.Button
+    $closeBtn.Content = "Close"
+    $closeBtn.Width = 120; $closeBtn.Height = 35; $closeBtn.Margin = "10"
+
+    $buttonPanel.Children.Add($printBtn)
+    $buttonPanel.Children.Add($closeBtn)
+    [System.Windows.Controls.Grid]::SetRow($buttonPanel, 1)
+    $grid.Children.Add($buttonPanel)
+    $window.Content = $grid
+
+    $printBtn.Add_Click({
+        $tempFile = [System.IO.Path]::GetTempFileName() + ".txt"
+        Set-Content -Path $tempFile -Value $textbox.Text -Encoding UTF8
+        Start-Process notepad.exe $tempFile
+    })
+    $closeBtn.Add_Click({ $window.Close() })
+    $window.ShowDialog() | Out-Null
+}
+
+# ============================================================
+# UTILITY HELPERS
+# ============================================================
+function Pause { Write-Host ""; Read-Host "Press Enter to continue..." }
+
+function Get-NextID([string]$FilePath) {
+    $rows = Import-Csv $FilePath -ErrorAction SilentlyContinue
+    if (!$rows -or $rows.Count -eq 0) { return 1 }
+    $ids = $rows | ForEach-Object { [int]($_.ID) } 2>$null
+    if (!$ids -or $ids.Count -eq 0) { return 1 }
+    return (($ids | Measure-Object -Maximum).Maximum + 1)
+}
+
+function Get-NextInventoryNumber {
+    $rows = Import-Csv $LoadsFile -ErrorAction SilentlyContinue
+    if (!$rows -or $rows.Count -eq 0) { return 1 }
+    $nums = $rows | ForEach-Object { [int]($_.InventoryNumber) } 2>$null
+    if (!$nums -or $nums.Count -eq 0) { return 1 }
+    return (($nums | Measure-Object -Maximum).Maximum + 1)
+}
+
+function Load-CsvSafe([string]$FilePath) {
+    if (!(Test-Path $FilePath)) { return @() }
+    $rows = Import-Csv $FilePath -ErrorAction SilentlyContinue
+    if (!$rows) { return @() }
+    return $rows
+}
+
+function Save-CsvSafe([array]$Data,[string]$FilePath) {
+    $Data | Export-Csv -Path $FilePath -NoTypeInformation -Encoding UTF8
+}
+
+Ensure-Files
+# (Cartridge, Bullet, Powder, Primer, Load functions from v2 appear next)
+
+# ============================================================
+# ===============  INVENTORY MANAGEMENT  ======================
+# ============================================================
+# --- Cartridges ---
+function Show-Cartridges {
+    Clear-Host
+    Write-Host "=== Cartridge Inventory ===`n"
+    $rows = Load-CsvSafe $CartridgeFile
+    if ($rows.Count -eq 0) { Write-Host "No cartridge batches found." -ForegroundColor Yellow; Pause; return }
+    $rows | Format-Table ID,Manufacturer,Caliber,ProductionCharge,TimesFired,QuantityTotal,QuantityLoaded,CurrentStep,L6_in,Notes -AutoSize
+    Pause
+}
+
+function Add-Cartridge {
+    Clear-Host
+    Write-Host "=== Add Cartridge Batch ===`n"
+    $id = Get-NextID $CartridgeFile
+    $man = Read-Host "Manufacturer"; $cal = Read-Host "Caliber"; $prod = Read-Host "Production Charge"; $qty = Read-Host "Total Quantity"
+    if ([string]::IsNullOrWhiteSpace($man) -or [string]::IsNullOrWhiteSpace($cal) -or [string]::IsNullOrWhiteSpace($prod) -or [string]::IsNullOrWhiteSpace($qty)) { Write-Host "Missing fields." -ForegroundColor Red; Pause; return }
+
+    $row = [PSCustomObject]@{ ID=$id; Manufacturer=$man; Caliber=$cal; ProductionCharge=$prod; TimesFired=0; QuantityTotal=$qty; QuantityLoaded=0; CurrentStep="New"; L6_in=""; Notes="" }
+    $rows = @(Load-CsvSafe $CartridgeFile); $rows += $row; Save-CsvSafe $rows $CartridgeFile
+    Write-Host "Cartridge batch added with ID $id" -ForegroundColor Green; Pause
+}
+function Edit-Cartridge {
+    Clear-Host; Write-Host "=== Edit Cartridge Batch ===`n"
+    $rows = @(Load-CsvSafe $CartridgeFile)
+    if ($rows.Count -eq 0) { Write-Host "No cartridge batches."; Pause; return }
+    Show-Cartridges
+    $id = Read-Host "Enter Cartridge ID to edit"
+    $row = $rows | Where-Object { $_.ID -eq $id }
+    if (!$row) { Write-Host "Not found."; Pause; return }
+    $man = Read-Host "Manufacturer [$($row.Manufacturer)]"
+    $cal = Read-Host "Caliber [$($row.Caliber)]"
+    $prod = Read-Host "Production Charge [$($row.ProductionCharge)]"
+    $qty = Read-Host "Total Quantity [$($row.QuantityTotal)]"
+    $notes = Read-Host "Notes [$($row.Notes)]"
+    if ($man -ne "") { $row.Manufacturer = $man }
+    if ($cal -ne "") { $row.Caliber = $cal }
+    if ($prod -ne "") { $row.ProductionCharge = $prod }
+    if ($qty -ne "") { $row.QuantityTotal = $qty }
+    if ($notes -ne "") { $row.Notes = $notes }
+    Save-CsvSafe $rows $CartridgeFile
+    Write-Host "Updated." -ForegroundColor Green; Pause
+}
+function Delete-Cartridge {
+    Clear-Host; Write-Host "=== Delete Cartridge Batch ===`n"
+    $rows = Load-CsvSafe $CartridgeFile
+    if ($rows.Count -eq 0) { Write-Host "No batches."; Pause; return }
+    Show-Cartridges
+    $id = Read-Host "Enter Cartridge ID"
+    $rows = $rows | Where-Object { $_.ID -ne $id }
+    Save-CsvSafe $rows $CartridgeFile; Write-Host "Deleted." -ForegroundColor Green; Pause
+}
+function Update-Cartridge-Step {
+    Clear-Host; Write-Host "=== Update Cartridge Step ===`n"
+    $rows = Load-CsvSafe $CartridgeFile
+    if ($rows.Count -eq 0) { Write-Host "None."; Pause; return }
+    Show-Cartridges
+    $id = Read-Host "Enter Cartridge ID"
+    $row = $rows | Where-Object { $_.ID -eq $id }
+    if (!$row) { Write-Host "Not found."; Pause; return }
+    Write-Host "`nSteps:`n0. New`n1. Fired`n2. Washing`n3. Calibration`n4. Trim`n5. Second Washing`n6. Priming`n7. Powder`n8. Bullet Seating`n9. Completed"
+    $ch = Read-Host "Choice (0-9)"
+    switch($ch){
+     "0"{$row.CurrentStep="New"};"1"{$row.CurrentStep="Fired"};"2"{$row.CurrentStep="Washing"};"3"{$row.CurrentStep="Calibration"}
+     "4"{$row.CurrentStep="Trim";$l6=Read-Host "Enter L6";if($l6){$row.L6_in=$l6}}
+     "5"{$row.CurrentStep="Second Washing"};"6"{$row.CurrentStep="Priming"};"7"{$row.CurrentStep="Powder"}
+     "8"{$row.CurrentStep="Bullet Seating"};"9"{$row.CurrentStep="Completed"}
+     default{Write-Host "Invalid." -ForegroundColor Red;Pause;return}
+    }
+    Save-CsvSafe $rows $CartridgeFile;Write-Host "Step updated." -ForegroundColor Green;Pause
+}
+
+# --- Bullets ---
+function Show-Bullets{Clear-Host;Write-Host "=== Bullets ===`n";$r=Load-CsvSafe $BulletsFile;if($r.Count-eq0){Write-Host "No bullets" -Fore Yellow;Pause;return};$r|Format-Table -AutoSize;Pause}
+function Add-Bullet{
+ Clear-Host;Write-Host "=== Add Bullet ===`n"
+ $id=Get-NextID $BulletsFile;$man=Read-Host "Manufacturer";$model=Read-Host "Model";$w=Read-Host "Weight(gr)";$d=Read-Host "Diameter(in)";$q=Read-Host "Qty";$n=Read-Host "Notes"
+ if(!$man -or !$model -or !$w -or !$d -or !$q){Write-Host "Missing" -Fore Red;Pause;return}
+ $row=[pscustomobject]@{ID=$id;Manufacturer=$man;Model=$model;Weight_gr=$w;Diameter_in=$d;QuantityAvailable=$q;Notes=$n}
+ $r=@(Load-CsvSafe $BulletsFile);$r+=$row;Save-CsvSafe $r $BulletsFile;Write-Host "Bullet added $id" -Fore Green;Pause
+}
+function Edit-Bullet{
+Clear-Host;Write-Host "=== Edit Bullet ===`n";$r=@(Load-CsvSafe $BulletsFile);if($r.Count-eq0){Write-Host "None";Pause;return};Show-Bullets
+$id=Read-Host "ID";$row=$r|?{$_.ID-eq$id};if(!$row){Write-Host "Not found";Pause;return}
+$man=Read-Host "Manufacturer [$($row.Manufacturer)]";$m=Read-Host "Model [$($row.Model)]";$w=Read-Host "Weight [$($row.Weight_gr)]";$d=Read-Host "Diameter [$($row.Diameter_in)]";$q=Read-Host "Qty [$($row.QuantityAvailable)]";$n=Read-Host "Notes [$($row.Notes)]"
+if($man){$row.Manufacturer=$man};if($m){$row.Model=$m};if($w){$row.Weight_gr=$w};if($d){$row.Diameter_in=$d};if($q){$row.QuantityAvailable=$q};if($n){$row.Notes=$n}
+Save-CsvSafe $r $BulletsFile;Write-Host "Bullet updated" -Fore Green;Pause
+}
+function Delete-Bullet{Clear-Host;Write-Host "=== Delete Bullet ===";$r=Load-CsvSafe $BulletsFile;if($r.Count-eq0){Write-Host "None";Pause;return};Show-Bullets;$id=Read-Host "ID";$r=$r|?{$_.ID-ne$id};Save-CsvSafe $r $BulletsFile;Write-Host "Deleted" -Fore Green;Pause}
+
+# --- Powders ---
+function Show-Powders{Clear-Host;Write-Host "=== Powders ===";$r=Load-CsvSafe $PowdersFile;if($r.Count-eq0){Write-Host "None" -Fore Yellow;Pause;return};$r|Format-Table -AutoSize;Pause}
+function Add-Powder{
+$id=Get-NextID $PowdersFile;$man=Read-Host "Manufacturer";$n=Read-Host "Name";$t=Read-Host "Type";$g=Read-Host "Grains Available";$notes=Read-Host "Notes"
+if(!$man -or !$n -or !$t -or !$g){Write-Host "Missing" -Fore Red;Pause;return}
+$row=[pscustomobject]@{ID=$id;Manufacturer=$man;Name=$n;Type=$t;GrainsAvailable=$g;Notes=$notes}
+$r=@(Load-CsvSafe $PowdersFile);$r+=$row;Save-CsvSafe $r $PowdersFile;Write-Host "Powder added" -Fore Green;Pause
+}
+function Edit-Powder{
+Clear-Host;$r=@(Load-CsvSafe $PowdersFile);if($r.Count-eq0){Write-Host "None";Pause;return};Show-Powders;$id=Read-Host "ID";$row=$r|?{$_.ID-eq$id};if(!$row){Write-Host "Not found";Pause;return}
+$man=Read-Host "Manufacturer [$($row.Manufacturer)]";$n=Read-Host "Name [$($row.Name)]";$t=Read-Host "Type [$($row.Type)]";$g=Read-Host "Grains [$($row.GrainsAvailable)]";$notes=Read-Host "Notes [$($row.Notes)]"
+if($man){$row.Manufacturer=$man};if($n){$row.Name=$n};if($t){$row.Type=$t};if($g){$row.GrainsAvailable=$g};if($notes){$row.Notes=$notes}
+Save-CsvSafe $r $PowdersFile;Write-Host "Powder updated" -Fore Green;Pause
+}
+function Delete-Powder{Clear-Host;$r=Load-CsvSafe $PowdersFile;if($r.Count-eq0){Write-Host "None";Pause;return};Show-Powders;$id=Read-Host "ID";$r=$r|?{$_.ID-ne$id};Save-CsvSafe $r $PowdersFile;Write-Host "Deleted" -Fore Green;Pause}
+
+# --- Primers ---
+function Show-Primers{Clear-Host;Write-Host "=== Primers ===";$r=Load-CsvSafe $PrimersFile;if($r.Count-eq0){Write-Host "None" -Fore Yellow;Pause;return};$r|Format-Table -AutoSize;Pause}
+function Add-Primer{$id=Get-NextID $PrimersFile;$m=Read-Host "Manufacturer";$t=Read-Host "Type";$q=Read-Host "Qty";$n=Read-Host "Notes";if(!$m -or !$t -or !$q){Write-Host "Missing";Pause;return}
+$row=[pscustomobject]@{ID=$id;Manufacturer=$m;Type=$t;QuantityAvailable=$q;Notes=$n};$r=@(Load-CsvSafe $PrimersFile);$r+=$row;Save-CsvSafe $r $PrimersFile;Write-Host "Primer added" -Fore Green;Pause}
+function Edit-Primer{Clear-Host;$r=@(Load-CsvSafe $PrimersFile);if($r.Count-eq0){Write-Host "None";Pause;return};Show-Primers;$id=Read-Host "ID";$row=$r|?{$_.ID-eq$id};if(!$row){Write-Host "Not found";Pause;return}
+$m=Read-Host "Manufacturer [$($row.Manufacturer)]";$t=Read-Host "Type [$($row.Type)]";$q=Read-Host "Qty [$($row.QuantityAvailable)]";$n=Read-Host "Notes [$($row.Notes)]"
+if($m){$row.Manufacturer=$m};if($t){$row.Type=$t};if($q){$row.QuantityAvailable=$q};if($n){$row.Notes=$n};Save-CsvSafe $r $PrimersFile;Write-Host "Updated" -Fore Green;Pause}
+function Delete-Primer{Clear-Host;$r=Load-CsvSafe $PrimersFile;if($r.Count-eq0){Write-Host "None";Pause;return};Show-Primers;$id=Read-Host "ID";$r=$r|?{$_.ID-ne$id};Save-CsvSafe $r $PrimersFile;Write-Host "Deleted" -Fore Green;Pause}
+
+# ============================================================
+# =====================  LOAD CREATION SYSTEM  ================
+# ============================================================
+
+function Show-Loads{Clear-Host;Write-Host "=== Loads ===";$l=@(Load-CsvSafe $LoadsFile);if($l.Count-eq0){Write-Host "None" -Fore Yellow;Pause;return}
+$c=@(Load-CsvSafe $CartridgeFile);$d=foreach($x in $l){$ct=$c|?{$_.ID-eq$x.CartridgeID};[pscustomobject]@{InventoryNumber=$x.InventoryNumber;UserLoadID=$x.UserLoadID;CartridgeID=$x.CartridgeID;Caliber=$x.Caliber;Qty=$x.CartridgeQuantityUsed;Cycle=$x.ReloadingCycle;Step=$ct.CurrentStep;Completed=$x.Completed;Fired=$x.Fired}}
+$d|Format-Table -AutoSize;Pause}
+
+function Create-Load {
+ Clear-Host;Write-Host "=== Create New Load ===";$c=Load-CsvSafe $CartridgeFile;if($c.Count-eq0){Write-Host "No cartridges";Pause;return}
+ $c|Format-Table ID,Manufacturer,Caliber,ProductionCharge,TimesFired,QuantityTotal,QuantityLoaded,CurrentStep -AutoSize
+ $cid=Read-Host "Cartridge ID";$cart=$c|?{$_.ID-eq$cid};if(!$cart){Write-Host "Not found";Pause;return}
+ $inv=Get-NextInventoryNumber;$uid=Read-Host "User Load ID";$qty=Read-Host "Cartridge Quantity";$cycle=[int]$cart.TimesFired+1;$date=Get-Date -Format "yyyy-MM-dd"
+ if(!$uid -or !$qty){Write-Host "Missing";Pause;return}
+ $row=[pscustomobject]@{InventoryNumber=$inv;UserLoadID=$uid;CartridgeID=$cart.ID;CartridgeProductionCharge=$cart.ProductionCharge;ReloadingCycle=$cycle;Date=$date;Caliber=$cart.Caliber;CartridgeQuantityUsed=$qty;PrimerID="";PrimerQuantityUsed="";PowderID="";PowderCharge_gr="";PowderTotalUsed_gr="";BulletID="";BulletQuantityUsed="";COAL_in="";OAL_in="";L6_in="";WashingMinutes="";SecondWashingMinutes="";CalibrationType="";Completed="No";Fired="No";Notes=""}
+ $l=@(Load-CsvSafe $LoadsFile);$l+=$row;Save-CsvSafe $l $LoadsFile;Write-Host "Created Inv#$inv" -Fore Green;Pause
+}
+
+function Select-Load {
+ $l=@(Load-CsvSafe $LoadsFile);if($l.Count-eq0){Write-Host "No loads" -Fore Yellow;Pause;return $null}
+ Clear-Host;Write-Host "=== Select Load ==="
+ for($i=0;$i -lt $l.Count;$i++){ $x=$l[$i];Write-Host ("{0}. Inv{1} {2} {3} Qty {4} Completed:{5} Fired:{6}" -f ($i+1),$x.InventoryNumber,$x.UserLoadID,$x.Caliber,$x.CartridgeQuantityUsed,$x.Completed,$x.Fired) }
+ Write-Host "`n0.Back";$ch=Read-Host "Choice";if($ch -eq "0"){return $null};if($ch -notmatch '^\d+$'){Pause;return};$ix=[int]$ch-1;if($ix -lt0 -or $ix -ge $l.Count){Pause;return};return $l[$ix]
+}
+
+function Sync-CartridgeStep($CartridgeID,$Step){$r=Load-CsvSafe $CartridgeFile;$row=$r|?{$_.ID-eq$CartridgeID};if($row){$row.CurrentStep=$Step;Save-CsvSafe $r $CartridgeFile}}
+
+# --- Steps ---
+function Step-Washing($load){$m=Read-Host "Washing minutes";if($m -match '^\d+$'){$load.WashingMinutes=$m}else{Write-Host "Invalid";Pause;return};Sync-CartridgeStep $load.CartridgeID "Washing"}
+function Step-Calibration($load){Clear-Host;Write-Host "1.Full Size 2.Neck 3.Shoulder";$c=Read-Host "Choice";switch($c){"1"{$load.CalibrationType="Full Size"}"2"{$load.CalibrationType="Neck Size"}"3"{$load.CalibrationType="Shoulder Bump"}default{Write-Host "Invalid";Pause;return}};Sync-CartridgeStep $load.CartridgeID "Calibration"}
+function Step-Trim($load){$l6=Read-Host "Enter L6(in)";if($l6){$load.L6_in=$l6};Sync-CartridgeStep $load.CartridgeID "Trim"}
+function Step-SecondWashing($load){$m=Read-Host "Second wash min";if($m -match '^\d+$'){$load.SecondWashingMinutes=$m}else{Write-Host "Invalid";Pause;return};Sync-CartridgeStep $load.CartridgeID "Second Washing"}
+function Step-Priming($load){Show-Primers;$pid=Read-Host "Primer ID";$q=$load.CartridgeQuantityUsed;$p=Load-CsvSafe $PrimersFile|?{$_.ID -eq $pid};if(!$p){Write-Host "Not found";Pause;return};$load.PrimerID=$pid;$load.PrimerQuantityUsed=$q;Sync-CartridgeStep $load.CartridgeID "Priming"}
+function Step-Powder($load){Show-Powders;$pid=Read-Host "Powder ID";$chg=Read-Host "Charge (gr)";$p=Load-CsvSafe $PowdersFile|?{$_.ID-eq$pid};if(!$p){Write-Host "Not found";Pause;return};$total=[double]$chg*[int]$load.CartridgeQuantityUsed;$load.PowderID=$pid;$load.PowderCharge_gr=$chg;$load.PowderTotalUsed_gr=$total;Sync-CartridgeStep $load.CartridgeID "Powder"}
+function Step-BulletSeating($load){Show-Bullets;$bid=Read-Host "Bullet ID";$q=$load.CartridgeQuantityUsed;$b=Load-CsvSafe $BulletsFile|?{$_.ID-eq$bid};if(!$b){Write-Host "Not found";Pause;return};$coal=Read-Host "COAL";$oal=Read-Host "OAL";$load.BulletID=$bid;$load.BulletQuantityUsed=$q;$load.COAL_in=$coal;$load.OAL_in=$oal;Sync-CartridgeStep $load.CartridgeID "Bullet Seating"}
+
+function Step-CompleteLoad($load){
+ if($load.PrimerID-eq"" -or $load.PowderID-eq"" -or $load.BulletID-eq"" -or $load.COAL_in-eq"" -or $load.OAL_in-eq""){Write-Host "Missing fields";Pause;return}
+ $prim=Load-CsvSafe $PrimersFile;$p=$prim|?{$_.ID-eq$load.PrimerID};$p.QuantityAvailable=[int]$p.QuantityAvailable-[int]$load.PrimerQuantityUsed;Save-CsvSafe $prim $PrimersFile
+ $pow=Load-CsvSafe $PowdersFile;$pw=$pow|?{$_.ID-eq$load.PowderID};$pw.GrainsAvailable=[double]$pw.GrainsAvailable-[double]$load.PowderTotalUsed_gr;Save-CsvSafe $pow $PowdersFile
+ $bul=Load-CsvSafe $BulletsFile;$b=$bul|?{$_.ID-eq$load.BulletID};$b.QuantityAvailable=[int]$b.QuantityAvailable-[int]$load.BulletQuantityUsed;Save-CsvSafe $bul $BulletsFile
+ $cart=Load-CsvSafe $CartridgeFile;$c=$cart|?{$_.ID-eq$load.CartridgeID};$c.QuantityLoaded=[int]$c.QuantityLoaded+[int]$load.CartridgeQuantityUsed;$c.CurrentStep="Completed";Save-CsvSafe $cart $CartridgeFile
+ $load.Completed="Yes";Write-Host "Load completed" -Fore Green;Pause
+}
+
+function Load-Steps-Menu {
+ $load=Select-Load;if(!$load){return}
+ $loads=@(Load-CsvSafe $LoadsFile);$row=$loads|?{$_.InventoryNumber-eq$load.InventoryNumber};if(!$row){Pause;return}
+ while($true){
+  Clear-Host;Write-Host "=== Steps for $($row.UserLoadID) ==="
+  Write-Host "1.Washing 2.Calibration 3.Trim 4.SecondWash 5.Priming 6.Powder 7.Bullet 8.Complete 9.Back"
+  $ch=Read-Host "Choice"
+  switch($ch){"1"{Step-Washing $row}"2"{Step-Calibration $row}"3"{Step-Trim $row}"4"{Step-SecondWashing $row}"5"{Step-Priming $row}"6"{Step-Powder $row}"7"{Step-BulletSeating $row}"8"{Step-CompleteLoad $row}"9"{return}default{Write-Host "Invalid";Pause}}
+  Save-CsvSafe $loads $LoadsFile
+ }
+}
+
+function Mark-Load-Fired{
+ Clear-Host;Write-Host "=== Mark as Fired ===";$l=Load-CsvSafe $LoadsFile;if($l.Count-eq0){Write-Host "None";Pause;return}
+ Show-Loads;$inv=Read-Host "Inventory #";$load=$l|?{$_.InventoryNumber-eq$inv};if(!$load){Write-Host "Not found";Pause;return}
+ if($load.Completed-ne"Yes"){Write-Host "Not completed";Pause;return}
+ if($load.Fired-eq"Yes"){Write-Host "Already";Pause;return}
+ $load.Fired="Yes";$c=Load-CsvSafe $CartridgeFile;$car=$c|?{$_.ID-eq$load.CartridgeID};if($car){$car.TimesFired=[int]$car.TimesFired+1;$car.CurrentStep="Fired";Save-CsvSafe $c $CartridgeFile}
+ Save-CsvSafe $l $LoadsFile;Write-Host "Marked fired" -Fore Green;Pause
+}
+
+# ============================================================
+# ================  MENU SECTIONS  (Base) =====================
+# ============================================================
+
+function Cartridge-Menu {
+    while ($true) {
+        Clear-Host
+        Write-Host "=== Cartridge Inventory Menu ===`n" -ForegroundColor Cyan
+        Write-Host "1. Show Cartridges"
+        Write-Host "2. Add Cartridge Batch"
+        Write-Host "3. Edit Cartridge Batch"
+        Write-Host "4. Delete Cartridge Batch"
+        Write-Host "5. Update Cartridge Step"
+        Write-Host "9. Back"
+        $choice = Read-Host "Choice"
+
+        switch ($choice) {
+            "1" { Show-Cartridges }
+            "2" { Add-Cartridge }
+            "3" { Edit-Cartridge }
+            "4" { Delete-Cartridge }
+            "5" { Update-Cartridge-Step }
+            "9" { return }
+            default { Write-Host "Invalid choice." -ForegroundColor Red; Pause }
+        }
+    }
+}
+
+function Bullet-Menu {
+    while ($true) {
+        Clear-Host
+        Write-Host "=== Bullet Inventory Menu ===`n" -ForegroundColor Cyan
+        Write-Host "1. Show Bullets"
+        Write-Host "2. Add Bullet"
+        Write-Host "3. Edit Bullet"
+        Write-Host "4. Delete Bullet"
+        Write-Host "9. Back"
+        $choice = Read-Host "Choice"
+
+        switch ($choice) {
+            "1" { Show-Bullets }
+            "2" { Add-Bullet }
+            "3" { Edit-Bullet }
+            "4" { Delete-Bullet }
+            "9" { return }
+            default { Write-Host "Invalid choice." -ForegroundColor Red; Pause }
+        }
+    }
+}
+
+function Powder-Menu {
+    while ($true) {
+        Clear-Host
+        Write-Host "=== Powder Inventory Menu ===`n" -ForegroundColor Cyan
+        Write-Host "1. Show Powders"
+        Write-Host "2. Add Powder"
+        Write-Host "3. Edit Powder"
+        Write-Host "4. Delete Powder"
+        Write-Host "9. Back"
+        $choice = Read-Host "Choice"
+        switch ($choice) {
+            "1" { Show-Powders }
+            "2" { Add-Powder }
+            "3" { Edit-Powder }
+            "4" { Delete-Powder }
+            "9" { return }
+            default { Write-Host "Invalid choice." -ForegroundColor Red; Pause }
+        }
+    }
+}
+function Primer-Menu {
+    while ($true) {
+        Clear-Host
+        Write-Host "=== Primer Inventory Menu ===`n" -ForegroundColor Cyan
+        Write-Host "1. Show Primers"
+        Write-Host "2. Add Primer"
+        Write-Host "3. Edit Primer"
+        Write-Host "4. Delete Primer"
+        Write-Host "9. Back"
+        $choice = Read-Host "Choice"
+
+        switch ($choice) {
+            "1" { Show-Primers }
+            "2" { Add-Primer }
+            "3" { Edit-Primer }
+            "4" { Delete-Primer }
+            "9" { return }
+            default { Write-Host "Invalid choice." -ForegroundColor Red; Pause }
+        }
+    }
+}
+
+function Load-Menu {
+    while ($true) {
+        Clear-Host
+        Write-Host "=== Load Menu ===`n"
+        Write-Host "1. Show Loads"
+        Write-Host "2. Create New Load"
+        Write-Host "3. Reloading Steps for Load"
+        Write-Host "4. Mark Load as Fired"
+        Write-Host "9. Back"
+        $choice = Read-Host "Choice"
+        switch ($choice) {
+            "1" { Show-Loads }
+            "2" { Create-Load }
+            "3" { Load-Steps-Menu }
+            "4" { Mark-Load-Fired }
+            "9" { return }
+            default { Write-Host "Invalid choice." -ForegroundColor Red; Pause }
+        }
+    }
+}
+function Excel-Menu {
+    while ($true) {
+        Clear-Host
+        Write-Host "=== Excel Import/Export ===`n"
+        Write-Host "1. Export all data to Excel"
+        Write-Host "2. Import data from Excel"
+        Write-Host "3. Export all data to JSON"
+        Write-Host "4. Back"
+        $choice = Read-Host "Choice"
+        switch ($choice) {
+            "1" { Export-All-To-Excel }
+            "2" { Import-From-Excel }
+            "3" { Export-All-To-JSON }
+            "4" { return }
+            default { Write-Host "Invalid choice." -ForegroundColor Red; Pause }
+        }
+    }
+}
+# --- end of base system ---
+
+# ============================================================
+# === START: NEW FEATURES (ReloadingManager3 Enhancements) ===
+# ============================================================
+
+# ----------- CSV automatic backup -----------
+function Backup-Csv {
+    param([string]$FilePath)
+    try {
+        $backupDir = Join-Path $BasePath "Backups"
+        if (!(Test-Path $backupDir)) { New-Item -ItemType Directory -Path $backupDir | Out-Null }
+        $name = [System.IO.Path]::GetFileNameWithoutExtension($FilePath)
+        $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+        $target = Join-Path $backupDir "$name-$timestamp.csv"
+        Copy-Item $FilePath $target -ErrorAction Stop
+    } catch {
+        Write-Warning "Backup failed for ${FilePath}: $_"
+    }
+}
+
+# override Save-CsvSafe to include backups
+Remove-Item Function:Save-CsvSafe -ErrorAction SilentlyContinue
+function Save-CsvSafe {
+    param([array]$Data,[string]$FilePath)
+    if (Test-Path $FilePath) { Backup-Csv $FilePath }
+    $Data | Export-Csv -Path $FilePath -NoTypeInformation -Encoding UTF8
+}
+
+# ----------- Search Inventory -----------
+function Search-Inventory {
+    param([Parameter(Mandatory)][string]$Category)
+    Clear-Host
+    $query = Read-Host "Enter text to search in $Category"
+    switch ($Category) {
+        "Cartridges" { $rows = Load-CsvSafe $CartridgeFile | Where-Object { $_.Caliber -match $query -or $_.Manufacturer -match $query } }
+        "Bullets"    { $rows = Load-CsvSafe $BulletsFile   | Where-Object { $_.Manufacturer -match $query -or $_.Model -match $query } }
+        "Powders"    { $rows = Load-CsvSafe $PowdersFile   | Where-Object { $_.Manufacturer -match $query -or $_.Name -match $query } }
+        "Primers"    { $rows = Load-CsvSafe $PrimersFile   | Where-Object { $_.Manufacturer -match $query -or $_.Type -match $query } }
+    }
+    if (!$rows -or $rows.Count -eq 0) { Write-Host "`nNo matches found." -ForegroundColor Yellow }
+    else { Write-Host "`n=== Search Results ===`n"; $rows | Format-Table -AutoSize }
+    Pause
+}
+
+# ----------- Low Stock Check -----------
+function Check-LowStock {
+    Clear-Host
+    Write-Host "=== Low Stock Warnings ===" -ForegroundColor Yellow
+
+    $bul = Load-CsvSafe $BulletsFile | Where-Object { [int]$_.QuantityAvailable -lt 100 }
+    $pow = Load-CsvSafe $PowdersFile | Where-Object { [double]$_.GrainsAvailable -lt 500 }
+    $pri = Load-CsvSafe $PrimersFile | Where-Object { [int]$_.QuantityAvailable -lt 100 }
+
+    if ($bul) { Write-Host "`nBullets:" -Foreground Cyan; $bul | Format-Table ID,Manufacturer,Model,QuantityAvailable -AutoSize }
+    if ($pow) { Write-Host "`nPowders:" -Foreground Cyan; $pow | Format-Table ID,Manufacturer,Name,GrainsAvailable -AutoSize }
+    if ($pri) { Write-Host "`nPrimers:" -Foreground Cyan; $pri | Format-Table ID,Manufacturer,Type,QuantityAvailable -AutoSize }
+
+    if (-not ($bul -or $pow -or $pri)) { Write-Host "`nAll inventory levels are healthy." -Foreground Green }
+    Pause
+}
+
+# ----------- JSON Export -----------
+function Export-All-To-JSON {
+    Clear-Host
+    Write-Host "=== Export All Inventory to JSON ==="
+    $data = [PSCustomObject]@{
+        Cartridges = Load-CsvSafe $CartridgeFile
+        Bullets    = Load-CsvSafe $BulletsFile
+        Powders    = Load-CsvSafe $PowdersFile
+        Primers    = Load-CsvSafe $PrimersFile
+        Loads      = Load-CsvSafe $LoadsFile
+    }
+    $path = Join-Path $BasePath "ReloadingDataBackup.json"
+    $data | ConvertTo-Json -Depth 5 | Out-File $path -Encoding UTF8
+    Write-Host "`nExported to: $path" -ForegroundColor Green
+    Pause
+}
+
+# ----------- Reload History Summary -----------
+function Show-Reload-History {
+    Clear-Host
+    Write-Host "=== Reloading History Summary ===`n"
+
+    $cartridges = Load-CsvSafe $CartridgeFile
+    $loads = Load-CsvSafe $LoadsFile
+    if ($cartridges.Count -eq 0 -or $loads.Count -eq 0) {
+        Write-Host "No cartridges or loads found." -Foreground Yellow
+        Pause
+        return
+    }
+
+    $summary = $cartridges | ForEach-Object {
+        $rel = $loads | Where-Object { $_.CartridgeID -eq $_.ID }
+        [PSCustomObject]@{
+            CartridgeID         = $_.ID
+            Caliber             = $_.Caliber
+            Manufacturer        = $_.Manufacturer
+            TimesFired          = $_.TimesFired
+            LoadsCompleted      = ($rel | Where-Object { $_.Completed -eq "Yes" }).Count
+            TotalRoundsReloaded = ($rel | Measure-Object -Property CartridgeQuantityUsed -Sum).Sum
+        }
+    }
+    $summary | Sort-Object Caliber | Format-Table -AutoSize
+    Pause
+}
+
+# ============================================================
+# === END: NEW FEATURES =====================================
+# ============================================================
+
+# ============================================================
+# === START: VISUAL ENHANCEMENT PACK (Text‑Only Edition) ====
+# ============================================================
+
+# ----- Generic banner header -----
+function Show-Banner {
+    param(
+        [string]$Title,
+        [ConsoleColor]$Color = 'Cyan'
+    )
+    Write-Host ""
+    Write-Host ("╔" + ('═' * 46) + "╗") -ForegroundColor $Color
+    Write-Host ("║" + (' ' * ((46 - $Title.Length)/2)) + $Title.PadRight(46 - ((46 - $Title.Length)/2)) + "║") -ForegroundColor $Color
+    Write-Host ("╚" + ('═' * 46) + "╝") -ForegroundColor $Color
+    Write-Host ""
+}
+
+# ----- Quick progress feedback -----
+function Show-ProgressText {
+    param([string]$Activity,[int]$Step = 5)
+    Write-Host -NoNewline "$Activity "
+    for ($i=0;$i -lt 3;$i++) {
+        Write-Host -NoNewline "."; Start-Sleep -Milliseconds (150*$Step)
+    }
+    Write-Host " done." -ForegroundColor Green
+}
+
+# ----- Overview dashboard -----
+function Show-Overview {
+    Clear-Host
+    Show-Banner "Reloading Manager – Overview"
+    $car = (Load-CsvSafe $CartridgeFile).Count
+    $bul = (Load-CsvSafe $BulletsFile).Count
+    $pow = (Load-CsvSafe $PowdersFile).Count
+    $pri = (Load-CsvSafe $PrimersFile).Count
+    $loa = (Load-CsvSafe $LoadsFile).Count
+
+    Write-Host ("Cartridge Batches : {0}" -f $car) -ForegroundColor White
+    Write-Host ("Bullet Types      : {0}" -f $bul) -ForegroundColor White
+    Write-Host ("Powder Types      : {0}" -f $pow) -ForegroundColor White
+    Write-Host ("Primer Types      : {0}" -f $pri) -ForegroundColor White
+    Write-Host ("Load Records      : {0}" -f $loa) -ForegroundColor White
+    Write-Host ""
+    Check-LowStock
+}
+
+# ----- Enhanced cartridge table -----
+function Show-Cartridges {
+    Clear-Host
+    Show-Banner "Cartridge Inventory"
+    $rows = Load-CsvSafe $CartridgeFile
+    if ($rows.Count -eq 0) { Write-Host "No cartridge batches found." -Foreground Yellow; Pause; return }
+
+    $rows = $rows | Sort-Object Caliber,ID
+    $rows | Format-Table `
+        @{Label="ID";Expression={$_.ID};Align="Right"}, `
+        @{Label="Manufacturer";Expression={$_.Manufacturer}}, `
+        @{Label="Caliber";Expression={$_.Caliber}}, `
+        @{Label="Step";Expression={$_.CurrentStep}}, `
+        @{Label="TimesFired";Expression={$_.TimesFired}}, `
+        @{Label="Loaded/Total";Expression={"$($_.QuantityLoaded)/$($_.QuantityTotal)"}}, `
+        @{Label="Notes";Expression={$_.Notes}} -AutoSize
+    Write-Host "`nTip: Run 'Update Cartridge Step' to move workflow stage." -ForegroundColor DarkGray
+    Pause
+}
+
+# ----- Enhanced bullet table -----
+function Show-Bullets {
+    Clear-Host
+    Show-Banner "Bullet Inventory"
+    $rows = Load-CsvSafe $BulletsFile
+    if ($rows.Count -eq 0) { Write-Host "No bullets found." -Foreground Yellow; Pause; return }
+    $rows | Sort-Object Manufacturer,Weight_gr | Format-Table `
+        @{Label="ID";Expression={$_.ID};Align="Right"}, `
+        @{Label="Manufacturer";Expression={$_.Manufacturer}}, `
+        @{Label="Model";Expression={$_.Model}}, `
+        @{Label="Weight(gr)";Expression={$_.Weight_gr};Align="Right"}, `
+        @{Label="Diameter(in)";Expression={$_.Diameter_in}}, `
+        @{Label="Qty";Expression={$_.QuantityAvailable};Align="Right"} `
+        -AutoSize
+    Pause
+}
+
+# ----- Enhanced powder table -----
+function Show-Powders {
+    Clear-Host
+    Show-Banner "Powder Inventory"
+    $rows = Load-CsvSafe $PowdersFile
+    if ($rows.Count -eq 0) { Write-Host "No powders found." -Foreground Yellow; Pause; return }
+    $rows | Sort-Object Manufacturer,Name | Format-Table `
+        @{Label="ID";Expression={$_.ID};Align="Right"}, `
+        @{Label="Manufacturer";Expression={$_.Manufacturer}}, `
+        @{Label="Name";Expression={$_.Name}}, `
+        @{Label="Type";Expression={$_.Type}}, `
+        @{Label="GrainsAvail";Expression={$_.GrainsAvailable};Align="Right"}, `
+        @{Label="Notes";Expression={$_.Notes}} -AutoSize
+    Pause
+}
+
+# ----- Enhanced primer table -----
+function Show-Primers {
+    Clear-Host
+    Show-Banner "Primer Inventory"
+    $rows = Load-CsvSafe $PrimersFile
+    if ($rows.Count -eq 0) { Write-Host "No primers found." -Foreground Yellow; Pause; return }
+    $rows | Sort-Object Manufacturer,Type | Format-Table `
+        @{Label="ID";Expression={$_.ID};Align="Right"}, `
+        @{Label="Manufacturer";Expression={$_.Manufacturer}}, `
+        @{Label="Type";Expression={$_.Type}}, `
+        @{Label="QtyAvail";Expression={$_.QuantityAvailable};Align="Right"}, `
+        @{Label="Notes";Expression={$_.Notes}} -AutoSize
+    Pause
+}
+
+# ----- Enhanced load list -----
+function Show-Loads {
+    Clear-Host
+    Show-Banner "Load Records"
+    $loads = @(Load-CsvSafe $LoadsFile)
+    if ($loads.Count -eq 0) { Write-Host "No load batches found." -ForegroundColor Yellow; Pause; return }
+    $cartridges = @(Load-CsvSafe $CartridgeFile)
+    $display = foreach ($l in $loads) {
+        $cart = $cartridges | Where-Object { $_.ID -eq $l.CartridgeID }
+        $color = if ($l.Completed -eq "Yes") { "Green" } elseif ($cart.CurrentStep -eq "Fired") { "Yellow" } else { "White" }
+        Write-Host ("Inv#{0,-3} {1,-10} Cal {2,-5} Qty {3,-4} Step:{4,-14} Completed:{5}" -f `
+            $l.InventoryNumber,$l.UserLoadID,$l.Caliber,$l.CartridgeQuantityUsed,$cart.CurrentStep,$l.Completed) -ForegroundColor $color
+    }
+    Write-Host ""
+    Write-Host "Legend: Green=Completed, Yellow=Fired, White=Active" -Foreground DarkGray
+    Pause
+}
+
+# ============================================================
+# === END: VISUAL ENHANCEMENT PACK ===========================
+# ============================================================
+
+
+# ============================================================
+# ========================  MAIN MENU  ========================
+# ============================================================
+function Main-Menu {
+    while ($true) {
+        Clear-Host
+        Write-Host "=== Reloading Management System v3 ===`n"
+        Write-Host "1. Cartridge Inventory"
+        Write-Host "2. Bullet Inventory"
+        Write-Host "3. Powder Inventory"
+        Write-Host "4. Primer Inventory"
+        Write-Host "5. Load Management"
+        Write-Host "6. Excel Import/Export"
+        Write-Host "7. Check Inventory Levels (Low Stock)"
+        Write-Host "8. View Reloading History Summary"
+        Write-Host "9. Exit"
+        $choice = Read-Host "Choice"
+
+        switch ($choice) {
+            "1" { Cartridge-Menu }
+            "2" { Bullet-Menu }
+            "3" { Powder-Menu }
+            "4" { Primer-Menu }
+            "5" { Load-Menu }
+            "6" { Excel-Menu }
+            "7" { Check-LowStock }
+            "8" { Show-Reload-History }
+            "9" { return }
+            default { Write-Host "Invalid choice." -Foreground Red; Pause }
+        }
+    }
+}
+
+# ============================================================
+# ==========================  STARTUP  ========================
+# ============================================================
+
+Ensure-Files
+Main-Menu
