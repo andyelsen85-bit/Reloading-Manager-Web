@@ -39,18 +39,13 @@ FROM deps AS build-api
 
 COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
+COPY docker/build-migrate.mjs ./docker/build-migrate.mjs
 
 RUN pnpm --filter @workspace/api-server run build
 
-# Bundle the standalone migration script using esbuild
-RUN node_modules/.bin/esbuild \
-      lib/db/migrate.ts \
-      --bundle \
-      --platform=node \
-      --format=esm \
-      --outfile=artifacts/api-server/dist/migrate.mjs \
-      --external:pg-native \
-      --banner:js="import { createRequire as __cr } from 'node:module'; globalThis.require = __cr(import.meta.url);"
+# Bundle the standalone migration script via a Node.js build script
+# (avoids relying on a specific binary path in pnpm's virtual store)
+RUN node docker/build-migrate.mjs
 
 ################################
 # Stage 4 – Production image
