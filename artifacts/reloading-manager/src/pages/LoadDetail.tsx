@@ -339,7 +339,7 @@ export default function LoadDetail() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ cartridgeId: load.cartridgeId, cartridgeQuantityUsed: load.cartridgeQuantityUsed }),
+        body: JSON.stringify({ cartridgeId: load.cartridgeId, cartridgeQuantityUsed: load.cartridgeQuantityUsed, parentLoadId: load.id }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Failed"); }
       const newLoad = await res.json();

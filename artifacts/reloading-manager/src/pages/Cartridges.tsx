@@ -147,7 +147,6 @@ export default function Cartridges() {
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Manufacturer</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Caliber</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Prod. Charge</th>
-                <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fired</th>
                 <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Loaded/Total</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Notes</th>
                 <th className="px-3 py-2.5"></th>
@@ -190,7 +189,6 @@ export default function Cartridges() {
                       <td className="px-3 py-2.5 text-foreground">{c.manufacturer}</td>
                       <td className="px-3 py-2.5 font-semibold text-foreground">{c.caliber}</td>
                       <td className="px-3 py-2.5 text-muted-foreground">{c.productionCharge}</td>
-                      <td className="px-3 py-2.5 text-right font-mono">{c.timesFired}</td>
                       <td className="px-3 py-2.5 text-right font-mono">{c.quantityLoaded}/{c.quantityTotal}</td>
                       <td className="px-3 py-2.5 text-muted-foreground text-xs max-w-[120px] truncate">{c.notes}</td>
                       <td className="px-3 py-2.5">

@@ -90,9 +90,16 @@ router.post("/loads", async (req, res) => {
     });
   }
 
-  const settings = await getOrCreateSettings();
-  const loadNumber = settings.nextLoadNumber;
-  await db.update(settingsTable).set({ nextLoadNumber: loadNumber + 1 }).where(eq(settingsTable.id, settings.id));
+  let loadNumber: number;
+  if (body.parentLoadId != null) {
+    const [parentLoad] = await db.select({ loadNumber: loadsTable.loadNumber }).from(loadsTable).where(eq(loadsTable.id, body.parentLoadId));
+    if (!parentLoad) return res.status(404).json({ error: "Parent load not found" });
+    loadNumber = parentLoad.loadNumber ?? body.parentLoadId;
+  } else {
+    const settings = await getOrCreateSettings();
+    loadNumber = settings.nextLoadNumber;
+    await db.update(settingsTable).set({ nextLoadNumber: loadNumber + 1 }).where(eq(settingsTable.id, settings.id));
+  }
 
   const today = new Date().toISOString().split("T")[0];
   const [row] = await db.insert(loadsTable).values({

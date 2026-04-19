@@ -640,6 +640,7 @@ export const CreateLoadBody = zod.object({
   cartridgeId: zod.number(),
   cartridgeQuantityUsed: zod.number(),
   notes: zod.string().optional(),
+  parentLoadId: zod.number().optional(),
 });
 
 /**
