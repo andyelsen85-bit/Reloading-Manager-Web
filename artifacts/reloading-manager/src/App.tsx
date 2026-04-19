@@ -12,6 +12,8 @@ import Loads from "@/pages/Loads";
 import LoadDetail from "@/pages/LoadDetail";
 import History from "@/pages/History";
 import Settings from "@/pages/Settings";
+import ChargeLadders from "@/pages/ChargeLadders";
+import ChargeLadderDetail from "@/pages/ChargeLadderDetail";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -31,6 +33,8 @@ function Router() {
         <Route path="/primers" component={Primers} />
         <Route path="/loads" component={Loads} />
         <Route path="/loads/:id" component={LoadDetail} />
+        <Route path="/charge-ladders" component={ChargeLadders} />
+        <Route path="/charge-ladders/:id" component={ChargeLadderDetail} />
         <Route path="/history" component={History} />
         <Route path="/settings" component={Settings} />
         <Route component={NotFound} />

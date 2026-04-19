@@ -32,6 +32,8 @@ export const loadsTable = pgTable("loads", {
   completed: boolean("completed").notNull().default(false),
   fired: boolean("fired").notNull().default(false),
   notes: text("notes"),
+  deletedAt: timestamp("deleted_at"),
+  deletedNote: text("deleted_note"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

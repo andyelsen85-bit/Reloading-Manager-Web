@@ -13,4 +13,5 @@ export interface HistoryEntry {
   timesFired: number;
   loadsCompleted: number;
   totalRoundsReloaded: number;
+  deletedLoadsCount: number;
 }

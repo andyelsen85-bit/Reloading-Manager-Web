@@ -15,6 +15,158 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * @summary Login
+ */
+export const LoginBody = zod.object({
+  username: zod.string(),
+  password: zod.string(),
+});
+
+export const LoginResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  email: zod.string(),
+  role: zod.string(),
+  notificationsEnabled: zod.boolean(),
+});
+
+/**
+ * @summary Get current user
+ */
+export const GetMeResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  email: zod.string(),
+  role: zod.string(),
+  notificationsEnabled: zod.boolean(),
+});
+
+/**
+ * @summary List all users
+ */
+export const ListUsersResponseItem = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  email: zod.string(),
+  role: zod.string(),
+  active: zod.boolean(),
+  notificationsEnabled: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+export const ListUsersResponse = zod.array(ListUsersResponseItem);
+
+/**
+ * @summary Create a user
+ */
+export const CreateUserBody = zod.object({
+  username: zod.string(),
+  email: zod.string(),
+  password: zod.string(),
+  role: zod.string().optional(),
+  notificationsEnabled: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update a user
+ */
+export const UpdateUserParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateUserBody = zod.object({
+  username: zod.string().optional(),
+  email: zod.string().optional(),
+  role: zod.string().optional(),
+  active: zod.boolean().optional(),
+  notificationsEnabled: zod.boolean().optional(),
+});
+
+export const UpdateUserResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  email: zod.string(),
+  role: zod.string(),
+  active: zod.boolean(),
+  notificationsEnabled: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a user
+ */
+export const DeleteUserParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Reset user password
+ */
+export const ResetUserPasswordParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ResetUserPasswordBody = zod.object({
+  newPassword: zod.string(),
+});
+
+/**
+ * @summary List reference data by category
+ */
+export const ListReferenceDataParams = zod.object({
+  category: zod.coerce.string(),
+});
+
+export const ListReferenceDataResponseItem = zod.object({
+  id: zod.number(),
+  category: zod.string(),
+  value: zod.string(),
+  sortOrder: zod.number(),
+});
+export const ListReferenceDataResponse = zod.array(
+  ListReferenceDataResponseItem,
+);
+
+/**
+ * @summary Add a reference data item
+ */
+export const CreateReferenceItemParams = zod.object({
+  category: zod.coerce.string(),
+});
+
+export const CreateReferenceItemBody = zod.object({
+  value: zod.string(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a reference data item
+ */
+export const UpdateReferenceItemParams = zod.object({
+  category: zod.coerce.string(),
+  id: zod.coerce.number(),
+});
+
+export const UpdateReferenceItemBody = zod.object({
+  value: zod.string().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateReferenceItemResponse = zod.object({
+  id: zod.number(),
+  category: zod.string(),
+  value: zod.string(),
+  sortOrder: zod.number(),
+});
+
+/**
+ * @summary Delete a reference data item
+ */
+export const DeleteReferenceItemParams = zod.object({
+  category: zod.coerce.string(),
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Get application settings
  */
 export const GetSettingsResponse = zod.object({
@@ -25,6 +177,12 @@ export const GetSettingsResponse = zod.object({
   nextLoadNumber: zod.number(),
   logoBase64: zod.string().nullish(),
   backgroundBase64: zod.string().nullish(),
+  smtpHost: zod.string().nullish(),
+  smtpPort: zod.number().nullish(),
+  smtpUser: zod.string().nullish(),
+  smtpPass: zod.string().nullish(),
+  smtpFrom: zod.string().nullish(),
+  smtpEnabled: zod.boolean().nullish(),
 });
 
 /**
@@ -37,6 +195,12 @@ export const UpdateSettingsBody = zod.object({
   nextLoadNumber: zod.number().optional(),
   logoBase64: zod.string().nullish(),
   backgroundBase64: zod.string().nullish(),
+  smtpHost: zod.string().nullish(),
+  smtpPort: zod.number().nullish(),
+  smtpUser: zod.string().nullish(),
+  smtpPass: zod.string().nullish(),
+  smtpFrom: zod.string().nullish(),
+  smtpEnabled: zod.boolean().optional(),
 });
 
 export const UpdateSettingsResponse = zod.object({
@@ -47,6 +211,12 @@ export const UpdateSettingsResponse = zod.object({
   nextLoadNumber: zod.number(),
   logoBase64: zod.string().nullish(),
   backgroundBase64: zod.string().nullish(),
+  smtpHost: zod.string().nullish(),
+  smtpPort: zod.number().nullish(),
+  smtpUser: zod.string().nullish(),
+  smtpPass: zod.string().nullish(),
+  smtpFrom: zod.string().nullish(),
+  smtpEnabled: zod.boolean().nullish(),
 });
 
 /**
@@ -383,6 +553,8 @@ export const ListLoadsResponseItem = zod.object({
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
+  deletedAt: zod.coerce.date().nullish(),
+  deletedNote: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListLoadsResponse = zod.array(ListLoadsResponseItem);
@@ -433,6 +605,8 @@ export const GetLoadResponse = zod.object({
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
+  deletedAt: zod.coerce.date().nullish(),
+  deletedNote: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -492,14 +666,32 @@ export const UpdateLoadResponse = zod.object({
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
+  deletedAt: zod.coerce.date().nullish(),
+  deletedNote: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
 /**
- * @summary Delete a load
+ * @summary Delete a load (with optional restock)
  */
 export const DeleteLoadParams = zod.object({
   id: zod.coerce.number(),
+});
+
+export const DeleteLoadBody = zod.object({
+  restockPrimers: zod
+    .number()
+    .optional()
+    .describe("Number of primers to restock"),
+  restockPowderGr: zod
+    .number()
+    .optional()
+    .describe("Grams of powder to restock"),
+  restockBullets: zod
+    .number()
+    .optional()
+    .describe("Number of bullets to restock"),
+  note: zod.string().optional().describe("Reason for deletion"),
 });
 
 /**
@@ -539,6 +731,8 @@ export const CompleteLoadResponse = zod.object({
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
+  deletedAt: zod.coerce.date().nullish(),
+  deletedNote: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -583,6 +777,205 @@ export const FireLoadResponse = zod.object({
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
+  deletedAt: zod.coerce.date().nullish(),
+  deletedNote: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List all charge ladders
+ */
+export const ListChargeLaddersResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  caliber: zod.string(),
+  cartridgeId: zod.number(),
+  bulletId: zod.number().nullish(),
+  primerId: zod.number().nullish(),
+  cartridgesPerLevel: zod.number(),
+  notes: zod.string().nullish(),
+  status: zod.string(),
+  bestLevelId: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListChargeLaddersResponse = zod.array(
+  ListChargeLaddersResponseItem,
+);
+
+/**
+ * @summary Create a charge ladder
+ */
+export const CreateChargeLadderBody = zod.object({
+  name: zod.string(),
+  caliber: zod.string(),
+  cartridgeId: zod.number(),
+  bulletId: zod.number().optional(),
+  primerId: zod.number().optional(),
+  cartridgesPerLevel: zod.number(),
+  notes: zod.string().optional(),
+  levels: zod
+    .array(
+      zod.object({
+        chargeGr: zod.number(),
+        cartridgeCount: zod.number().optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Get a charge ladder with its levels
+ */
+export const GetChargeLadderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetChargeLadderResponse = zod.object({
+  ladder: zod.object({
+    id: zod.number(),
+    name: zod.string(),
+    caliber: zod.string(),
+    cartridgeId: zod.number(),
+    bulletId: zod.number().nullish(),
+    primerId: zod.number().nullish(),
+    cartridgesPerLevel: zod.number(),
+    notes: zod.string().nullish(),
+    status: zod.string(),
+    bestLevelId: zod.number().nullish(),
+    createdAt: zod.coerce.date(),
+  }),
+  levels: zod.array(
+    zod.object({
+      id: zod.number(),
+      ladderId: zod.number(),
+      chargeGr: zod.number(),
+      cartridgeCount: zod.number(),
+      sortOrder: zod.number(),
+      status: zod.string(),
+      notes: zod.string().nullish(),
+      oalIn: zod.number().nullish(),
+      coalIn: zod.number().nullish(),
+      groupSizeMm: zod.number().nullish(),
+      velocityFps: zod.number().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update a charge ladder
+ */
+export const UpdateChargeLadderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateChargeLadderBody = zod.object({
+  name: zod.string().optional(),
+  notes: zod.string().optional(),
+  status: zod.string().optional(),
+  bulletId: zod.number().nullish(),
+  primerId: zod.number().nullish(),
+});
+
+export const UpdateChargeLadderResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  caliber: zod.string(),
+  cartridgeId: zod.number(),
+  bulletId: zod.number().nullish(),
+  primerId: zod.number().nullish(),
+  cartridgesPerLevel: zod.number(),
+  notes: zod.string().nullish(),
+  status: zod.string(),
+  bestLevelId: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a charge ladder
+ */
+export const DeleteChargeLadderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Add a charge level to a ladder
+ */
+export const AddChargeLevelParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AddChargeLevelBody = zod.object({
+  chargeGr: zod.number(),
+  cartridgeCount: zod.number().optional(),
+  sortOrder: zod.number().optional(),
+  notes: zod.string().optional(),
+});
+
+/**
+ * @summary Update a charge level (record results)
+ */
+export const UpdateChargeLevelParams = zod.object({
+  id: zod.coerce.number(),
+  levelId: zod.coerce.number(),
+});
+
+export const UpdateChargeLevelBody = zod.object({
+  chargeGr: zod.number().optional(),
+  cartridgeCount: zod.number().optional(),
+  status: zod.string().optional(),
+  notes: zod.string().optional(),
+  oalIn: zod.number().optional(),
+  coalIn: zod.number().optional(),
+  groupSizeMm: zod.number().optional(),
+  velocityFps: zod.number().optional(),
+});
+
+export const UpdateChargeLevelResponse = zod.object({
+  id: zod.number(),
+  ladderId: zod.number(),
+  chargeGr: zod.number(),
+  cartridgeCount: zod.number(),
+  sortOrder: zod.number(),
+  status: zod.string(),
+  notes: zod.string().nullish(),
+  oalIn: zod.number().nullish(),
+  coalIn: zod.number().nullish(),
+  groupSizeMm: zod.number().nullish(),
+  velocityFps: zod.number().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a charge level
+ */
+export const DeleteChargeLevelParams = zod.object({
+  id: zod.coerce.number(),
+  levelId: zod.coerce.number(),
+});
+
+/**
+ * @summary Select the best performing charge level
+ */
+export const SelectBestChargeLevelParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SelectBestChargeLevelBody = zod.object({
+  levelId: zod.number(),
+});
+
+export const SelectBestChargeLevelResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  caliber: zod.string(),
+  cartridgeId: zod.number(),
+  bulletId: zod.number().nullish(),
+  primerId: zod.number().nullish(),
+  cartridgesPerLevel: zod.number(),
+  notes: zod.string().nullish(),
+  status: zod.string(),
+  bestLevelId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -663,6 +1056,8 @@ export const GetDashboardOverviewResponse = zod.object({
       completed: zod.boolean(),
       fired: zod.boolean(),
       notes: zod.string().nullish(),
+      deletedAt: zod.coerce.date().nullish(),
+      deletedNote: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -678,6 +1073,7 @@ export const GetReloadHistoryResponseItem = zod.object({
   timesFired: zod.number(),
   loadsCompleted: zod.number(),
   totalRoundsReloaded: zod.number(),
+  deletedLoadsCount: zod.number(),
 });
 export const GetReloadHistoryResponse = zod.array(GetReloadHistoryResponseItem);
 
@@ -777,6 +1173,8 @@ export const ExportDataResponse = zod.object({
       completed: zod.boolean(),
       fired: zod.boolean(),
       notes: zod.string().nullish(),
+      deletedAt: zod.coerce.date().nullish(),
+      deletedNote: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { settingsTable } from "@workspace/db";
-import { UpdateSettingsBody } from "@workspace/api-zod";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -20,7 +20,7 @@ router.get("/settings", async (_req, res) => {
 });
 
 router.patch("/settings", async (req, res) => {
-  const body = UpdateSettingsBody.parse(req.body);
+  const body = req.body as Record<string, unknown>;
   const settings = await ensureSettings();
   const updates: Record<string, unknown> = {};
   if (body.bulletLowStockThreshold !== undefined) updates.bulletLowStockThreshold = body.bulletLowStockThreshold;
@@ -29,7 +29,12 @@ router.patch("/settings", async (req, res) => {
   if (body.nextLoadNumber !== undefined) updates.nextLoadNumber = body.nextLoadNumber;
   if (body.logoBase64 !== undefined) updates.logoBase64 = body.logoBase64;
   if (body.backgroundBase64 !== undefined) updates.backgroundBase64 = body.backgroundBase64;
-  const { eq } = await import("drizzle-orm");
+  if (body.smtpHost !== undefined) updates.smtpHost = body.smtpHost;
+  if (body.smtpPort !== undefined) updates.smtpPort = body.smtpPort;
+  if (body.smtpUser !== undefined) updates.smtpUser = body.smtpUser;
+  if (body.smtpPass !== undefined) updates.smtpPass = body.smtpPass;
+  if (body.smtpFrom !== undefined) updates.smtpFrom = body.smtpFrom;
+  if (body.smtpEnabled !== undefined) updates.smtpEnabled = body.smtpEnabled;
   const [updated] = await db.update(settingsTable).set(updates).where(eq(settingsTable.id, settings.id)).returning();
   res.json(updated);
 });

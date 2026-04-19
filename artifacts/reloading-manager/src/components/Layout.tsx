@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   Settings,
+  FlaskConical,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ const nav = [
   { href: "/powders", label: "Powders", icon: Flame },
   { href: "/primers", label: "Primers", icon: Zap },
   { href: "/loads", label: "Loads", icon: ClipboardList },
+  { href: "/charge-ladders", label: "Load Dev", icon: FlaskConical },
   { href: "/history", label: "History", icon: History },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -60,7 +62,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
         <nav className="flex-1 p-3 space-y-0.5">
           {nav.map(({ href, label, icon: Icon }) => {
-            const active = location === href;
+            const active = location === href || (href !== "/" && location.startsWith(href));
             return (
               <Link key={href} href={href}>
                 <div

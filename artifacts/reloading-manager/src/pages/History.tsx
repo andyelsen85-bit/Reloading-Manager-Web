@@ -1,6 +1,7 @@
 import { useGetReloadHistory, getGetReloadHistoryQueryKey } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Trash2 } from "lucide-react";
 
 export default function History() {
   const { data: history = [], isLoading } = useGetReloadHistory({ query: { queryKey: getGetReloadHistoryQueryKey() } });
@@ -9,7 +10,7 @@ export default function History() {
     <div className="space-y-4 max-w-5xl">
       <div>
         <h1 className="text-xl font-bold text-foreground tracking-tight">Reload History</h1>
-        <p className="text-sm text-muted-foreground">Summary per cartridge batch</p>
+        <p className="text-sm text-muted-foreground">Summary per cartridge batch — includes deleted loads</p>
       </div>
 
       {isLoading ? (
@@ -21,7 +22,7 @@ export default function History() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                {["Cart. ID","Caliber","Manufacturer","Times Fired","Loads Completed","Total Rounds Reloaded"].map((h) => (
+                {["Cart. ID","Caliber","Manufacturer","Times Fired","Loads Completed","Total Rounds","Deleted Loads"].map((h) => (
                   <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -41,6 +42,15 @@ export default function History() {
                   <td className="px-3 py-2.5 font-mono text-center">{h.timesFired}</td>
                   <td className="px-3 py-2.5 font-mono text-center text-green-400">{h.loadsCompleted}</td>
                   <td className="px-3 py-2.5 font-mono text-center font-semibold text-primary">{h.totalRoundsReloaded}</td>
+                  <td className="px-3 py-2.5 text-center">
+                    {h.deletedLoadsCount > 0 ? (
+                      <span className="flex items-center justify-center gap-1 text-muted-foreground text-xs">
+                        <Trash2 className="w-3 h-3" />{h.deletedLoadsCount}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </td>
                 </motion.tr>
               ))}
             </tbody>

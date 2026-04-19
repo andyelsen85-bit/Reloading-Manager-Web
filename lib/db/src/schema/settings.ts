@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, doublePrecision, text } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, doublePrecision, text, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -10,6 +10,12 @@ export const settingsTable = pgTable("settings", {
   nextLoadNumber: integer("next_load_number").notNull().default(1),
   logoBase64: text("logo_base64"),
   backgroundBase64: text("background_base64"),
+  smtpHost: text("smtp_host"),
+  smtpPort: integer("smtp_port").default(587),
+  smtpUser: text("smtp_user"),
+  smtpPass: text("smtp_pass"),
+  smtpFrom: text("smtp_from"),
+  smtpEnabled: boolean("smtp_enabled").default(false),
 });
 
 export const insertSettingsSchema = createInsertSchema(settingsTable).omit({ id: true });

@@ -1,8 +1,9 @@
-import { useState, useRef } from "react";
-import { useListCartridges, useCreateCartridge, useUpdateCartridge, useDeleteCartridge, getListCartridgesQueryKey } from "@workspace/api-client-react";
+import { useState, useRef, Fragment } from "react";
+import { useListCartridges, useCreateCartridge, useUpdateCartridge, useDeleteCartridge, getListCartridgesQueryKey, useListLoads, getListLoadsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Search, Camera, X } from "lucide-react";
+import { useLocation } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Pencil, Trash2, Search, Camera, X, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,15 +12,20 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import StepBadge from "@/components/StepBadge";
+import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 type CartridgeForm = { manufacturer: string; caliber: string; productionCharge: string; quantityTotal: string; currentStep: string; l6In: string; notes: string; photoBase64: string | null };
 const empty: CartridgeForm = { manufacturer: "", caliber: "", productionCharge: "", quantityTotal: "", currentStep: "New", l6In: "", notes: "", photoBase64: null };
 
+const formatLoadNum = (n: number | null | undefined) => n == null ? "—" : "#" + String(n).padStart(5, "0");
+
 export default function Cartridges() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const { data: cartridges = [], isLoading } = useListCartridges({ query: { queryKey: getListCartridgesQueryKey() } });
+  const { data: allLoads = [] } = useListLoads({ query: { queryKey: getListLoadsQueryKey() } });
   const createMutation = useCreateCartridge();
   const updateMutation = useUpdateCartridge();
   const deleteMutation = useDeleteCartridge();
@@ -29,6 +35,7 @@ export default function Cartridges() {
   const [editItem, setEditItem] = useState<(typeof cartridges)[0] | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState<CartridgeForm>(empty);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const filtered = cartridges.filter((c) =>
     c.caliber.toLowerCase().includes(search.toLowerCase()) ||
@@ -65,6 +72,8 @@ export default function Cartridges() {
     setForm({ manufacturer: c.manufacturer, caliber: c.caliber, productionCharge: c.productionCharge, quantityTotal: String(c.quantityTotal), currentStep: c.currentStep, l6In: c.l6In ?? "", notes: c.notes ?? "", photoBase64: c.photoBase64 ?? null });
   };
 
+  const toggleExpand = (id: number) => setExpandedId(expandedId === id ? null : id);
+
   return (
     <div className="space-y-4 max-w-6xl">
       <div className="flex items-center justify-between">
@@ -91,6 +100,7 @@ export default function Cartridges() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
+                <th className="w-8 px-2 py-2.5"></th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Photo</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">ID</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Manufacturer</th>
@@ -104,39 +114,85 @@ export default function Cartridges() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c, i) => (
-                <motion.tr
-                  key={c.id}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  className="border-b border-border/50 hover:bg-muted/20 transition-colors"
-                >
-                  <td className="px-3 py-2">
-                    {c.photoBase64 ? (
-                      <img src={c.photoBase64} alt={c.caliber} className="w-9 h-9 object-cover rounded border border-border" />
-                    ) : (
-                      <div className="w-9 h-9 rounded border border-border bg-muted flex items-center justify-center">
-                        <Camera className="w-3.5 h-3.5 text-muted-foreground" />
-                      </div>
+              {filtered.map((c, i) => {
+                const batchLoads = allLoads.filter((l) => l.cartridgeId === c.id);
+                const isExpanded = expandedId === c.id;
+                return (
+                  <Fragment key={c.id}>
+                    <motion.tr
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                      className={cn("border-b border-border/50 hover:bg-muted/20 transition-colors", isExpanded && "bg-muted/10")}
+                    >
+                      <td className="px-2 py-2">
+                        {batchLoads.length > 0 ? (
+                          <button
+                            onClick={() => toggleExpand(c.id)}
+                            className="flex items-center justify-center w-6 h-6 rounded hover:bg-muted/50 transition-colors text-muted-foreground"
+                          >
+                            {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                          </button>
+                        ) : (
+                          <span className="w-6 h-6 block" />
+                        )}
+                      </td>
+                      <td className="px-3 py-2">
+                        {c.photoBase64 ? (
+                          <img src={c.photoBase64} alt={c.caliber} className="w-9 h-9 object-cover rounded border border-border" />
+                        ) : (
+                          <div className="w-9 h-9 rounded border border-border bg-muted flex items-center justify-center">
+                            <Camera className="w-3.5 h-3.5 text-muted-foreground" />
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-muted-foreground">{c.id}</td>
+                      <td className="px-3 py-2.5 text-foreground">{c.manufacturer}</td>
+                      <td className="px-3 py-2.5 font-semibold text-foreground">{c.caliber}</td>
+                      <td className="px-3 py-2.5 text-muted-foreground">{c.productionCharge}</td>
+                      <td className="px-3 py-2.5"><StepBadge step={c.currentStep} /></td>
+                      <td className="px-3 py-2.5 text-right font-mono">{c.timesFired}</td>
+                      <td className="px-3 py-2.5 text-right font-mono">{c.quantityLoaded}/{c.quantityTotal}</td>
+                      <td className="px-3 py-2.5 text-muted-foreground text-xs max-w-[120px] truncate">{c.notes}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex gap-1 justify-end">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)}><Pencil className="w-3.5 h-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteId(c.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                    {isExpanded && batchLoads.length > 0 && (
+                      <tr className="border-b border-border/30 bg-muted/5">
+                        <td colSpan={11} className="px-0 py-0">
+                          <div className="pl-12 pr-4 py-2">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Loads using this batch ({batchLoads.length})</p>
+                            <div className="space-y-1">
+                              {batchLoads.map((l) => (
+                                <div
+                                  key={l.id}
+                                  className="flex items-center gap-3 px-3 py-2 rounded border border-border/50 bg-card hover:border-primary/30 cursor-pointer transition-colors"
+                                  onClick={() => navigate(`/loads/${l.id}`)}
+                                >
+                                  <span className="font-mono text-xs text-muted-foreground w-12">{formatLoadNum(l.loadNumber)}</span>
+                                  <span className="text-xs text-muted-foreground w-16">{l.date}</span>
+                                  <span className="font-mono text-xs text-muted-foreground">{l.cartridgeQuantityUsed} rds</span>
+                                  <span className={cn(
+                                    "text-xs font-semibold px-2 py-0.5 rounded",
+                                    l.completed ? "bg-green-900/40 text-green-300" : l.fired ? "bg-amber-900/40 text-amber-300" : "bg-blue-900/40 text-blue-300"
+                                  )}>
+                                    {l.completed ? "Completed" : l.fired ? "Fired" : "Active"}
+                                  </span>
+                                  <span className="text-muted-foreground text-xs ml-auto">View workflow →</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td className="px-3 py-2.5 font-mono text-muted-foreground">{c.id}</td>
-                  <td className="px-3 py-2.5 text-foreground">{c.manufacturer}</td>
-                  <td className="px-3 py-2.5 font-semibold text-foreground">{c.caliber}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground">{c.productionCharge}</td>
-                  <td className="px-3 py-2.5"><StepBadge step={c.currentStep} /></td>
-                  <td className="px-3 py-2.5 text-right font-mono">{c.timesFired}</td>
-                  <td className="px-3 py-2.5 text-right font-mono">{c.quantityLoaded}/{c.quantityTotal}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground text-xs max-w-[120px] truncate">{c.notes}</td>
-                  <td className="px-3 py-2.5">
-                    <div className="flex gap-1 justify-end">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)}><Pencil className="w-3.5 h-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteId(c.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                    </div>
-                  </td>
-                </motion.tr>
-              ))}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { cartridgesTable, bulletsTable, powdersTable, primersTable, loadsTable, settingsTable } from "@workspace/db";
-import { desc } from "drizzle-orm";
+import { desc, isNull, or, isNotNull } from "drizzle-orm";
 
 const router = Router();
 
@@ -11,7 +11,7 @@ router.get("/dashboard/overview", async (_req, res) => {
     db.select().from(bulletsTable),
     db.select().from(powdersTable),
     db.select().from(primersTable),
-    db.select().from(loadsTable).orderBy(desc(loadsTable.id)),
+    db.select().from(loadsTable).where(isNull(loadsTable.deletedAt)).orderBy(desc(loadsTable.id)),
     db.select().from(settingsTable),
   ]);
 
@@ -44,13 +44,17 @@ router.get("/dashboard/overview", async (_req, res) => {
 });
 
 router.get("/dashboard/history", async (req, res) => {
+  // Include ALL loads (active + soft-deleted) for history accuracy
   const cartridges = await db.select().from(cartridgesTable);
   const loads = await db.select().from(loadsTable);
 
   const history = cartridges.map((c) => {
     const related = loads.filter((l) => l.cartridgeId === c.id);
-    const loadsCompleted = related.filter((l) => l.completed).length;
-    const totalRounds = related.reduce((sum, l) => sum + l.cartridgeQuantityUsed, 0);
+    const activePlusCompleted = related.filter((l) => !l.deletedAt);
+    const deletedLoads = related.filter((l) => l.deletedAt);
+    const loadsCompleted = activePlusCompleted.filter((l) => l.completed).length;
+    const totalRounds = activePlusCompleted.reduce((sum, l) => sum + l.cartridgeQuantityUsed, 0);
+    const deletedRounds = deletedLoads.reduce((sum, l) => sum + l.cartridgeQuantityUsed, 0);
     return {
       cartridgeId: c.id,
       caliber: c.caliber,
@@ -58,6 +62,7 @@ router.get("/dashboard/history", async (req, res) => {
       timesFired: c.timesFired,
       loadsCompleted,
       totalRoundsReloaded: totalRounds,
+      deletedLoadsCount: deletedLoads.length,
     };
   });
 

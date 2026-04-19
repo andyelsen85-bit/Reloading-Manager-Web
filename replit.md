@@ -12,52 +12,72 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
 - **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
+- **Validation**: Zod (v3 via `"zod"` import), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+- **Build**: esbuild (ESM bundle)
+- **Session management**: express-session (memory store, 30-day cookie)
+- **Email**: nodemailer (SMTP)
+- **Auth**: bcryptjs password hashing
 
 ## Project: Reloading Manager
 
-A full-stack web app for sport shooting reloaders.
+A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 
 ### Features
-- **Inventory management**: Cartridges, Bullets, Powders, Primers (CRUD with low-stock warnings + photo upload)
-- **Multi-step load workflow**: Washing → Calibration → Trim → **Annealing** → Second Washing → Priming → Powder → Bullet Seating → Complete
-  - Any step can be **skipped** (stored as JSON array in `loads.skippedSteps`)
-  - **Annealing** step (new) with duration tracking
+- **Inventory management**: Cartridges, Bullets, Powders, Primers (CRUD + photo upload + low-stock warnings)
+- **Multi-step load workflow**: Washing → Calibration → Trim → Annealing → Second Washing → Priming → Powder → Bullet Seating → Complete
+  - Any step can be **skipped** (JSON array in `loads.skippedSteps`)
+  - Annealing step with duration tracking
 - **Load numbering**: Auto-assigned sequential numbers (#00001 format) from settings
 - **Mark loads as Fired**: optional H₂O weight recorded; increments cartridge reload cycle
-- **Dashboard**: Clickable stat cards (navigate to inventory), recent loads table, low-stock warnings (configurable thresholds)
-- **History**: Per-cartridge reload summary
+- **Delete load with restock**: Soft-delete loads, optionally returning primers/powder/bullets to inventory with a note
+- **Cartridge quantity on creation**: `quantityLoaded` incremented when a load is created (not completed); reversed on delete
+- **Cartridge batch collapse view**: Expand a cartridge row to see all loads that reference it, with status badges
+- **Dashboard**: Clickable stat cards, recent loads table, low-stock warnings
+- **History**: Per-cartridge reload summary with deleted loads count
+- **Charge Ladders (Load Dev)**: Multi-powder-charge sessions; record OAL/COAL/group size/velocity per level; select best charge
+- **User Management**: Multi-user system with roles (admin/user), activation toggle, password reset
+- **Email notifications**: SMTP config in Settings → Mail tab; notifications sent on load creation to users with notifications enabled
+- **Reference Lists**: Pre-populated calibers (46) and manufacturer lists (bullets, powders, primers, cartridges) — editable in Settings → Lists tab
+- **Settings**: Tabbed UI (General / Mail / Users / Lists) — thresholds, load numbering, branding, SMTP, user management, reference data
 - **JSON export**: Full data export from dashboard
-- **Settings page**: Configurable thresholds, next load number, logo + background image (stored as base64)
-- **Photo upload**: Loads, Bullets, Cartridges all support photo upload (base64, stored in DB)
-- **Dymo print**: Print Label button on LoadDetail generates a Dymo Large Address Label (3.5"×1.4") via browser print
+- **Photo upload**: Loads, Bullets, Cartridges support photo upload (base64 in DB)
+- **Dymo print**: Print Label on LoadDetail generates a Dymo label via browser print
 
 ### Frontend Pages
-- `Dashboard.tsx` — clickable stats + recent loads + low-stock warnings + export
-- `Cartridges.tsx` — batch inventory with photo thumbnails
-- `Bullets.tsx`, `Powders.tsx`, `Primers.tsx` — component inventory (bullets/cartridges have photo upload)
-- `Loads.tsx` — load record list with #XXXXX load numbers (auto-assigned, no manual ID)
-- `LoadDetail.tsx` — 9-step workflow, skip buttons, annealing, photo upload, fire dialog with H₂O, print label
-- `History.tsx` — reload history summary table
-- `Settings.tsx` — thresholds, load numbering, logo & background branding
+- `Dashboard.tsx` — stats + recent loads + low-stock warnings + export
+- `Cartridges.tsx` — batch inventory with photo thumbnails + collapse to show related loads
+- `Bullets.tsx`, `Powders.tsx`, `Primers.tsx` — component inventory
+- `Loads.tsx` — load list with delete-with-restock dialog
+- `LoadDetail.tsx` — 9-step workflow, skip, annealing, photo, fire dialog, print label
+- `ChargeLadders.tsx` — load development session list
+- `ChargeLadderDetail.tsx` — charge level management, result recording, best selection
+- `History.tsx` — reload history with deleted loads count column
+- `Settings.tsx` — tabbed: General / Mail / Users / Lists
 
 ### API Routes (api-server)
-- `/api/cartridges`, `/api/bullets`, `/api/powders`, `/api/primers` — CRUD (with photoBase64)
-- `/api/loads` — CRUD + `/api/loads/:id/complete` (deducts inventory, handles skipped steps) + `/api/loads/:id/fire` (h2oWeightGr, increments cycle)
-- `/api/settings` — GET / PATCH (single-row settings pattern)
-- `/api/dashboard/overview` — stats + recentLoads + thresholds from settings
-- `/api/dashboard/history`, `/api/dashboard/export`
+- `/api/auth/login`, `/api/auth/logout`, `/api/auth/me` — session auth
+- `/api/users` — CRUD + `/api/users/:id/reset-password`
+- `/api/reference/:category` — CRUD for calibers/manufacturers reference lists
+- `/api/charge-ladders` — CRUD + `/api/charge-ladders/:id/levels` + `/api/charge-ladders/:id/best`
+- `/api/cartridges`, `/api/bullets`, `/api/powders`, `/api/primers` — CRUD with photoBase64
+- `/api/loads` — CRUD + complete + fire; DELETE sends restock body; create adjusts cartridge.quantityLoaded
+- `/api/settings` — GET / PATCH (single-row, supports SMTP fields)
+- `/api/dashboard/overview`, `/api/dashboard/history` (includes deletedLoadsCount), `/api/dashboard/export`
 
 ### DB Schema
-- `cartridges`, `bullets`, `powders`, `primers` — inventory tables (bullets/cartridges have photoBase64)
-- `loads` — load records with loadNumber, annealingMinutes, skippedSteps (JSON text), h2oWeightGr, photoBase64
-- `settings` — single-row: bulletLowStockThreshold, powderLowStockThreshold, primerLowStockThreshold, nextLoadNumber, logoBase64, backgroundBase64
+- `cartridges`, `bullets`, `powders`, `primers` — inventory tables
+- `loads` — with `deletedAt`, `deletedNote` for soft delete; `loadNumber`, `skippedSteps`, `annealingMinutes`, `h2oWeightGr`, `photoBase64`
+- `settings` — thresholds, loadNumber, logoBase64, backgroundBase64, smtpHost/Port/User/Pass/From/Enabled
+- `users` — id, username, email, passwordHash, role, active, notificationsEnabled
+- `reference_data` — id, category, value, sortOrder (pre-populated with 46 calibers + 16 manufacturers)
+- `charge_ladders` — id, name, caliber, cartridgeId, bulletId, primerId, status, bestLevelId, cartridgesPerLevel
+- `charge_levels` — id, ladderId, chargeGr, cartridgeCount, sortOrder, status, oalIn, coalIn, groupSizeMm, velocityFps
 
 ### Migrations Applied
 - `0000_initial.sql` — baseline schema
-- `0001_features.sql` — new columns (loadNumber, annealing, skippedSteps, h2oWeight, photoBase64, settings table)
+- `0001_features.sql` — loadNumber, annealing, skippedSteps, h2oWeight, photoBase64, settings table
+- `0002_users_lookup_chargeladder.sql` — users, reference_data, charge_ladders, charge_levels, soft-delete on loads, SMTP on settings
 
 ### Theme
 Dark gunmetal/steel theme (HSL 220 16% 10% bg, amber 38 90% 52% primary)
@@ -78,3 +98,9 @@ Dark gunmetal/steel theme (HSL 220 16% 10% bg, amber 38 90% 52% primary)
 - `lib/api-spec` — OpenAPI YAML + orval config
 - `lib/api-client-react` — generated React Query hooks (from orval)
 - `lib/api-zod` — generated Zod schemas (from orval)
+
+## Important Notes
+- `zod` must be a direct dependency of `api-server` (esbuild bundling requirement). Added in addition to transitive via `@workspace/api-zod`.
+- New routes directly import `z` from `"zod"` (not `"zod/v4"` — v4 path is not supported).
+- express-session uses MemoryStore (fine for self-hosted). SESSION_SECRET env var is used.
+- Nodemailer is marked external in `build.mjs` (does dynamic requires).

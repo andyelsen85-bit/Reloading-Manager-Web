@@ -13,4 +13,10 @@ export interface UpdateSettingsBody {
   nextLoadNumber?: number;
   logoBase64?: string | null;
   backgroundBase64?: string | null;
+  smtpHost?: string | null;
+  smtpPort?: number | null;
+  smtpUser?: string | null;
+  smtpPass?: string | null;
+  smtpFrom?: string | null;
+  smtpEnabled?: boolean;
 }

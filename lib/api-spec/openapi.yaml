@@ -24,6 +24,14 @@ tags:
     description: Overview and reporting
   - name: settings
     description: Application settings
+  - name: users
+    description: User management
+  - name: auth
+    description: Authentication
+  - name: reference
+    description: Reference data (calibers, manufacturers)
+  - name: chargeLadders
+    description: Load development charge ladders
 
 paths:
   /healthz:
@@ -38,6 +46,237 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Auth ─────────────────────────────────────────────────────
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Logged in user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "204":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+
+  # ── Users ─────────────────────────────────────────────────────
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserRecord"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserBody"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserRecord"
+
+  /users/{id}:
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserBody"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserRecord"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /users/{id}/reset-password:
+    post:
+      operationId: resetUserPassword
+      tags: [users]
+      summary: Reset user password
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordBody"
+      responses:
+        "204":
+          description: Password reset
+
+  # ── Reference Data ────────────────────────────────────────────
+  /reference/{category}:
+    get:
+      operationId: listReferenceData
+      tags: [reference]
+      summary: List reference data by category
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Reference data list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReferenceItem"
+    post:
+      operationId: createReferenceItem
+      tags: [reference]
+      summary: Add a reference data item
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReferenceItemBody"
+      responses:
+        "201":
+          description: Created item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferenceItem"
+
+  /reference/{category}/{id}:
+    patch:
+      operationId: updateReferenceItem
+      tags: [reference]
+      summary: Update a reference data item
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReferenceItemBody"
+      responses:
+        "200":
+          description: Updated item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferenceItem"
+    delete:
+      operationId: deleteReferenceItem
+      tags: [reference]
+      summary: Delete a reference data item
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
 
   # ── Settings ─────────────────────────────────────────────────
   /settings:
@@ -448,13 +687,19 @@ paths:
     delete:
       operationId: deleteLoad
       tags: [loads]
-      summary: Delete a load
+      summary: Delete a load (with optional restock)
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteLoadBody"
       responses:
         "204":
           description: Deleted
@@ -502,6 +747,192 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Load"
+
+  # ── Charge Ladders ────────────────────────────────────────────
+  /charge-ladders:
+    get:
+      operationId: listChargeLadders
+      tags: [chargeLadders]
+      summary: List all charge ladders
+      responses:
+        "200":
+          description: List of charge ladders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChargeLadder"
+    post:
+      operationId: createChargeLadder
+      tags: [chargeLadders]
+      summary: Create a charge ladder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChargeLadderBody"
+      responses:
+        "201":
+          description: Created charge ladder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargeLadder"
+
+  /charge-ladders/{id}:
+    get:
+      operationId: getChargeLadder
+      tags: [chargeLadders]
+      summary: Get a charge ladder with its levels
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Charge ladder with levels
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargeLadderDetail"
+    patch:
+      operationId: updateChargeLadder
+      tags: [chargeLadders]
+      summary: Update a charge ladder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChargeLadderBody"
+      responses:
+        "200":
+          description: Updated charge ladder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargeLadder"
+    delete:
+      operationId: deleteChargeLadder
+      tags: [chargeLadders]
+      summary: Delete a charge ladder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /charge-ladders/{id}/levels:
+    post:
+      operationId: addChargeLevel
+      tags: [chargeLadders]
+      summary: Add a charge level to a ladder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChargeLevelBody"
+      responses:
+        "201":
+          description: Created charge level
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargeLevel"
+
+  /charge-ladders/{id}/levels/{levelId}:
+    patch:
+      operationId: updateChargeLevel
+      tags: [chargeLadders]
+      summary: Update a charge level (record results)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: levelId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChargeLevelBody"
+      responses:
+        "200":
+          description: Updated charge level
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargeLevel"
+    delete:
+      operationId: deleteChargeLevel
+      tags: [chargeLadders]
+      summary: Delete a charge level
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: levelId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /charge-ladders/{id}/select-best:
+    post:
+      operationId: selectBestChargeLevel
+      tags: [chargeLadders]
+      summary: Select the best performing charge level
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelectBestLevelBody"
+      responses:
+        "200":
+          description: Updated ladder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargeLadder"
 
   # ── Dashboard ────────────────────────────────────────────────
   /dashboard/overview:
@@ -554,6 +985,116 @@ components:
           type: string
       required: [status]
 
+    LoginBody:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required: [username, password]
+
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        notificationsEnabled:
+          type: boolean
+      required: [id, username, email, role, notificationsEnabled]
+
+    UserRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        active:
+          type: boolean
+        notificationsEnabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, username, email, role, active, notificationsEnabled, createdAt]
+
+    CreateUserBody:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+        notificationsEnabled:
+          type: boolean
+      required: [username, email, password]
+
+    UpdateUserBody:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        active:
+          type: boolean
+        notificationsEnabled:
+          type: boolean
+
+    ResetPasswordBody:
+      type: object
+      properties:
+        newPassword:
+          type: string
+      required: [newPassword]
+
+    ReferenceItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        category:
+          type: string
+        value:
+          type: string
+        sortOrder:
+          type: integer
+      required: [id, category, value, sortOrder]
+
+    CreateReferenceItemBody:
+      type: object
+      properties:
+        value:
+          type: string
+        sortOrder:
+          type: integer
+      required: [value]
+
+    UpdateReferenceItemBody:
+      type: object
+      properties:
+        value:
+          type: string
+        sortOrder:
+          type: integer
+
     Settings:
       type: object
       properties:
@@ -572,6 +1113,24 @@ components:
           nullable: true
         backgroundBase64:
           type: string
+          nullable: true
+        smtpHost:
+          type: string
+          nullable: true
+        smtpPort:
+          type: integer
+          nullable: true
+        smtpUser:
+          type: string
+          nullable: true
+        smtpPass:
+          type: string
+          nullable: true
+        smtpFrom:
+          type: string
+          nullable: true
+        smtpEnabled:
+          type: boolean
           nullable: true
       required: [id, bulletLowStockThreshold, powderLowStockThreshold, primerLowStockThreshold, nextLoadNumber]
 
@@ -592,6 +1151,23 @@ components:
         backgroundBase64:
           type: string
           nullable: true
+        smtpHost:
+          type: string
+          nullable: true
+        smtpPort:
+          type: integer
+          nullable: true
+        smtpUser:
+          type: string
+          nullable: true
+        smtpPass:
+          type: string
+          nullable: true
+        smtpFrom:
+          type: string
+          nullable: true
+        smtpEnabled:
+          type: boolean
 
     Cartridge:
       type: object
@@ -905,6 +1481,13 @@ components:
         notes:
           type: string
           nullable: true
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        deletedNote:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -958,11 +1541,190 @@ components:
         notes:
           type: string
 
+    DeleteLoadBody:
+      type: object
+      properties:
+        restockPrimers:
+          type: integer
+          description: Number of primers to restock
+        restockPowderGr:
+          type: number
+          description: Grams of powder to restock
+        restockBullets:
+          type: integer
+          description: Number of bullets to restock
+        note:
+          type: string
+          description: Reason for deletion
+
     FireLoadBody:
       type: object
       properties:
         h2oWeightGr:
           type: number
+
+    ChargeLadder:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        caliber:
+          type: string
+        cartridgeId:
+          type: integer
+        bulletId:
+          type: integer
+          nullable: true
+        primerId:
+          type: integer
+          nullable: true
+        cartridgesPerLevel:
+          type: integer
+        notes:
+          type: string
+          nullable: true
+        status:
+          type: string
+        bestLevelId:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, caliber, cartridgeId, cartridgesPerLevel, status, createdAt]
+
+    ChargeLadderDetail:
+      type: object
+      properties:
+        ladder:
+          $ref: "#/components/schemas/ChargeLadder"
+        levels:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChargeLevel"
+      required: [ladder, levels]
+
+    CreateChargeLadderBody:
+      type: object
+      properties:
+        name:
+          type: string
+        caliber:
+          type: string
+        cartridgeId:
+          type: integer
+        bulletId:
+          type: integer
+        primerId:
+          type: integer
+        cartridgesPerLevel:
+          type: integer
+        notes:
+          type: string
+        levels:
+          type: array
+          items:
+            type: object
+            properties:
+              chargeGr:
+                type: number
+              cartridgeCount:
+                type: integer
+            required: [chargeGr]
+      required: [name, caliber, cartridgeId, cartridgesPerLevel]
+
+    UpdateChargeLadderBody:
+      type: object
+      properties:
+        name:
+          type: string
+        notes:
+          type: string
+        status:
+          type: string
+        bulletId:
+          type: integer
+          nullable: true
+        primerId:
+          type: integer
+          nullable: true
+
+    ChargeLevel:
+      type: object
+      properties:
+        id:
+          type: integer
+        ladderId:
+          type: integer
+        chargeGr:
+          type: number
+        cartridgeCount:
+          type: integer
+        sortOrder:
+          type: integer
+        status:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        oalIn:
+          type: number
+          nullable: true
+        coalIn:
+          type: number
+          nullable: true
+        groupSizeMm:
+          type: number
+          nullable: true
+        velocityFps:
+          type: number
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, ladderId, chargeGr, cartridgeCount, sortOrder, status, createdAt]
+
+    CreateChargeLevelBody:
+      type: object
+      properties:
+        chargeGr:
+          type: number
+        cartridgeCount:
+          type: integer
+        sortOrder:
+          type: integer
+        notes:
+          type: string
+      required: [chargeGr]
+
+    UpdateChargeLevelBody:
+      type: object
+      properties:
+        chargeGr:
+          type: number
+        cartridgeCount:
+          type: integer
+        status:
+          type: string
+        notes:
+          type: string
+        oalIn:
+          type: number
+        coalIn:
+          type: number
+        groupSizeMm:
+          type: number
+        velocityFps:
+          type: number
+
+    SelectBestLevelBody:
+      type: object
+      properties:
+        levelId:
+          type: integer
+      required: [levelId]
 
     DashboardOverview:
       type: object
@@ -1016,7 +1778,9 @@ components:
           type: integer
         totalRoundsReloaded:
           type: integer
-      required: [cartridgeId, caliber, manufacturer, timesFired, loadsCompleted, totalRoundsReloaded]
+        deletedLoadsCount:
+          type: integer
+      required: [cartridgeId, caliber, manufacturer, timesFired, loadsCompleted, totalRoundsReloaded, deletedLoadsCount]
 
     ExportData:
       type: object

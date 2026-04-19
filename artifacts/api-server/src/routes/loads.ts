@@ -1,17 +1,25 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { loadsTable, cartridgesTable, bulletsTable, powdersTable, primersTable, settingsTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { loadsTable, cartridgesTable, bulletsTable, powdersTable, primersTable, settingsTable, usersTable } from "@workspace/db";
+import { eq, desc, isNull, isNotNull } from "drizzle-orm";
 import {
   CreateLoadBody,
   UpdateLoadBody,
   GetLoadParams,
   UpdateLoadParams,
-  DeleteLoadParams,
   CompleteLoadParams,
   FireLoadParams,
   FireLoadBody,
 } from "@workspace/api-zod";
+import { z } from "zod";
+import nodemailer from "nodemailer";
+
+const DeleteLoadBody = z.object({
+  restockPrimers: z.number().optional(),
+  restockPowderGr: z.number().optional(),
+  restockBullets: z.number().optional(),
+  note: z.string().optional(),
+});
 
 async function getOrCreateSettings() {
   const rows = await db.select().from(settingsTable);
@@ -22,10 +30,35 @@ async function getOrCreateSettings() {
   return rows[0];
 }
 
+async function sendNotification(subject: string, text: string) {
+  try {
+    const settings = await getOrCreateSettings();
+    if (!settings.smtpEnabled || !settings.smtpHost || !settings.smtpFrom) return;
+
+    const users = await db.select({ email: usersTable.email }).from(usersTable)
+      .where(eq(usersTable.notificationsEnabled, true));
+    if (users.length === 0) return;
+
+    const transporter = nodemailer.createTransport({
+      host: settings.smtpHost,
+      port: settings.smtpPort ?? 587,
+      auth: settings.smtpUser ? { user: settings.smtpUser, pass: settings.smtpPass ?? "" } : undefined,
+    });
+
+    for (const user of users) {
+      await transporter.sendMail({ from: settings.smtpFrom, to: user.email, subject, text }).catch(() => {});
+    }
+  } catch {
+    // Silently ignore notification errors
+  }
+}
+
 const router = Router();
 
 router.get("/loads", async (_req, res) => {
-  const rows = await db.select().from(loadsTable).orderBy(desc(loadsTable.id));
+  const rows = await db.select().from(loadsTable)
+    .where(isNull(loadsTable.deletedAt))
+    .orderBy(desc(loadsTable.id));
   res.json(rows);
 });
 
@@ -51,6 +84,19 @@ router.post("/loads", async (req, res) => {
     completed: false,
     fired: false,
   }).returning();
+
+  // Adjust cartridge quantityLoaded immediately on load creation
+  await db.update(cartridgesTable).set({
+    quantityLoaded: cartridge.quantityLoaded + body.cartridgeQuantityUsed,
+    currentStep: "Washing",
+  }).where(eq(cartridgesTable.id, cartridge.id));
+
+  // Send notification
+  await sendNotification(
+    `New Load Created: #${String(loadNumber).padStart(5, "0")} — ${cartridge.caliber}`,
+    `A new load (#${String(loadNumber).padStart(5, "0")}) has been created for ${cartridge.manufacturer} ${cartridge.caliber}, quantity: ${body.cartridgeQuantityUsed}`
+  );
+
   res.status(201).json(row);
 });
 
@@ -91,8 +137,53 @@ router.patch("/loads/:id", async (req, res) => {
 });
 
 router.delete("/loads/:id", async (req, res) => {
-  const { id } = DeleteLoadParams.parse({ id: Number(req.params.id) });
-  await db.delete(loadsTable).where(eq(loadsTable.id, id));
+  const id = Number(req.params.id);
+  if (!id || isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+
+  const [load] = await db.select().from(loadsTable).where(eq(loadsTable.id, id));
+  if (!load) return res.status(404).json({ error: "Not found" });
+
+  const bodyResult = DeleteLoadBody.safeParse(req.body);
+  const opts = bodyResult.success ? bodyResult.data : {};
+
+  // Restock inventory if requested
+  if (opts.restockPrimers && load.primerId) {
+    const [primer] = await db.select().from(primersTable).where(eq(primersTable.id, load.primerId));
+    if (primer) {
+      await db.update(primersTable).set({ quantityAvailable: primer.quantityAvailable + opts.restockPrimers }).where(eq(primersTable.id, primer.id));
+    }
+  }
+
+  if (opts.restockPowderGr && load.powderId) {
+    const [powder] = await db.select().from(powdersTable).where(eq(powdersTable.id, load.powderId));
+    if (powder) {
+      await db.update(powdersTable).set({ grainsAvailable: powder.grainsAvailable + opts.restockPowderGr }).where(eq(powdersTable.id, powder.id));
+    }
+  }
+
+  if (opts.restockBullets && load.bulletId) {
+    const [bullet] = await db.select().from(bulletsTable).where(eq(bulletsTable.id, load.bulletId));
+    if (bullet) {
+      await db.update(bulletsTable).set({ quantityAvailable: bullet.quantityAvailable + opts.restockBullets }).where(eq(bulletsTable.id, bullet.id));
+    }
+  }
+
+  // Reverse cartridge quantityLoaded (since we now adjust on creation)
+  if (!load.deletedAt) {
+    const [cartridge] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, load.cartridgeId));
+    if (cartridge) {
+      await db.update(cartridgesTable).set({
+        quantityLoaded: Math.max(0, cartridge.quantityLoaded - load.cartridgeQuantityUsed),
+      }).where(eq(cartridgesTable.id, cartridge.id));
+    }
+  }
+
+  // Soft delete
+  await db.update(loadsTable).set({
+    deletedAt: new Date(),
+    deletedNote: opts.note ?? null,
+  }).where(eq(loadsTable.id, id));
+
   res.status(204).send();
 });
 
@@ -138,12 +229,10 @@ router.post("/loads/:id/complete", async (req, res) => {
     }
   }
 
+  // NOTE: quantityLoaded already incremented on creation, don't increment again
   const [cartridge] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, load.cartridgeId));
   if (cartridge) {
-    await db.update(cartridgesTable).set({
-      quantityLoaded: cartridge.quantityLoaded + load.cartridgeQuantityUsed,
-      currentStep: "Completed",
-    }).where(eq(cartridgesTable.id, cartridge.id));
+    await db.update(cartridgesTable).set({ currentStep: "Completed" }).where(eq(cartridgesTable.id, cartridge.id));
   }
 
   const [updated] = await db.update(loadsTable).set({ completed: true }).where(eq(loadsTable.id, id)).returning();

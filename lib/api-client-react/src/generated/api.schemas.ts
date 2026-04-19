@@ -9,6 +9,66 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface LoginBody {
+  username: string;
+  password: string;
+}
+
+export interface AuthUser {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  notificationsEnabled: boolean;
+}
+
+export interface UserRecord {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  active: boolean;
+  notificationsEnabled: boolean;
+  createdAt: string;
+}
+
+export interface CreateUserBody {
+  username: string;
+  email: string;
+  password: string;
+  role?: string;
+  notificationsEnabled?: boolean;
+}
+
+export interface UpdateUserBody {
+  username?: string;
+  email?: string;
+  role?: string;
+  active?: boolean;
+  notificationsEnabled?: boolean;
+}
+
+export interface ResetPasswordBody {
+  newPassword: string;
+}
+
+export interface ReferenceItem {
+  id: number;
+  category: string;
+  value: string;
+  sortOrder: number;
+}
+
+export interface CreateReferenceItemBody {
+  value: string;
+  sortOrder?: number;
+}
+
+export interface UpdateReferenceItemBody {
+  value?: string;
+  sortOrder?: number;
+}
+
 export interface Settings {
   id: number;
   bulletLowStockThreshold: number;
@@ -17,6 +77,12 @@ export interface Settings {
   nextLoadNumber: number;
   logoBase64?: string | null;
   backgroundBase64?: string | null;
+  smtpHost?: string | null;
+  smtpPort?: number | null;
+  smtpUser?: string | null;
+  smtpPass?: string | null;
+  smtpFrom?: string | null;
+  smtpEnabled?: boolean | null;
 }
 
 export interface UpdateSettingsBody {
@@ -26,6 +92,12 @@ export interface UpdateSettingsBody {
   nextLoadNumber?: number;
   logoBase64?: string | null;
   backgroundBase64?: string | null;
+  smtpHost?: string | null;
+  smtpPort?: number | null;
+  smtpUser?: string | null;
+  smtpPass?: string | null;
+  smtpFrom?: string | null;
+  smtpEnabled?: boolean;
 }
 
 export type CartridgeCurrentStep =
@@ -190,6 +262,8 @@ export interface Load {
   completed: boolean;
   fired: boolean;
   notes?: string | null;
+  deletedAt?: string | null;
+  deletedNote?: string | null;
   createdAt: string;
 }
 
@@ -218,8 +292,99 @@ export interface UpdateLoadBody {
   notes?: string;
 }
 
+export interface DeleteLoadBody {
+  /** Number of primers to restock */
+  restockPrimers?: number;
+  /** Grams of powder to restock */
+  restockPowderGr?: number;
+  /** Number of bullets to restock */
+  restockBullets?: number;
+  /** Reason for deletion */
+  note?: string;
+}
+
 export interface FireLoadBody {
   h2oWeightGr?: number;
+}
+
+export interface ChargeLadder {
+  id: number;
+  name: string;
+  caliber: string;
+  cartridgeId: number;
+  bulletId?: number | null;
+  primerId?: number | null;
+  cartridgesPerLevel: number;
+  notes?: string | null;
+  status: string;
+  bestLevelId?: number | null;
+  createdAt: string;
+}
+
+export interface ChargeLevel {
+  id: number;
+  ladderId: number;
+  chargeGr: number;
+  cartridgeCount: number;
+  sortOrder: number;
+  status: string;
+  notes?: string | null;
+  oalIn?: number | null;
+  coalIn?: number | null;
+  groupSizeMm?: number | null;
+  velocityFps?: number | null;
+  createdAt: string;
+}
+
+export interface ChargeLadderDetail {
+  ladder: ChargeLadder;
+  levels: ChargeLevel[];
+}
+
+export type CreateChargeLadderBodyLevelsItem = {
+  chargeGr: number;
+  cartridgeCount?: number;
+};
+
+export interface CreateChargeLadderBody {
+  name: string;
+  caliber: string;
+  cartridgeId: number;
+  bulletId?: number;
+  primerId?: number;
+  cartridgesPerLevel: number;
+  notes?: string;
+  levels?: CreateChargeLadderBodyLevelsItem[];
+}
+
+export interface UpdateChargeLadderBody {
+  name?: string;
+  notes?: string;
+  status?: string;
+  bulletId?: number | null;
+  primerId?: number | null;
+}
+
+export interface CreateChargeLevelBody {
+  chargeGr: number;
+  cartridgeCount?: number;
+  sortOrder?: number;
+  notes?: string;
+}
+
+export interface UpdateChargeLevelBody {
+  chargeGr?: number;
+  cartridgeCount?: number;
+  status?: string;
+  notes?: string;
+  oalIn?: number;
+  coalIn?: number;
+  groupSizeMm?: number;
+  velocityFps?: number;
+}
+
+export interface SelectBestLevelBody {
+  levelId: number;
 }
 
 export interface DashboardOverview {
@@ -244,6 +409,7 @@ export interface HistoryEntry {
   timesFired: number;
   loadsCompleted: number;
   totalRoundsReloaded: number;
+  deletedLoadsCount: number;
 }
 
 export interface ExportData {
