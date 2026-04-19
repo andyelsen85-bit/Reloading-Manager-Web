@@ -4,6 +4,14 @@ const MIGRATIONS: { id: string; sql: string }[] = [
   {
     id: "0000_init",
     sql: `
+      CREATE TABLE IF NOT EXISTS "session" (
+        "sid" varchar NOT NULL COLLATE "default",
+        "sess" json NOT NULL,
+        "expire" timestamp(6) NOT NULL,
+        CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE
+      );
+      CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+
       CREATE TABLE IF NOT EXISTS "settings" (
         "id" serial PRIMARY KEY,
         "bullet_low_stock_threshold" integer NOT NULL DEFAULT 100,

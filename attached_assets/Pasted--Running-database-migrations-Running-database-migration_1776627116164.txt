@@ -1,0 +1,122 @@
+==> Running database migrations...
+
+Running database migrations...
+
+Migrations complete.
+
+==> Starting server...
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee msg=Running database migrations…
+
+[migration] applying 0000_init…
+
+[migration] 0000_init OK
+
+[migration] applying 0001_features…
+
+[migration] 0001_features OK
+
+[migration] applying 0002_users_lookup_chargeladder…
+
+[migration] 0002_users_lookup_chargeladder OK
+
+[migration] applying 0003_annealing_cartridge_fields_chargelevel_powder…
+
+[migration] 0003_annealing_cartridge_fields_chargelevel_powder OK
+
+[migration] applying 0004_load_charge_ladder_link…
+
+[migration] 0004_load_charge_ladder_link OK
+
+[migration] applying 0005_step_dates_and_fired_date…
+
+[migration] 0005_step_dates_and_fired_date OK
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee msg=Migrations complete.
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee port=3000 msg=Server listening
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":1,"method":"GET","url":"/api/settings"} res={"statusCode":401} responseTime=26 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":2,"method":"GET","url":"/api/dashboard/overview"} res={"statusCode":401} responseTime=21 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":3,"method":"GET","url":"/api/settings"} res={"statusCode":401} responseTime=2 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":4,"method":"GET","url":"/api/dashboard/overview"} res={"statusCode":401} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":5,"method":"GET","url":"/"} res={"statusCode":304} responseTime=3 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":6,"method":"GET","url":"/assets/index-CgO53lnR.js"} res={"statusCode":304} responseTime=2 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":7,"method":"GET","url":"/assets/index-DT0J3uqe.css"} res={"statusCode":304} responseTime=2 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":8,"method":"GET","url":"/api/auth/me"} res={"statusCode":401} responseTime=2 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":9,"method":"GET","url":"/api/settings"} res={"statusCode":401} responseTime=3 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":10,"method":"GET","url":"/api/auth/setup-status"} res={"statusCode":200} responseTime=7 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":11,"method":"GET","url":"/api/settings"} res={"statusCode":401} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":12,"method":"POST","url":"/api/auth/setup-admin"} res={"statusCode":200} responseTime=465 msg=request completed
+
+Error: ENOENT: no such file or directory, open '/app/dist/table.sql'
+
+    at async open (node:internal/fs/promises:639:25)
+
+    at async Object.readFile (node:internal/fs/promises:1249:14)
+
+    at async PGStore._rawEnsureSessionStoreTable (file:///app/dist/index.mjs:34994:36)
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":13,"method":"GET","url":"/"} res={"statusCode":304} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":14,"method":"GET","url":"/assets/index-CgO53lnR.js"} res={"statusCode":304} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":15,"method":"GET","url":"/assets/index-DT0J3uqe.css"} res={"statusCode":304} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":16,"method":"GET","url":"/api/auth/me"} res={"statusCode":401} responseTime=2 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":17,"method":"GET","url":"/api/settings"} res={"statusCode":401} responseTime=2 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":18,"method":"GET","url":"/api/auth/setup-status"} res={"statusCode":200} responseTime=6 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":19,"method":"GET","url":"/favicon.svg"} res={"statusCode":304} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":20,"method":"GET","url":"/api/settings"} res={"statusCode":401} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":21,"method":"POST","url":"/api/auth/login"} res={"statusCode":200} responseTime=451 msg=request completed
+
+Error: ENOENT: no such file or directory, open '/app/dist/table.sql'
+
+    at async open (node:internal/fs/promises:639:25)
+
+    at async Object.readFile (node:internal/fs/promises:1249:14)
+
+    at async PGStore._rawEnsureSessionStoreTable (file:///app/dist/index.mjs:34994:36)
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":22,"method":"GET","url":"/api/settings"} res={"statusCode":401} responseTime=2 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":23,"method":"GET","url":"/api/dashboard/overview"} res={"statusCode":401} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":24,"method":"GET","url":"/api/settings"} res={"statusCode":401} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":25,"method":"GET","url":"/api/dashboard/overview"} res={"statusCode":401} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":26,"method":"GET","url":"/api/cartridges"} res={"statusCode":401} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":27,"method":"GET","url":"/api/loads"} res={"statusCode":401} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":28,"method":"GET","url":"/api/reference/cartridge_manufacturer"} res={"statusCode":401} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":29,"method":"GET","url":"/api/reference/caliber"} res={"statusCode":401} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":30,"method":"GET","url":"/api/cartridges"} res={"statusCode":401} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":31,"method":"GET","url":"/api/loads"} res={"statusCode":401} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":32,"method":"GET","url":"/api/reference/cartridge_manufacturer"} res={"statusCode":401} responseTime=1 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":33,"method":"GET","url":"/api/reference/caliber"} res={"statusCode":401} responseTime=0 msg=request completed
+
+2026/04/19 09:30PM 30 pid=1 hostname=820a9660dbee req={"id":34,"method":"POST","url":"/api/cartridges"} res={"statusCode":401} responseTime=1 msg=request completed
+
