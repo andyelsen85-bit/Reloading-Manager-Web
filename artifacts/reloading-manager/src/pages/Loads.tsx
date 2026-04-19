@@ -73,8 +73,11 @@ export default function Loads() {
     qc.invalidateQueries({ queryKey: getListCartridgesQueryKey() });
   };
 
-  const formatLoadNum = (n: number | null | undefined) =>
-    n == null ? "—" : "#" + String(n).padStart(5, "0");
+  const formatBatchId = (loadNumber: number | null | undefined, cycle: number | null | undefined) => {
+    const batch = loadNumber != null ? String(loadNumber).padStart(5, "0") : "00000";
+    const cyc = cycle != null ? String(cycle).padStart(3, "0") : "001";
+    return `#${batch}-${cyc}`;
+  };
 
   const handleAdd = async () => {
     if (!form.cartridgeId || !form.cartridgeQuantityUsed) {
@@ -204,7 +207,7 @@ export default function Loads() {
                               transition={{ delay: i * 0.03 }}
                               className={rowClass}
                             >
-                              <td className="px-3 py-2.5 font-semibold font-mono">{formatLoadNum(l.loadNumber)}</td>
+                              <td className="px-3 py-2.5 font-semibold font-mono">{formatBatchId(l.loadNumber, l.reloadingCycle)}</td>
                               <td className="px-3 py-2.5 font-mono">{l.cartridgeQuantityUsed}</td>
                               <td className="px-3 py-2.5 font-mono">{l.reloadingCycle}</td>
                               <td className="px-3 py-2.5 text-muted-foreground">{l.date}</td>
@@ -280,7 +283,7 @@ export default function Loads() {
       <Dialog open={!!deleteLoad} onOpenChange={(o) => !o && setDeleteLoad(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Load {formatLoadNum(deleteLoad?.loadNumber)}</DialogTitle>
+            <DialogTitle>Delete Load {formatBatchId(deleteLoad?.loadNumber, deleteLoad?.reloadingCycle)}</DialogTitle>
             <DialogDescription>Would you like to restock any components back to inventory before deleting?</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">

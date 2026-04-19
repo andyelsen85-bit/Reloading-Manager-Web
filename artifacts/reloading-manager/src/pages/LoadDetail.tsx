@@ -63,6 +63,12 @@ function formatLoadNum(n: number | null | undefined) {
   return "#" + String(n).padStart(5, "0");
 }
 
+function formatBatchId(loadNumber: number | null | undefined, cycle: number | null | undefined) {
+  const batch = loadNumber != null ? String(loadNumber).padStart(5, "0") : "00000";
+  const cyc = cycle != null ? String(cycle).padStart(3, "0") : "001";
+  return `#${batch}-${cyc}`;
+}
+
 export default function LoadDetail() {
   const [, params] = useRoute("/loads/:id");
   const [, navigate] = useLocation();
@@ -406,70 +412,174 @@ export default function LoadDetail() {
       `}</style>
 
       <div id="a4-print" style={{ display: "none" }}>
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid black", paddingBottom: "6mm", marginBottom: "6mm" }}>
+        {/* ── Header ── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2.5px solid #111", paddingBottom: "5mm", marginBottom: "5mm" }}>
           <div>
-            <div style={{ fontSize: "22pt", fontWeight: "bold", fontFamily: "monospace" }}>{formatLoadNum(load.loadNumber)}</div>
-            <div style={{ fontSize: "12pt", color: "#333" }}>Load Record — {load.date}</div>
+            <div style={{ fontSize: "24pt", fontWeight: "bold", fontFamily: "monospace", letterSpacing: "1px" }}>
+              {formatBatchId(load.loadNumber, load.reloadingCycle)}
+            </div>
+            <div style={{ fontSize: "9pt", color: "#555", marginTop: "1mm" }}>
+              Batch {formatLoadNum(load.loadNumber)} · Cycle {load.reloadingCycle} · Created {toEUDate(load.date)}
+            </div>
           </div>
-          <div style={{ textAlign: "right", fontSize: "10pt", color: "#555" }}>
-            <div>Caliber: <strong>{load.caliber}</strong></div>
-            <div>Rounds: <strong>{load.cartridgeQuantityUsed}</strong></div>
-            <div>Cycle #<strong>{load.reloadingCycle}</strong></div>
-          </div>
-        </div>
-
-        {/* Two-column detail grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6mm", fontSize: "10pt" }}>
-          {/* Left column */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "4mm" }}>
-            <Section title="Cartridge">
-              <Row label="Manufacturer" value={cart?.manufacturer ?? "—"} />
-              <Row label="Caliber" value={load.caliber} />
-              <Row label="Qty Used" value={String(load.cartridgeQuantityUsed)} />
-            </Section>
-            <Section title="Preparation">
-              <Row label="Calibration" value={load.calibrationType ?? "—"} />
-              <Row label="L6 (trim)" value={load.l6In != null ? `${load.l6In} in` : "—"} />
-              <Row label="Washing" value={load.washingMinutes != null ? `${load.washingMinutes} min` : "—"} />
-              <Row label="2nd Washing" value={load.secondWashingMinutes != null ? `${load.secondWashingMinutes} min` : "—"} />
-              <Row label="Annealing" value={load.annealingDone ? "Done" : "—"} />
-            </Section>
-          </div>
-          {/* Right column */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "4mm" }}>
-            <Section title="Primer">
-              {(() => { const p = primers.find((x) => x.id === load.primerId); return <><Row label="Primer" value={p ? `${p.manufacturer} ${p.type}` : load.primerId != null ? `#${load.primerId}` : "—"} /><Row label="Qty" value={load.primerQuantityUsed != null ? String(load.primerQuantityUsed) : "—"} /></>; })()}
-            </Section>
-            <Section title="Powder">
-              {(() => { const p = powders.find((x) => x.id === load.powderId); return <><Row label="Powder" value={p ? `${p.manufacturer} ${p.name}` : load.powderId != null ? `#${load.powderId}` : "—"} /><Row label="Charge / rd" value={load.powderChargeGr != null ? `${load.powderChargeGr} gr` : "—"} /><Row label="Total charge" value={powderTotal != null ? `${powderTotal} gr` : "—"} /></>; })()}
-            </Section>
-            <Section title="Bullet Seating">
-              {(() => { const b = bullets.find((x) => x.id === load.bulletId); return <><Row label="Bullet" value={b ? `${b.manufacturer} ${b.model} ${b.weightGr}gr` : load.bulletId != null ? `#${load.bulletId}` : "—"} /><Row label="COAL" value={load.coalIn != null ? `${load.coalIn} in` : "—"} /><Row label="OAL" value={load.oalIn != null ? `${load.oalIn} in` : "—"} /></>; })()}
-            </Section>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: "13pt", fontWeight: "bold" }}>{load.caliber}</div>
+            <div style={{ fontSize: "9pt", color: "#555" }}>{load.cartridgeQuantityUsed} rounds</div>
+            <div style={{ marginTop: "2mm", display: "inline-block", padding: "1mm 3mm", borderRadius: "3px", fontSize: "8pt", fontWeight: "bold", background: load.fired ? "#d4edda" : load.completed ? "#cce5ff" : "#fff3cd", color: load.fired ? "#155724" : load.completed ? "#004085" : "#856404", border: "1px solid currentColor" }}>
+              {load.fired ? "FIRED" : load.completed ? "COMPLETED" : "IN PROGRESS"}
+            </div>
           </div>
         </div>
 
-        {/* Notes */}
-        {load.notes && (
-          <div style={{ marginTop: "6mm", fontSize: "10pt" }}>
-            <div style={{ fontWeight: "bold", borderBottom: "1px solid #bbb", paddingBottom: "1mm", marginBottom: "2mm" }}>Notes</div>
-            <div>{load.notes}</div>
+        {/* ── Cartridge ── */}
+        <PrintSection title="1 · Cartridge">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 6mm" }}>
+            <Row label="Manufacturer" value={cart?.manufacturer ?? "—"} />
+            <Row label="Caliber" value={load.caliber} />
+            <Row label="Qty Used" value={String(load.cartridgeQuantityUsed)} />
+            {cart && <Row label="Batch" value={cart.productionCharge ?? "—"} />}
           </div>
+        </PrintSection>
+
+        {/* ── Preparation Steps ── */}
+        <PrintSection title="2–5 · Preparation Steps">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 8mm" }}>
+            <StepRow label="Washing" done={isStepDone(load, "washing")} skipped={isStepSkipped(load, "washing")}
+              detail={load.washingMinutes != null ? `${load.washingMinutes} min` : undefined}
+              date={load.washingDate} />
+            <StepRow label="Calibration" done={isStepDone(load, "calibration")} skipped={isStepSkipped(load, "calibration")}
+              detail={load.calibrationType ?? undefined}
+              date={load.calibrationDate} />
+            <StepRow label="Trim (L6)" done={isStepDone(load, "trim")} skipped={isStepSkipped(load, "trim")}
+              detail={load.l6In != null ? `${load.l6In} in` : undefined}
+              date={load.trimDate} />
+            <StepRow label="Annealing" done={isStepDone(load, "annealing")} skipped={isStepSkipped(load, "annealing")}
+              detail={load.annealingDone ? "Done" : undefined}
+              date={load.annealingDate} />
+            <StepRow label="2nd Washing" done={isStepDone(load, "second_washing")} skipped={isStepSkipped(load, "second_washing")}
+              detail={load.secondWashingMinutes != null ? `${load.secondWashingMinutes} min` : undefined}
+              date={load.secondWashingDate} />
+          </div>
+        </PrintSection>
+
+        {/* ── Priming ── */}
+        <PrintSection title="6 · Priming">
+          {(() => {
+            const p = primers.find((x) => x.id === load.primerId);
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 6mm" }}>
+                <Row label="Primer" value={p ? `${p.manufacturer} ${p.type}` : load.primerId != null ? `#${load.primerId}` : "—"} />
+                <Row label="Qty Used" value={load.primerQuantityUsed != null ? String(load.primerQuantityUsed) : "—"} />
+                <Row label="Date" value={load.primingDate ? toEUDate(load.primingDate) : "—"} />
+              </div>
+            );
+          })()}
+        </PrintSection>
+
+        {/* ── Powder ── */}
+        <PrintSection title="7 · Powder">
+          {load.chargeLadderId && ladderDetail ? (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 6mm", marginBottom: "3mm" }}>
+                <Row label="Mode" value={`Charge Ladder #${load.chargeLadderId}`} />
+                <Row label="Levels" value={String(ladderDetail.levels?.length ?? 0)} />
+                <Row label="Date" value={load.powderDate ? toEUDate(load.powderDate) : "—"} />
+              </div>
+              {ladderDetail.levels && ladderDetail.levels.length > 0 && (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "8.5pt", marginTop: "2mm" }}>
+                  <thead>
+                    <tr style={{ background: "#f0f0f0" }}>
+                      <th style={{ padding: "1mm 2mm", textAlign: "left", border: "1px solid #ccc" }}>#</th>
+                      <th style={{ padding: "1mm 2mm", textAlign: "left", border: "1px solid #ccc" }}>Powder</th>
+                      <th style={{ padding: "1mm 2mm", textAlign: "right", border: "1px solid #ccc" }}>Charge (gr)</th>
+                      <th style={{ padding: "1mm 2mm", textAlign: "right", border: "1px solid #ccc" }}>Rounds</th>
+                      <th style={{ padding: "1mm 2mm", textAlign: "right", border: "1px solid #ccc" }}>Total (gr)</th>
+                      <th style={{ padding: "1mm 2mm", textAlign: "center", border: "1px solid #ccc" }}>Best</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ladderDetail.levels.map((lvl, i) => {
+                      const pw = powders.find((p) => p.id === lvl.powderId);
+                      const isBest = ladderDetail.ladder?.bestLevelId === lvl.id;
+                      return (
+                        <tr key={lvl.id} style={{ background: isBest ? "#e8f5e9" : i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                          <td style={{ padding: "1mm 2mm", border: "1px solid #ccc" }}>{i + 1}</td>
+                          <td style={{ padding: "1mm 2mm", border: "1px solid #ccc" }}>{pw ? `${pw.manufacturer} ${pw.name}` : "—"}</td>
+                          <td style={{ padding: "1mm 2mm", textAlign: "right", border: "1px solid #ccc", fontFamily: "monospace" }}>{lvl.chargeGr}</td>
+                          <td style={{ padding: "1mm 2mm", textAlign: "right", border: "1px solid #ccc" }}>{lvl.cartridgeCount}</td>
+                          <td style={{ padding: "1mm 2mm", textAlign: "right", border: "1px solid #ccc", fontFamily: "monospace" }}>{(lvl.chargeGr * lvl.cartridgeCount).toFixed(2)}</td>
+                          <td style={{ padding: "1mm 2mm", textAlign: "center", border: "1px solid #ccc" }}>{isBest ? "★" : ""}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 6mm" }}>
+              {(() => {
+                const p = powders.find((x) => x.id === load.powderId);
+                return <>
+                  <Row label="Powder" value={p ? `${p.manufacturer} ${p.name}` : load.powderId != null ? `#${load.powderId}` : "—"} />
+                  <Row label="Charge / rd" value={load.powderChargeGr != null ? `${load.powderChargeGr} gr` : "—"} />
+                  <Row label="Total" value={powderTotal != null ? `${powderTotal} gr` : "—"} />
+                  <Row label="Date" value={load.powderDate ? toEUDate(load.powderDate) : "—"} />
+                </>;
+              })()}
+            </div>
+          )}
+        </PrintSection>
+
+        {/* ── Bullet Seating ── */}
+        <PrintSection title="8 · Bullet Seating">
+          {(() => {
+            const b = bullets.find((x) => x.id === load.bulletId);
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 6mm" }}>
+                <Row label="Bullet" value={b ? `${b.manufacturer} ${b.model} ${b.weightGr}gr` : load.bulletId != null ? `#${load.bulletId}` : "—"} />
+                <Row label="COAL" value={load.coalIn != null ? `${load.coalIn}"` : "—"} />
+                <Row label="OAL" value={load.oalIn != null ? `${load.oalIn}"` : "—"} />
+                <Row label="Qty Used" value={load.bulletQuantityUsed != null ? String(load.bulletQuantityUsed) : "—"} />
+                <Row label="Date" value={load.bulletSeatingDate ? toEUDate(load.bulletSeatingDate) : "—"} />
+              </div>
+            );
+          })()}
+        </PrintSection>
+
+        {/* ── Firing Results (if fired) ── */}
+        {load.fired && (
+          <PrintSection title="Firing Results">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 6mm" }}>
+              <Row label="Fired Date" value={load.firedDate ? toEUDate(load.firedDate) : "—"} />
+              <Row label="H₂O Weight" value={load.h2oWeightGr != null ? `${load.h2oWeightGr} gr` : "—"} />
+              {ladderDetail?.ladder?.bestLevelId != null && (
+                <Row label="Best Level" value={String((ladderDetail.levels?.findIndex((l) => l.id === ladderDetail.ladder?.bestLevelId) ?? -1) + 1)} />
+              )}
+            </div>
+          </PrintSection>
         )}
 
-        {/* Photo */}
-        {load.photoBase64 && (
-          <div style={{ marginTop: "6mm" }}>
-            <div style={{ fontWeight: "bold", fontSize: "10pt", borderBottom: "1px solid #bbb", paddingBottom: "1mm", marginBottom: "2mm" }}>Photo</div>
-            <img src={load.photoBase64} alt="Load" style={{ maxHeight: "60mm", maxWidth: "80mm", objectFit: "contain", border: "1px solid #ccc" }} />
-          </div>
-        )}
+        {/* ── Notes & Photo ── */}
+        <div style={{ display: "grid", gridTemplateColumns: load.photoBase64 ? "1fr auto" : "1fr", gap: "6mm", marginTop: "4mm" }}>
+          {load.notes && (
+            <div>
+              <div style={{ fontSize: "8pt", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.5px", color: "#555", borderBottom: "1px solid #ccc", paddingBottom: "1mm", marginBottom: "2mm" }}>Notes</div>
+              <div style={{ fontSize: "9pt", whiteSpace: "pre-wrap" }}>{load.notes}</div>
+            </div>
+          )}
+          {load.photoBase64 && (
+            <div>
+              <div style={{ fontSize: "8pt", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.5px", color: "#555", borderBottom: "1px solid #ccc", paddingBottom: "1mm", marginBottom: "2mm" }}>Photo</div>
+              <img src={load.photoBase64} alt="Load" style={{ maxHeight: "55mm", maxWidth: "75mm", objectFit: "contain", border: "1px solid #ccc", borderRadius: "2px" }} />
+            </div>
+          )}
+        </div>
 
-        {/* Footer */}
-        <div style={{ position: "absolute", bottom: "12mm", left: "20mm", right: "20mm", borderTop: "1px solid #ccc", paddingTop: "3mm", display: "flex", justifyContent: "space-between", fontSize: "8pt", color: "#888" }}>
-          <span>Reloading Manager</span>
-          <span>Printed {new Date().toLocaleDateString()}</span>
+        {/* ── Footer ── */}
+        <div style={{ position: "absolute", bottom: "10mm", left: "20mm", right: "20mm", borderTop: "1px solid #ccc", paddingTop: "2.5mm", display: "flex", justifyContent: "space-between", fontSize: "7.5pt", color: "#999" }}>
+          <span>Reloading Manager · {formatBatchId(load.loadNumber, load.reloadingCycle)}</span>
+          <span>Printed {new Date().toLocaleDateString("de-DE")}</span>
         </div>
       </div>
 
@@ -480,7 +590,7 @@ export default function LoadDetail() {
           </Button>
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold tracking-tight font-mono">
-              {formatLoadNum(load.loadNumber)}
+              {formatBatchId(load.loadNumber, load.reloadingCycle)}
               <span className="font-sans font-normal text-muted-foreground text-base ml-2">· Load #{load.id}</span>
             </h1>
             <p className="text-sm text-muted-foreground">{load.caliber} · {load.cartridgeQuantityUsed} rounds · Cycle {load.reloadingCycle} · {load.date}</p>
@@ -959,7 +1069,7 @@ export default function LoadDetail() {
             <DialogTitle>Mark Load as Fired</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <p className="text-sm text-muted-foreground">{formatLoadNum(load.loadNumber)} — {load.caliber} · {load.cartridgeQuantityUsed} rounds</p>
+            <p className="text-sm text-muted-foreground">{formatBatchId(load.loadNumber, load.reloadingCycle)} — {load.caliber} · {load.cartridgeQuantityUsed} rounds</p>
 
             {load.chargeLadderId && ladderDetail?.levels && ladderDetail.levels.length > 0 && (
               <div className="space-y-1.5">
@@ -1027,9 +1137,31 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: "4mm" }}>
-      <span style={{ color: "#555" }}>{label}</span>
-      <span style={{ fontWeight: 500 }}>{value}</span>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: "4mm", padding: "0.5mm 0" }}>
+      <span style={{ color: "#666", fontSize: "8.5pt" }}>{label}</span>
+      <span style={{ fontWeight: 500, fontSize: "8.5pt" }}>{value}</span>
+    </div>
+  );
+}
+
+function PrintSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: "4mm", paddingBottom: "3mm", borderBottom: "1px solid #e0e0e0" }}>
+      <div style={{ fontSize: "8pt", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.6px", color: "#444", marginBottom: "2mm" }}>{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function StepRow({ label, done, skipped, detail, date }: { label: string; done: boolean; skipped: boolean; detail?: string; date?: string | null }) {
+  const status = skipped ? "SKIP" : done ? "✓" : "—";
+  const color = skipped ? "#888" : done ? "#155724" : "#999";
+  return (
+    <div style={{ display: "flex", gap: "3mm", alignItems: "baseline", padding: "1mm 0", borderBottom: "1px dotted #eee" }}>
+      <span style={{ fontWeight: "bold", color, fontSize: "8pt", minWidth: "8mm" }}>{status}</span>
+      <span style={{ fontSize: "8.5pt", flex: 1 }}>{label}</span>
+      {detail && <span style={{ fontSize: "8.5pt", color: "#333", fontFamily: "monospace" }}>{detail}</span>}
+      {date && <span style={{ fontSize: "7.5pt", color: "#888", marginLeft: "2mm" }}>{toEUDate(date)}</span>}
     </div>
   );
 }
@@ -1169,7 +1301,7 @@ function LevelEditorRow({
 
   const handlePowderChange = async (val: string) => {
     setSelectedPowderId(val);
-    const newPowder = val ? Number(val) : null;
+    const newPowder = val && val !== "__none__" ? Number(val) : null;
     await commit({ powderId: newPowder });
   };
 
@@ -1214,7 +1346,7 @@ function LevelEditorRow({
             <SelectValue placeholder="Select…" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">— none —</SelectItem>
+            <SelectItem value="__none__">— none —</SelectItem>
             {powders.map((p) => (
               <SelectItem key={p.id} value={String(p.id)}>
                 {p.manufacturer} {p.name}

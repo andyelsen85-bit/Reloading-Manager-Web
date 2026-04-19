@@ -31,7 +31,11 @@ const empty: CartridgeForm = {
   ampAztecCode: "", ampPilotNumber: "",
 };
 
-const formatLoadNum = (n: number | null | undefined) => n == null ? "—" : "#" + String(n).padStart(5, "0");
+const formatBatchId = (loadNumber: number | null | undefined, cycle: number | null | undefined) => {
+  const batch = loadNumber != null ? String(loadNumber).padStart(5, "0") : "00000";
+  const cyc = cycle != null ? String(cycle).padStart(3, "0") : "001";
+  return `#${batch}-${cyc}`;
+};
 
 export default function Cartridges() {
   const qc = useQueryClient();
@@ -215,10 +219,7 @@ export default function Cartridges() {
                                     className="flex items-center gap-3 px-3 py-2 rounded border border-border/50 bg-card hover:border-primary/30 cursor-pointer transition-colors"
                                     onClick={() => navigate(`/loads/${l.id}`)}
                                   >
-                                    <span className="font-mono text-xs text-muted-foreground w-12">{formatLoadNum(l.loadNumber)}</span>
-                                    {l.reloadingCycle != null && l.reloadingCycle > 1 && (
-                                      <span className="text-xs text-primary font-semibold">Cycle {l.reloadingCycle}</span>
-                                    )}
+                                    <span className="font-mono text-xs text-muted-foreground">{formatBatchId(l.loadNumber, l.reloadingCycle)}</span>
                                     <span className="text-xs text-muted-foreground w-16">{l.date}</span>
                                     <span className="font-mono text-xs text-muted-foreground">{l.cartridgeQuantityUsed} rds</span>
                                     <span className={cn(

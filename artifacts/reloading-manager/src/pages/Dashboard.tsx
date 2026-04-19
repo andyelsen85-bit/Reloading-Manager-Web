@@ -42,9 +42,10 @@ function StatCard({
   );
 }
 
-function formatLoadNum(n: number | null | undefined) {
-  if (n == null) return "—";
-  return "#" + String(n).padStart(5, "0");
+function formatBatchId(loadNumber: number | null | undefined, cycle: number | null | undefined) {
+  const batch = loadNumber != null ? String(loadNumber).padStart(5, "0") : "00000";
+  const cyc = cycle != null ? String(cycle).padStart(3, "0") : "001";
+  return `#${batch}-${cyc}`;
 }
 
 export default function Dashboard() {
@@ -153,7 +154,7 @@ export default function Dashboard() {
                       )}
                       onClick={() => navigate(`/loads/${l.id}`)}
                     >
-                      <td className="px-4 py-2.5 font-mono font-semibold">{formatLoadNum(l.loadNumber)}</td>
+                      <td className="px-4 py-2.5 font-mono font-semibold">{formatBatchId(l.loadNumber, l.reloadingCycle)}</td>
                       <td className="px-4 py-2.5">{l.caliber}</td>
                       <td className="px-4 py-2.5 font-mono">{l.cartridgeQuantityUsed}</td>
                       <td className="px-4 py-2.5 text-muted-foreground">{l.date}</td>
