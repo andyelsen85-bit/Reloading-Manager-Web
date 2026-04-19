@@ -92,7 +92,7 @@ router.post("/loads", async (req, res) => {
     loadNumber,
     cartridgeId: body.cartridgeId,
     cartridgeProductionCharge: cartridge.productionCharge,
-    reloadingCycle: cartridge.timesFired + 1,
+    reloadingCycle: body.parentLoadId != null ? cartridge.timesFired + 1 : 1,
     date: today,
     caliber: cartridge.caliber,
     cartridgeQuantityUsed: body.cartridgeQuantityUsed,
