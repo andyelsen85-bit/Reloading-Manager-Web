@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useListPowders, useCreatePowder, useUpdatePowder, useDeletePowder, getListPowdersQueryKey } from "@workspace/api-client-react";
+import { RefDatalist } from "@/components/RefDatalist";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2, Search, AlertTriangle } from "lucide-react";
@@ -161,7 +162,11 @@ function PowderFormFields({ form, setForm }: { form: PowderForm; setForm: (f: Po
   return (
     <div className="grid gap-3 py-2">
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1"><Label>Manufacturer</Label><Input value={form.manufacturer} onChange={set("manufacturer")} /></div>
+        <div className="space-y-1">
+          <Label>Manufacturer</Label>
+          <Input list="powder-mfr-list" value={form.manufacturer} onChange={set("manufacturer")} />
+          <RefDatalist id="powder-mfr-list" category="powder_manufacturer" />
+        </div>
         <div className="space-y-1"><Label>Name</Label><Input value={form.name} onChange={set("name")} /></div>
       </div>
       <div className="grid grid-cols-2 gap-3">

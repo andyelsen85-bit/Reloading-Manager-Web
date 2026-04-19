@@ -52,6 +52,15 @@ export interface ResetPasswordBody {
   newPassword: string;
 }
 
+export interface UpdateProfileBody {
+  email?: string | null;
+  notificationsEnabled?: boolean;
+}
+
+export interface ChangePasswordBody {
+  newPassword: string;
+}
+
 export interface ReferenceItem {
   id: number;
   category: string;
@@ -287,6 +296,7 @@ export interface Load {
   completed: boolean;
   fired: boolean;
   notes?: string | null;
+  chargeLadderId?: number | null;
   deletedAt?: string | null;
   deletedNote?: string | null;
   createdAt: string;
@@ -316,6 +326,7 @@ export interface UpdateLoadBody {
   skippedSteps?: string;
   photoBase64?: string | null;
   notes?: string;
+  chargeLadderId?: number | null;
 }
 
 export interface DeleteLoadBody {
@@ -331,6 +342,7 @@ export interface DeleteLoadBody {
 
 export interface FireLoadBody {
   h2oWeightGr?: number;
+  bestChargeLevelId?: number | null;
 }
 
 export interface ChargeLadder {
@@ -378,8 +390,9 @@ export interface CreateChargeLadderBody {
   name: string;
   caliber: string;
   cartridgeId: number;
-  bulletId: number;
-  primerId: number;
+  bulletId?: number;
+  primerId?: number;
+  cartridgesPerLevel?: number;
   notes?: string;
   levels?: CreateChargeLadderBodyLevelsItem[];
 }

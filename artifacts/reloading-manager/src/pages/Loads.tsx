@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useListLoads, useCreateLoad, useDeleteLoad, getListLoadsQueryKey, useListCartridges, getListCartridgesQueryKey } from "@workspace/api-client-react";
 import type { Load } from "@workspace/api-client-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Plus, Trash2, ChevronRight, Package, Flame, Crosshair } from "lucide-react";
+import { Plus, Trash2, ChevronRight, Package, Flame, Crosshair, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,10 +19,43 @@ import { useToast } from "@/hooks/use-toast";
 
 type LoadRow = Load;
 
+function getLoadCurrentStep(l: Load): string {
+  if (l.fired) return "Fired";
+  if (l.completed) return "Completed";
+  const skipped: string[] = (() => { try { return l.skippedSteps ? JSON.parse(l.skippedSteps as string) : []; } catch { return []; } })();
+  const done = (key: string) => skipped.includes(key) || (() => {
+    switch (key) {
+      case "washing": return l.washingMinutes != null && l.washingMinutes > 0;
+      case "calibration": return !!l.calibrationType;
+      case "trim": return l.l6In != null;
+      case "annealing": return (l as any).annealingDone === true;
+      case "second_washing": return l.secondWashingMinutes != null && l.secondWashingMinutes > 0;
+      case "priming": return l.primerId != null;
+      case "powder": return l.powderId != null;
+      case "bullet_seating": return l.bulletId != null && l.coalIn != null && l.oalIn != null;
+      default: return false;
+    }
+  })();
+  const steps: { key: string; label: string }[] = [
+    { key: "washing", label: "Washing" },
+    { key: "calibration", label: "Calibration" },
+    { key: "trim", label: "Trim" },
+    { key: "annealing", label: "Annealing" },
+    { key: "second_washing", label: "Second Washing" },
+    { key: "priming", label: "Priming" },
+    { key: "powder", label: "Powder" },
+    { key: "bullet_seating", label: "Bullet Seating" },
+  ];
+  const first = steps.find((s) => !done(s.key));
+  return first ? first.label : "Bullet Seating";
+}
+
 export default function Loads() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [, navigate] = useLocation();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const { data: loads = [], isLoading } = useListLoads({ query: { queryKey: getListLoadsQueryKey() } });
   const { data: cartridges = [] } = useListCartridges({ query: { queryKey: getListCartridgesQueryKey() } });
   const createMutation = useCreateLoad();
@@ -31,6 +65,8 @@ export default function Loads() {
   const [deleteLoad, setDeleteLoad] = useState<LoadRow | null>(null);
   const [restockOpts, setRestockOpts] = useState({ primers: false, powder: false, bullets: false, primerQty: 0, powderGr: 0, bulletQty: 0, note: "" });
   const [form, setForm] = useState({ cartridgeId: "", cartridgeQuantityUsed: "", notes: "" });
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
+  const [showCompletedFor, setShowCompletedFor] = useState<Set<number>>(new Set());
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: getListLoadsQueryKey() });
@@ -75,14 +111,22 @@ export default function Loads() {
     toast({ title: "Load deleted" });
   };
 
-  const getCartridge = (id: number) => cartridges.find((c) => c.id === id);
+  const toggleCollapse = (id: number) =>
+    setCollapsedGroups((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const toggleShowCompleted = (id: number) =>
+    setShowCompletedFor((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const grouped = cartridges
+    .map((c) => ({ cartridge: c, loads: loads.filter((l) => l.cartridgeId === c.id) }))
+    .filter((g) => g.loads.length > 0);
 
   return (
     <div className="space-y-4 max-w-6xl">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-foreground tracking-tight">Load Records</h1>
-          <p className="text-sm text-muted-foreground">{loads.length} loads total</p>
+          <p className="text-sm text-muted-foreground">{loads.length} loads across {grouped.length} batches</p>
         </div>
         <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1.5">
           <Plus className="w-4 h-4" /> New Load
@@ -91,59 +135,110 @@ export default function Loads() {
 
       {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-14 rounded" />)}</div>
-      ) : loads.length === 0 ? (
+      ) : grouped.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">No loads yet. Create your first load to begin.</div>
       ) : (
-        <div className="rounded-lg border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                {["Inv#","Load #","Caliber","Qty","Cycle","Date","Step","Status",""].map((h) => (
-                  <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loads.map((l, i) => {
-                const cart = getCartridge(l.cartridgeId);
-                const rowClass = l.completed
-                  ? "border-b border-border/50 bg-green-950/10 hover:bg-green-950/20 transition-colors"
-                  : l.fired
-                  ? "border-b border-border/50 bg-amber-950/10 hover:bg-amber-950/20 transition-colors"
-                  : "border-b border-border/50 hover:bg-muted/20 transition-colors";
-                return (
-                  <motion.tr
-                    key={l.id}
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    className={rowClass}
-                  >
-                    <td className="px-3 py-2.5 font-mono text-muted-foreground">#{l.id}</td>
-                    <td className="px-3 py-2.5 font-semibold font-mono">{formatLoadNum(l.loadNumber)}</td>
-                    <td className="px-3 py-2.5">{l.caliber}</td>
-                    <td className="px-3 py-2.5 font-mono">{l.cartridgeQuantityUsed}</td>
-                    <td className="px-3 py-2.5 font-mono">{l.reloadingCycle}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{l.date}</td>
-                    <td className="px-3 py-2.5"><StepBadge step={cart?.currentStep ?? "New"} /></td>
-                    <td className="px-3 py-2.5">
-                      <span className={cn("text-xs font-medium", l.completed ? "text-green-400" : l.fired ? "text-amber-400" : "text-muted-foreground")}>
-                        {l.completed ? "Completed" : l.fired ? "Fired" : "Active"}
+        <div className="space-y-3">
+          {grouped.map((g) => {
+            const isCollapsed = collapsedGroups.has(g.cartridge.id);
+            const activeLoads = g.loads.filter((l) => !l.completed);
+            const completedLoads = g.loads.filter((l) => l.completed);
+            const showCompleted = showCompletedFor.has(g.cartridge.id);
+            const visibleLoads = showCompleted ? g.loads : activeLoads;
+            const hasActive = activeLoads.length > 0;
+            return (
+              <div key={g.cartridge.id} className="rounded-lg border border-border overflow-hidden">
+                <button
+                  className={cn(
+                    "w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-muted/30 transition-colors",
+                    isCollapsed ? "bg-muted/10" : "bg-muted/20 border-b border-border"
+                  )}
+                  onClick={() => toggleCollapse(g.cartridge.id)}
+                >
+                  {isCollapsed ? <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+                  <span className="font-semibold text-sm text-foreground">
+                    {g.cartridge.caliber} — {g.cartridge.manufacturer}
+                  </span>
+                  <span className="text-xs text-muted-foreground">Batch #{g.cartridge.id}</span>
+                  <div className="ml-auto flex items-center gap-2">
+                    {hasActive && (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded bg-blue-900/40 text-blue-300">
+                        {activeLoads.length} active
                       </span>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex gap-1 justify-end">
-                        <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => navigate(`/loads/${l.id}`)}>
-                          Workflow <ChevronRight className="w-3 h-3" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => openDelete(l)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    )}
+                    {completedLoads.length > 0 && (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-900/30 text-green-400">
+                        {completedLoads.length} done
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground">{g.loads.length} total</span>
+                  </div>
+                </button>
+                {!isCollapsed && (
+                  <div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/10">
+                          {["Load #","Qty","Cycle","Date","Step","Status",""].map((h) => (
+                            <th key={h} className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleLoads.map((l, i) => {
+                          const rowClass = l.completed
+                            ? "border-b border-border/50 bg-green-950/10 hover:bg-green-950/20 transition-colors"
+                            : l.fired
+                            ? "border-b border-border/50 bg-amber-950/10 hover:bg-amber-950/20 transition-colors"
+                            : "border-b border-border/50 hover:bg-muted/20 transition-colors";
+                          return (
+                            <motion.tr
+                              key={l.id}
+                              initial={{ opacity: 0, x: -8 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.03 }}
+                              className={rowClass}
+                            >
+                              <td className="px-3 py-2.5 font-semibold font-mono">{formatLoadNum(l.loadNumber)}</td>
+                              <td className="px-3 py-2.5 font-mono">{l.cartridgeQuantityUsed}</td>
+                              <td className="px-3 py-2.5 font-mono">{l.reloadingCycle}</td>
+                              <td className="px-3 py-2.5 text-muted-foreground">{l.date}</td>
+                              <td className="px-3 py-2.5"><StepBadge step={getLoadCurrentStep(l)} /></td>
+                              <td className="px-3 py-2.5">
+                                <span className={cn("text-xs font-medium", l.completed ? "text-green-400" : l.fired ? "text-amber-400" : "text-muted-foreground")}>
+                                  {l.completed ? "Completed" : l.fired ? "Fired" : "Active"}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <div className="flex gap-1 justify-end">
+                                  <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => navigate(`/loads/${l.id}`)}>
+                                    Workflow <ChevronRight className="w-3 h-3" />
+                                  </Button>
+                                  {isAdmin && (
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => openDelete(l)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                  )}
+                                </div>
+                              </td>
+                            </motion.tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    {completedLoads.length > 0 && (
+                      <div className="px-4 py-2 border-t border-border/30 bg-muted/5">
+                        <button
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+                          onClick={() => toggleShowCompleted(g.cartridge.id)}
+                        >
+                          {showCompleted ? "Hide completed loads" : `Show ${completedLoads.length} completed load${completedLoads.length > 1 ? "s" : ""}`}
+                        </button>
                       </div>
-                    </td>
-                  </motion.tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

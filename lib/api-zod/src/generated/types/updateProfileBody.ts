@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface FireLoadBody {
-  h2oWeightGr?: number;
-  bestChargeLevelId?: number | null;
+export interface UpdateProfileBody {
+  email?: string | null;
+  notificationsEnabled?: boolean;
 }

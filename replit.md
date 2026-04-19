@@ -32,7 +32,8 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - **Mark loads as Fired**: optional H₂O weight recorded; increments cartridge reload cycle
 - **Delete load with restock**: Soft-delete loads, optionally returning primers/powder/bullets to inventory with a note
 - **Cartridge quantity on creation**: `quantityLoaded` incremented when a load is created (not completed); reversed on delete
-- **Cartridge batch collapse view**: Expand a cartridge row to see all loads that reference it, with status badges
+- **Cartridge batch collapse view**: Expand a cartridge row to see all loads that reference it, with status badges; completed loads hidden by default with toggle
+- **Reference data autocomplete**: Manufacturer and caliber fields in all inventory forms show suggestions from the pre-seeded reference lists
 - **Dashboard**: Clickable stat cards, recent loads table, low-stock warnings
 - **History**: Per-cartridge reload summary with deleted loads count
 - **Charge Ladders (Load Dev)**: Multi-powder-charge sessions; record OAL/COAL/group size/velocity per level; select best charge
@@ -48,7 +49,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `Dashboard.tsx` — stats + recent loads + low-stock warnings + export
 - `Cartridges.tsx` — batch inventory with photo thumbnails + collapse to show related loads
 - `Bullets.tsx`, `Powders.tsx`, `Primers.tsx` — component inventory
-- `Loads.tsx` — load list with delete-with-restock dialog
+- `Loads.tsx` — loads grouped by cartridge batch with collapsible sections; completed loads hidden by default per group; delete-with-restock dialog
 - `LoadDetail.tsx` — 9-step workflow, skip, annealing, photo, fire dialog, print label
 - `ChargeLadders.tsx` — load development session list
 - `ChargeLadderDetail.tsx` — charge level management, result recording, best selection

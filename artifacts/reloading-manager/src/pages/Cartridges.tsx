@@ -1,5 +1,6 @@
 import { useState, useRef, Fragment } from "react";
 import { useListCartridges, useCreateCartridge, useUpdateCartridge, useDeleteCartridge, getListCartridgesQueryKey, useListLoads, getListLoadsQueryKey } from "@workspace/api-client-react";
+import { RefDatalist } from "@/components/RefDatalist";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,6 +49,9 @@ export default function Cartridges() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState<CartridgeForm>(empty);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [showCompletedFor, setShowCompletedFor] = useState<Set<number>>(new Set());
+  const toggleShowCompleted = (id: number) =>
+    setShowCompletedFor((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
   const filtered = cartridges.filter((c) =>
     c.caliber.toLowerCase().includes(search.toLowerCase()) ||
@@ -139,7 +143,6 @@ export default function Cartridges() {
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Manufacturer</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Caliber</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Prod. Charge</th>
-                <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Step</th>
                 <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fired</th>
                 <th className="text-right px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Loaded/Total</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Notes</th>
@@ -183,7 +186,6 @@ export default function Cartridges() {
                       <td className="px-3 py-2.5 text-foreground">{c.manufacturer}</td>
                       <td className="px-3 py-2.5 font-semibold text-foreground">{c.caliber}</td>
                       <td className="px-3 py-2.5 text-muted-foreground">{c.productionCharge}</td>
-                      <td className="px-3 py-2.5"><StepBadge step={c.currentStep} /></td>
                       <td className="px-3 py-2.5 text-right font-mono">{c.timesFired}</td>
                       <td className="px-3 py-2.5 text-right font-mono">{c.quantityLoaded}/{c.quantityTotal}</td>
                       <td className="px-3 py-2.5 text-muted-foreground text-xs max-w-[120px] truncate">{c.notes}</td>
@@ -194,35 +196,51 @@ export default function Cartridges() {
                         </div>
                       </td>
                     </motion.tr>
-                    {isExpanded && batchLoads.length > 0 && (
-                      <tr className="border-b border-border/30 bg-muted/5">
-                        <td colSpan={11} className="px-0 py-0">
-                          <div className="pl-12 pr-4 py-2">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Loads using this batch ({batchLoads.length})</p>
-                            <div className="space-y-1">
-                              {batchLoads.map((l) => (
-                                <div
-                                  key={l.id}
-                                  className="flex items-center gap-3 px-3 py-2 rounded border border-border/50 bg-card hover:border-primary/30 cursor-pointer transition-colors"
-                                  onClick={() => navigate(`/loads/${l.id}`)}
+                    {isExpanded && batchLoads.length > 0 && (() => {
+                      const activeLoads = batchLoads.filter((l) => !l.completed);
+                      const completedLoads = batchLoads.filter((l) => l.completed);
+                      const showCompleted = showCompletedFor.has(c.id);
+                      const visibleLoads = showCompleted ? batchLoads : activeLoads;
+                      return (
+                        <tr className="border-b border-border/30 bg-muted/5">
+                          <td colSpan={10} className="px-0 py-0">
+                            <div className="pl-12 pr-4 py-2">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                                Loads using this batch ({batchLoads.length})
+                              </p>
+                              <div className="space-y-1">
+                                {visibleLoads.map((l) => (
+                                  <div
+                                    key={l.id}
+                                    className="flex items-center gap-3 px-3 py-2 rounded border border-border/50 bg-card hover:border-primary/30 cursor-pointer transition-colors"
+                                    onClick={() => navigate(`/loads/${l.id}`)}
+                                  >
+                                    <span className="font-mono text-xs text-muted-foreground w-12">{formatLoadNum(l.loadNumber)}</span>
+                                    <span className="text-xs text-muted-foreground w-16">{l.date}</span>
+                                    <span className="font-mono text-xs text-muted-foreground">{l.cartridgeQuantityUsed} rds</span>
+                                    <span className={cn(
+                                      "text-xs font-semibold px-2 py-0.5 rounded",
+                                      l.completed ? "bg-green-900/40 text-green-300" : l.fired ? "bg-amber-900/40 text-amber-300" : "bg-blue-900/40 text-blue-300"
+                                    )}>
+                                      {l.completed ? "Completed" : l.fired ? "Fired" : "Active"}
+                                    </span>
+                                    <span className="text-muted-foreground text-xs ml-auto">View workflow →</span>
+                                  </div>
+                                ))}
+                              </div>
+                              {completedLoads.length > 0 && (
+                                <button
+                                  className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+                                  onClick={() => toggleShowCompleted(c.id)}
                                 >
-                                  <span className="font-mono text-xs text-muted-foreground w-12">{formatLoadNum(l.loadNumber)}</span>
-                                  <span className="text-xs text-muted-foreground w-16">{l.date}</span>
-                                  <span className="font-mono text-xs text-muted-foreground">{l.cartridgeQuantityUsed} rds</span>
-                                  <span className={cn(
-                                    "text-xs font-semibold px-2 py-0.5 rounded",
-                                    l.completed ? "bg-green-900/40 text-green-300" : l.fired ? "bg-amber-900/40 text-amber-300" : "bg-blue-900/40 text-blue-300"
-                                  )}>
-                                    {l.completed ? "Completed" : l.fired ? "Fired" : "Active"}
-                                  </span>
-                                  <span className="text-muted-foreground text-xs ml-auto">View workflow →</span>
-                                </div>
-                              ))}
+                                  {showCompleted ? "Hide completed" : `Show ${completedLoads.length} completed`}
+                                </button>
+                              )}
                             </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
+                          </td>
+                        </tr>
+                      );
+                    })()}
                   </Fragment>
                 );
               })}
@@ -285,8 +303,16 @@ function CartridgeFormFields({ form, setForm, showStep }: { form: CartridgeForm;
   return (
     <div className="grid gap-3 py-2">
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1"><Label>Manufacturer</Label><Input value={form.manufacturer} onChange={set("manufacturer")} /></div>
-        <div className="space-y-1"><Label>Caliber</Label><Input value={form.caliber} onChange={set("caliber")} /></div>
+        <div className="space-y-1">
+          <Label>Manufacturer</Label>
+          <Input list="cart-mfr-list" value={form.manufacturer} onChange={set("manufacturer")} />
+          <RefDatalist id="cart-mfr-list" category="cartridge_manufacturer" />
+        </div>
+        <div className="space-y-1">
+          <Label>Caliber</Label>
+          <Input list="caliber-list" value={form.caliber} onChange={set("caliber")} />
+          <RefDatalist id="caliber-list" category="caliber" />
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1"><Label>Production Charge</Label><Input value={form.productionCharge} onChange={set("productionCharge")} /></div>

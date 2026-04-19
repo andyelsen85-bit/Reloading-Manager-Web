@@ -17,7 +17,7 @@ const CreateUserBody = z.object({
 
 const UpdateUserBody = z.object({
   username: z.string().optional(),
-  email: z.string().email().optional(),
+  email: z.string().email().nullable().optional(),
   role: z.string().optional(),
   active: z.boolean().optional(),
   notificationsEnabled: z.boolean().optional(),

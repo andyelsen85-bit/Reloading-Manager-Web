@@ -11,8 +11,9 @@ export interface CreateChargeLadderBody {
   name: string;
   caliber: string;
   cartridgeId: number;
-  bulletId: number;
-  primerId: number;
+  bulletId?: number;
+  primerId?: number;
+  cartridgesPerLevel?: number;
   notes?: string;
   levels?: CreateChargeLadderBodyLevelsItem[];
 }

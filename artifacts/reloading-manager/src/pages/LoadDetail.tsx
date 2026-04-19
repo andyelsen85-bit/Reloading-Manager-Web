@@ -1,10 +1,10 @@
 import { useRoute, useLocation } from "wouter";
-import { useGetLoad, getGetLoadQueryKey, useUpdateLoad, useCompleteLoad, useFireLoad, useListPrimers, useListPowders, useListBullets, useListCartridges, getListLoadsQueryKey, getGetDashboardOverviewQueryKey, getListCartridgesQueryKey } from "@workspace/api-client-react";
+import { useGetLoad, getGetLoadQueryKey, useUpdateLoad, useCompleteLoad, useFireLoad, useListPrimers, useListPowders, useListBullets, useListCartridges, getListLoadsQueryKey, getGetDashboardOverviewQueryKey, getListCartridgesQueryKey, useGetChargeLadder, getGetChargeLadderQueryKey, useCreateChargeLadder, useAddChargeLevel, useSelectBestChargeLevel } from "@workspace/api-client-react";
 import type { Load } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useState, useRef } from "react";
-import { CheckCircle2, Circle, ChevronLeft, Loader2, SkipForward, Printer, Camera, X } from "lucide-react";
+import { CheckCircle2, Circle, ChevronLeft, Loader2, SkipForward, Printer, Camera, X, Layers, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,7 +48,7 @@ function isStepDone(load: Load | undefined, step: string): boolean {
     case "annealing": return load.annealingDone === true;
     case "second_washing": return load.secondWashingMinutes != null && load.secondWashingMinutes > 0;
     case "priming": return load.primerId != null;
-    case "powder": return load.powderId != null;
+    case "powder": return load.powderId != null || load.chargeLadderId != null;
     case "bullet_seating": return load.bulletId != null && load.coalIn != null && load.oalIn != null;
     case "complete": return load.completed;
     default: return false;
@@ -93,6 +93,22 @@ export default function LoadDetail() {
 
   const [fireDialogOpen, setFireDialogOpen] = useState(false);
   const [h2oWeightGr, setH2oWeightGr] = useState("");
+  const [selectedBestLevelId, setSelectedBestLevelId] = useState("");
+
+  const [ladderMode, setLadderMode] = useState(false);
+  const [ladderCartCount, setLadderCartCount] = useState("5");
+  const [addLevelChargeGr, setAddLevelChargeGr] = useState("");
+  const [addLevelCartridgeCount, setAddLevelCartridgeCount] = useState("5");
+  const [addLevelPowderId, setAddLevelPowderId] = useState("");
+
+  const createLadderMutation = useCreateChargeLadder();
+  const addLevelMutation = useAddChargeLevel();
+  const selectBestMutation = useSelectBestChargeLevel();
+
+  const ladderId = load?.chargeLadderId ?? 0;
+  const { data: ladderDetail } = useGetChargeLadder(ladderId, {
+    query: { enabled: !!ladderId, queryKey: getGetChargeLadderQueryKey(ladderId) },
+  });
 
   const photoRef = useRef<HTMLInputElement>(null);
 
@@ -106,6 +122,40 @@ export default function LoadDetail() {
     qc.invalidateQueries({ queryKey: getListLoadsQueryKey() });
     qc.invalidateQueries({ queryKey: getGetDashboardOverviewQueryKey() });
     qc.invalidateQueries({ queryKey: getListCartridgesQueryKey() });
+    if (load?.chargeLadderId) qc.invalidateQueries({ queryKey: getGetChargeLadderQueryKey(load.chargeLadderId) });
+  };
+
+  const effectiveLadderMode = !!load.chargeLadderId || ladderMode;
+
+  const handleInitLadder = async () => {
+    const ladder = await createLadderMutation.mutateAsync({
+      data: {
+        name: `Load #${load.id} Charge Ladder`,
+        caliber: load.caliber,
+        cartridgeId: load.cartridgeId,
+        bulletId: load.bulletId ?? undefined,
+        primerId: load.primerId ?? undefined,
+        cartridgesPerLevel: Number(ladderCartCount) || 5,
+      },
+    });
+    await updateMutation.mutateAsync({ id, data: { chargeLadderId: ladder.id } });
+    invalidate();
+    toast({ title: "Charge ladder initialized" });
+  };
+
+  const handleAddLevel = async () => {
+    if (!load.chargeLadderId || !addLevelChargeGr) { toast({ title: "Enter charge weight", variant: "destructive" }); return; }
+    await addLevelMutation.mutateAsync({
+      id: load.chargeLadderId,
+      data: {
+        chargeGr: Number(addLevelChargeGr),
+        cartridgeCount: Number(addLevelCartridgeCount) || 5,
+        powderId: addLevelPowderId ? Number(addLevelPowderId) : undefined,
+      },
+    });
+    qc.invalidateQueries({ queryKey: getGetChargeLadderQueryKey(load.chargeLadderId) });
+    setAddLevelChargeGr(""); setAddLevelCartridgeCount("5"); setAddLevelPowderId("");
+    toast({ title: "Charge level added" });
   };
 
   const cart = cartridges.find((c) => c.id === load.cartridgeId);
@@ -212,10 +262,17 @@ export default function LoadDetail() {
   };
 
   const handleFire = async () => {
-    await fireMutation.mutateAsync({ id, data: h2oWeightGr ? { h2oWeightGr: Number(h2oWeightGr) } : {} });
+    const fireData: { h2oWeightGr?: number; bestChargeLevelId?: number } = {};
+    if (h2oWeightGr) fireData.h2oWeightGr = Number(h2oWeightGr);
+    if (selectedBestLevelId) fireData.bestChargeLevelId = Number(selectedBestLevelId);
+    await fireMutation.mutateAsync({ id, data: fireData });
+    if (load.chargeLadderId && selectedBestLevelId) {
+      await selectBestMutation.mutateAsync({ id: load.chargeLadderId, data: { levelId: Number(selectedBestLevelId) } });
+    }
     invalidate();
     setFireDialogOpen(false);
     setH2oWeightGr("");
+    setSelectedBestLevelId("");
     toast({ title: "Load marked as fired!" });
   };
 
@@ -487,29 +544,138 @@ export default function LoadDetail() {
             </div>
           </StepCard>
 
-          <StepCard label="7. Powder" done={isStepDone(load, "powder")} skipped={isStepSkipped(load, "powder")}
-            summary={!isStepSkipped(load, "powder") && load.powderId != null ? `Powder #${load.powderId} · ${load.powderChargeGr} gr/round · ${powderTotal} gr total` : null}
-            open={activeStep === "powder"} onToggle={() => setActiveStep(activeStep === "powder" ? null : "powder")}
-            onSkip={() => handleSkipStep("powder")} onUnskip={() => handleUnskipStep("powder")}
+          <StepCard
+            label="7. Powder"
+            done={isStepDone(load, "powder")}
+            skipped={isStepSkipped(load, "powder")}
+            summary={!isStepSkipped(load, "powder") && load.chargeLadderId != null
+              ? `Charge Ladder #${load.chargeLadderId} · ${ladderDetail?.levels?.length ?? "?"} levels`
+              : !isStepSkipped(load, "powder") && load.powderId != null
+              ? `Powder #${load.powderId} · ${load.powderChargeGr} gr/round · ${powderTotal} gr total`
+              : null}
+            open={activeStep === "powder"}
+            onToggle={() => setActiveStep(activeStep === "powder" ? null : "powder")}
+            onSkip={() => handleSkipStep("powder")}
+            onUnskip={() => handleUnskipStep("powder")}
           >
-            <div className="space-y-2">
-              <Label>Select Powder</Label>
-              <Select defaultValue={load.powderId != null ? String(load.powderId) : ""} onValueChange={setPowderId}>
-                <SelectTrigger><SelectValue placeholder="Select powder..." /></SelectTrigger>
-                <SelectContent>
-                  {powders.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>
-                      #{p.id} — {p.manufacturer} {p.name} ({p.grainsAvailable.toFixed(1)} gr avail.)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Label>Charge per round (grains)</Label>
-              <Input type="number" step="0.1" placeholder="e.g. 43.5" defaultValue={load.powderChargeGr ?? ""} onChange={(e) => setPowderChargeGr(e.target.value)} />
-              {powderChargeGr && (
-                <p className="text-xs text-muted-foreground">Total: {(Number(powderChargeGr) * load.cartridgeQuantityUsed).toFixed(2)} gr</p>
+            <div className="space-y-3">
+              {/* Mode Toggle — only show if no ladder linked yet */}
+              {!load.chargeLadderId && (
+                <div className="flex gap-1 p-1 bg-muted rounded-md w-fit">
+                  <button
+                    onClick={() => setLadderMode(false)}
+                    className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors",
+                      !ladderMode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                  >
+                    Single Load
+                  </button>
+                  <button
+                    onClick={() => setLadderMode(true)}
+                    className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors",
+                      ladderMode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                  >
+                    <Layers className="w-3 h-3" /> Ladder Load
+                  </button>
+                </div>
               )}
-              <Button size="sm" onClick={handleSavePowder} disabled={updateMutation.isPending}>Save</Button>
+
+              {effectiveLadderMode ? (
+                /* LADDER MODE */
+                load.chargeLadderId ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Layers className="w-3.5 h-3.5 text-primary" />
+                      <span className="font-medium text-foreground">Charge Ladder #{load.chargeLadderId}</span>
+                      {ladderDetail?.ladder && <span>· {ladderDetail.ladder.caliber} · {ladderDetail.ladder.cartridgesPerLevel} rounds/level</span>}
+                    </div>
+
+                    {/* Charge levels list */}
+                    {(ladderDetail?.levels ?? []).length > 0 ? (
+                      <div className="space-y-1.5">
+                        {(ladderDetail?.levels ?? []).map((lvl, i) => (
+                          <div key={lvl.id} className={cn(
+                            "flex items-center gap-3 p-2.5 rounded border text-sm",
+                            ladderDetail?.ladder?.bestLevelId === lvl.id
+                              ? "border-green-600/50 bg-green-950/20 text-green-300"
+                              : "border-border bg-muted/20"
+                          )}>
+                            <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0">{i + 1}</span>
+                            <span className="font-mono font-semibold">{lvl.chargeGr} gr</span>
+                            <span className="text-muted-foreground text-xs">· {lvl.cartridgeCount} rds</span>
+                            {lvl.powderId && <span className="text-muted-foreground text-xs">· Powder #{lvl.powderId}</span>}
+                            <span className={cn("ml-auto text-xs capitalize", lvl.status === "fired" ? "text-amber-400" : "text-muted-foreground")}>{lvl.status}</span>
+                            {ladderDetail?.ladder?.bestLevelId === lvl.id && <span className="text-xs text-green-400 font-medium">✓ Best</span>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">No charge levels yet — add the first one below.</p>
+                    )}
+
+                    {/* Add level form */}
+                    <div className="border border-dashed border-border rounded p-3 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Add Charge Level</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <Label className="text-xs">Charge (gr) *</Label>
+                          <Input type="number" step="0.1" placeholder="e.g. 43.5" value={addLevelChargeGr} onChange={(e) => setAddLevelChargeGr(e.target.value)} className="h-8 text-sm" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Rounds</Label>
+                          <Input type="number" placeholder="5" value={addLevelCartridgeCount} onChange={(e) => setAddLevelCartridgeCount(e.target.value)} className="h-8 text-sm" />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Powder</Label>
+                          <Select value={addLevelPowderId} onValueChange={setAddLevelPowderId}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Optional" /></SelectTrigger>
+                            <SelectContent>
+                              {powders.map((p) => <SelectItem key={p.id} value={String(p.id)}>#{p.id} — {p.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <Button size="sm" onClick={handleAddLevel} disabled={addLevelMutation.isPending} className="gap-1.5">
+                        <Plus className="w-3.5 h-3.5" /> Add Level
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  /* No ladder linked yet — show init form */
+                  <div className="space-y-3 p-3 border border-dashed border-primary/40 rounded bg-primary/5">
+                    <p className="text-sm text-muted-foreground">Initialize a charge ladder for this load. You'll add individual charge levels with different powder charges to test.</p>
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <Label className="text-xs">Rounds per level</Label>
+                        <Input type="number" className="w-24 h-8" value={ladderCartCount} onChange={(e) => setLadderCartCount(e.target.value)} />
+                      </div>
+                    </div>
+                    <Button size="sm" onClick={handleInitLadder} disabled={createLadderMutation.isPending || updateMutation.isPending} className="gap-1.5">
+                      <Layers className="w-3.5 h-3.5" /> Initialize Ladder
+                    </Button>
+                  </div>
+                )
+              ) : (
+                /* SINGLE MODE */
+                <div className="space-y-2">
+                  <Label>Select Powder</Label>
+                  <Select defaultValue={load.powderId != null ? String(load.powderId) : ""} onValueChange={setPowderId}>
+                    <SelectTrigger><SelectValue placeholder="Select powder..." /></SelectTrigger>
+                    <SelectContent>
+                      {powders.map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          #{p.id} — {p.manufacturer} {p.name} ({p.grainsAvailable.toFixed(1)} gr avail.)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Label>Charge per round (grains)</Label>
+                  <Input type="number" step="0.1" placeholder="e.g. 43.5" defaultValue={load.powderChargeGr ?? ""} onChange={(e) => setPowderChargeGr(e.target.value)} />
+                  {powderChargeGr && (
+                    <p className="text-xs text-muted-foreground">Total: {(Number(powderChargeGr) * load.cartridgeQuantityUsed).toFixed(2)} gr</p>
+                  )}
+                  <Button size="sm" onClick={handleSavePowder} disabled={updateMutation.isPending}>Save</Button>
+                </div>
+              )}
             </div>
           </StepCard>
 
@@ -599,6 +765,27 @@ export default function LoadDetail() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <p className="text-sm text-muted-foreground">{formatLoadNum(load.loadNumber)} — {load.caliber} · {load.cartridgeQuantityUsed} rounds</p>
+
+            {load.chargeLadderId && ladderDetail?.levels && ladderDetail.levels.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-primary" /> Best Charge Level — optional
+                </Label>
+                <Select value={selectedBestLevelId} onValueChange={setSelectedBestLevelId}>
+                  <SelectTrigger><SelectValue placeholder="Select best charge level..." /></SelectTrigger>
+                  <SelectContent>
+                    {ladderDetail.levels.map((lvl, i) => (
+                      <SelectItem key={lvl.id} value={String(lvl.id)}>
+                        Level {i + 1} — {lvl.chargeGr} gr · {lvl.cartridgeCount} rds
+                        {lvl.powderId ? ` · Powder #${lvl.powderId}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Mark which charge level performed best</p>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label>H₂O Weight (grains) — optional</Label>
               <Input
@@ -615,10 +802,10 @@ export default function LoadDetail() {
             <Button variant="outline" onClick={() => setFireDialogOpen(false)}>Cancel</Button>
             <Button
               onClick={handleFire}
-              disabled={fireMutation.isPending}
+              disabled={fireMutation.isPending || selectBestMutation.isPending}
               className="gap-2 bg-amber-700 hover:bg-amber-600 text-white"
             >
-              {fireMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              {(fireMutation.isPending || selectBestMutation.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
               Confirm Fired
             </Button>
           </DialogFooter>

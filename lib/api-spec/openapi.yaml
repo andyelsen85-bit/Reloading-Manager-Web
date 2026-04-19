@@ -93,6 +93,44 @@ paths:
         "401":
           description: Not authenticated
 
+  /auth/profile:
+    patch:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Update own profile (email, notifications)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileBody"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+
+  /auth/change-password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change own password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordBody"
+      responses:
+        "204":
+          description: Password changed
+        "401":
+          description: Not authenticated
+
   # ── Users ─────────────────────────────────────────────────────
   /users:
     get:
@@ -1065,6 +1103,22 @@ components:
           type: string
       required: [newPassword]
 
+    UpdateProfileBody:
+      type: object
+      properties:
+        email:
+          type: string
+          nullable: true
+        notificationsEnabled:
+          type: boolean
+
+    ChangePasswordBody:
+      type: object
+      properties:
+        newPassword:
+          type: string
+      required: [newPassword]
+
     ReferenceItem:
       type: object
       properties:
@@ -1547,6 +1601,9 @@ components:
         notes:
           type: string
           nullable: true
+        chargeLadderId:
+          type: integer
+          nullable: true
         deletedAt:
           type: string
           format: date-time
@@ -1608,6 +1665,9 @@ components:
           nullable: true
         notes:
           type: string
+        chargeLadderId:
+          type: integer
+          nullable: true
 
     DeleteLoadBody:
       type: object
@@ -1630,6 +1690,9 @@ components:
       properties:
         h2oWeightGr:
           type: number
+        bestChargeLevelId:
+          type: integer
+          nullable: true
 
     ChargeLadder:
       type: object
@@ -1687,6 +1750,8 @@ components:
           type: integer
         primerId:
           type: integer
+        cartridgesPerLevel:
+          type: integer
         notes:
           type: string
         levels:
@@ -1701,7 +1766,7 @@ components:
               powderId:
                 type: integer
             required: [chargeGr]
-      required: [name, caliber, cartridgeId, bulletId, primerId]
+      required: [name, caliber, cartridgeId]
 
     UpdateChargeLadderBody:
       type: object

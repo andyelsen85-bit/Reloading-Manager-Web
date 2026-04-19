@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { RefDatalist } from "@/components/RefDatalist";
 
 type BulletForm = { manufacturer: string; model: string; weightGr: string; diameterIn: string; quantityAvailable: string; notes: string; photoBase64: string | null };
 const empty: BulletForm = { manufacturer: "", model: "", weightGr: "", diameterIn: "", quantityAvailable: "", notes: "", photoBase64: null };
@@ -187,7 +188,11 @@ function BulletFormFields({ form, setForm }: { form: BulletForm; setForm: (f: Bu
   return (
     <div className="grid gap-3 py-2">
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1"><Label>Manufacturer</Label><Input value={form.manufacturer} onChange={set("manufacturer")} /></div>
+        <div className="space-y-1">
+          <Label>Manufacturer</Label>
+          <Input list="bullet-mfr-list" value={form.manufacturer} onChange={set("manufacturer")} />
+          <RefDatalist id="bullet-mfr-list" category="bullet_manufacturer" />
+        </div>
         <div className="space-y-1"><Label>Model</Label><Input value={form.model} onChange={set("model")} /></div>
       </div>
       <div className="grid grid-cols-3 gap-3">

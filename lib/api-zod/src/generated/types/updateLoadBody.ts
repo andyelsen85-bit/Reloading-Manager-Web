@@ -24,4 +24,5 @@ export interface UpdateLoadBody {
   skippedSteps?: string;
   photoBase64?: string | null;
   notes?: string;
+  chargeLadderId?: number | null;
 }

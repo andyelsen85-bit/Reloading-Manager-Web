@@ -42,6 +42,29 @@ export const GetMeResponse = zod.object({
 });
 
 /**
+ * @summary Update own profile (email, notifications)
+ */
+export const UpdateProfileBody = zod.object({
+  email: zod.string().nullish(),
+  notificationsEnabled: zod.boolean().optional(),
+});
+
+export const UpdateProfileResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  email: zod.string(),
+  role: zod.string(),
+  notificationsEnabled: zod.boolean(),
+});
+
+/**
+ * @summary Change own password
+ */
+export const ChangePasswordBody = zod.object({
+  newPassword: zod.string(),
+});
+
+/**
  * @summary List all users
  */
 export const ListUsersResponseItem = zod.object({
@@ -594,6 +617,7 @@ export const ListLoadsResponseItem = zod.object({
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
+  chargeLadderId: zod.number().nullish(),
   deletedAt: zod.coerce.date().nullish(),
   deletedNote: zod.string().nullish(),
   createdAt: zod.coerce.date(),
@@ -647,6 +671,7 @@ export const GetLoadResponse = zod.object({
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
+  chargeLadderId: zod.number().nullish(),
   deletedAt: zod.coerce.date().nullish(),
   deletedNote: zod.string().nullish(),
   createdAt: zod.coerce.date(),
@@ -677,6 +702,7 @@ export const UpdateLoadBody = zod.object({
   skippedSteps: zod.string().optional(),
   photoBase64: zod.string().nullish(),
   notes: zod.string().optional(),
+  chargeLadderId: zod.number().nullish(),
 });
 
 export const UpdateLoadResponse = zod.object({
@@ -710,6 +736,7 @@ export const UpdateLoadResponse = zod.object({
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
+  chargeLadderId: zod.number().nullish(),
   deletedAt: zod.coerce.date().nullish(),
   deletedNote: zod.string().nullish(),
   createdAt: zod.coerce.date(),
@@ -776,6 +803,7 @@ export const CompleteLoadResponse = zod.object({
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
+  chargeLadderId: zod.number().nullish(),
   deletedAt: zod.coerce.date().nullish(),
   deletedNote: zod.string().nullish(),
   createdAt: zod.coerce.date(),
@@ -790,6 +818,7 @@ export const FireLoadParams = zod.object({
 
 export const FireLoadBody = zod.object({
   h2oWeightGr: zod.number().optional(),
+  bestChargeLevelId: zod.number().nullish(),
 });
 
 export const FireLoadResponse = zod.object({
@@ -823,6 +852,7 @@ export const FireLoadResponse = zod.object({
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
+  chargeLadderId: zod.number().nullish(),
   deletedAt: zod.coerce.date().nullish(),
   deletedNote: zod.string().nullish(),
   createdAt: zod.coerce.date(),
@@ -855,8 +885,9 @@ export const CreateChargeLadderBody = zod.object({
   name: zod.string(),
   caliber: zod.string(),
   cartridgeId: zod.number(),
-  bulletId: zod.number(),
-  primerId: zod.number(),
+  bulletId: zod.number().optional(),
+  primerId: zod.number().optional(),
+  cartridgesPerLevel: zod.number().optional(),
   notes: zod.string().optional(),
   levels: zod
     .array(
@@ -1107,6 +1138,7 @@ export const GetDashboardOverviewResponse = zod.object({
       completed: zod.boolean(),
       fired: zod.boolean(),
       notes: zod.string().nullish(),
+      chargeLadderId: zod.number().nullish(),
       deletedAt: zod.coerce.date().nullish(),
       deletedNote: zod.string().nullish(),
       createdAt: zod.coerce.date(),
@@ -1233,6 +1265,7 @@ export const ExportDataResponse = zod.object({
       completed: zod.boolean(),
       fired: zod.boolean(),
       notes: zod.string().nullish(),
+      chargeLadderId: zod.number().nullish(),
       deletedAt: zod.coerce.date().nullish(),
       deletedNote: zod.string().nullish(),
       createdAt: zod.coerce.date(),

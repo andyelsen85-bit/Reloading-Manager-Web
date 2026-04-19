@@ -1,0 +1,38 @@
+Remove Step from the cartridges overview, and add it to the Loads Using this batch.
+Not show completed for Loads using this batch, when they are fired, then show fired.
+
+Step Showing in Loads, is not the step from the load batch, but the global step for the cartridge ID, this is no longer needed, we need the step for the load batch. Otherwise the step is changing for all batches
+
+Load Dev:
+
+Remove the Load Dev feature, and integrate them into the Loads function on step 7.Powder
+Select single Load, or Ladder Load, single load as it is, ladder load add the charge levels as on load dev.
+
+When fired, and if ladder load, ask for the best charge level
+
+For User management add a login page, Admin User is the only one who can add users, or change settings on the settings page. a normal user cannot delete loads or history
+Add a user menu where the users can change their own password or email address, and activate notifications or disable them.
+
+There seems a problem with the mail function, i got this error upon starting the container:
+app-1  | ==> Running database migrations...
+app-1  | Running database migrations...
+app-1  | Migrations complete.
+app-1  | ==> Starting server...
+app-1  | node:internal/modules/package_json_reader:314
+app-1  |   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+app-1  |         ^
+app-1  |
+app-1  | Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nodemailer' imported from /app/dist/index.mjs
+app-1  |     at Object.getPackageJSONURL (node:internal/modules/package_json_reader:314:9)
+app-1  |     at packageResolve (node:internal/modules/esm/resolve:768:81)
+app-1  |     at moduleResolve (node:internal/modules/esm/resolve:855:18)
+app-1  |     at defaultResolve (node:internal/modules/esm/resolve:985:11)
+app-1  |     at #cachedDefaultResolve (node:internal/modules/esm/loader:731:20)
+app-1  |     at ModuleLoader.resolve (node:internal/modules/esm/loader:708:38)
+app-1  |     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:310:38)
+app-1  |     at ModuleJob._link (node:internal/modules/esm/module_job:182:49) {
+app-1  |   code: 'ERR_MODULE_NOT_FOUND'
+app-1  | }
+app-1  |
+app-1  | Node.js v22.22.2
+app-1 exited with code 1 (restarting)

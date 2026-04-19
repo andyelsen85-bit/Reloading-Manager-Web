@@ -2,7 +2,9 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
+import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Cartridges from "@/pages/Cartridges";
 import Bullets from "@/pages/Bullets";
@@ -12,8 +14,7 @@ import Loads from "@/pages/Loads";
 import LoadDetail from "@/pages/LoadDetail";
 import History from "@/pages/History";
 import Settings from "@/pages/Settings";
-import ChargeLadders from "@/pages/ChargeLadders";
-import ChargeLadderDetail from "@/pages/ChargeLadderDetail";
+import Users from "@/pages/Users";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -33,9 +34,8 @@ function Router() {
         <Route path="/primers" component={Primers} />
         <Route path="/loads" component={Loads} />
         <Route path="/loads/:id" component={LoadDetail} />
-        <Route path="/charge-ladders" component={ChargeLadders} />
-        <Route path="/charge-ladders/:id" component={ChargeLadderDetail} />
         <Route path="/history" component={History} />
+        <Route path="/users" component={Users} />
         <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>
@@ -43,12 +43,27 @@ function Router() {
   );
 }
 
+function AuthGate() {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground text-sm">Loading…</div>
+      </div>
+    );
+  }
+  if (!user) return <Login />;
+  return <Router />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
+          <AuthProvider>
+            <AuthGate />
+          </AuthProvider>
         </WouterRouter>
         <Toaster />
       </TooltipProvider>

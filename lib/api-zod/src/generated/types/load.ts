@@ -37,6 +37,7 @@ export interface Load {
   completed: boolean;
   fired: boolean;
   notes?: string | null;
+  chargeLadderId?: number | null;
   deletedAt?: Date | null;
   deletedNote?: string | null;
   createdAt: Date;

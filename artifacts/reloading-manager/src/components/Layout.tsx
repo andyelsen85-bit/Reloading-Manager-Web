@@ -1,38 +1,164 @@
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
-  LayoutDashboard,
-  CircleDot,
-  Crosshair,
-  Flame,
-  Zap,
-  ClipboardList,
-  History,
-  Menu,
-  X,
-  Settings,
-  FlaskConical,
+  LayoutDashboard, CircleDot, Crosshair, Flame, Zap, ClipboardList,
+  History, Menu, X, Settings, LogOut, User, ChevronDown, Bell, BellOff, Users,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useGetSettings } from "@workspace/api-client-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
-const nav = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/cartridges", label: "Cartridges", icon: CircleDot },
-  { href: "/bullets", label: "Bullets", icon: Crosshair },
-  { href: "/powders", label: "Powders", icon: Flame },
-  { href: "/primers", label: "Primers", icon: Zap },
-  { href: "/loads", label: "Loads", icon: ClipboardList },
-  { href: "/charge-ladders", label: "Load Dev", icon: FlaskConical },
-  { href: "/history", label: "History", icon: History },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
+const API = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
+
+function buildNav(isAdmin: boolean) {
+  const items = [
+    { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/cartridges", label: "Cartridges", icon: CircleDot },
+    { href: "/bullets", label: "Bullets", icon: Crosshair },
+    { href: "/powders", label: "Powders", icon: Flame },
+    { href: "/primers", label: "Primers", icon: Zap },
+    { href: "/loads", label: "Loads", icon: ClipboardList },
+    { href: "/history", label: "History", icon: History },
+  ];
+  if (isAdmin) {
+    items.push({ href: "/users", label: "Users", icon: Users });
+    items.push({ href: "/settings", label: "Settings", icon: Settings });
+  }
+  return items;
+}
+
+function UserMenuDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { user, logout, refresh } = useAuth();
+  const { toast } = useToast();
+
+  const [tab, setTab] = useState<"profile" | "password">("profile");
+  const [email, setEmail] = useState(user?.email ?? "");
+  const [notif, setNotif] = useState(user?.notificationsEnabled ?? true);
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${API}/auth/profile`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email || null, notificationsEnabled: notif }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      await refresh();
+      toast({ title: "Profile updated" });
+      onClose();
+    } catch {
+      toast({ title: "Failed to save profile", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!user) return;
+    if (newPw !== confirmPw) { toast({ title: "Passwords don't match", variant: "destructive" }); return; }
+    if (newPw.length < 6) { toast({ title: "Password must be at least 6 characters", variant: "destructive" }); return; }
+    setSaving(true);
+    try {
+      const res = await fetch(`${API}/auth/change-password`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword: newPw }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      toast({ title: "Password changed" });
+      setNewPw(""); setConfirmPw("");
+      onClose();
+    } catch {
+      toast({ title: "Failed to change password", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <User className="w-4 h-4" /> My Account
+          </DialogTitle>
+          <DialogDescription>Manage your profile and password</DialogDescription>
+        </DialogHeader>
+        <div className="flex gap-1 border-b border-border pb-2 mb-3">
+          <button className={cn("px-3 py-1.5 text-sm rounded transition-colors", tab === "profile" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => setTab("profile")}>Profile</button>
+          <button className={cn("px-3 py-1.5 text-sm rounded transition-colors", tab === "password" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")} onClick={() => setTab("password")}>Password</button>
+        </div>
+        {tab === "profile" && (
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Username</Label>
+              <Input value={user?.username ?? ""} disabled className="opacity-60" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input type="email" placeholder="your@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded border border-border bg-muted/20">
+              {notif ? <Bell className="w-4 h-4 text-primary" /> : <BellOff className="w-4 h-4 text-muted-foreground" />}
+              <div className="flex-1">
+                <p className="text-sm font-medium">Email Notifications</p>
+                <p className="text-xs text-muted-foreground">Receive alerts for low stock and completed loads</p>
+              </div>
+              <button
+                onClick={() => setNotif(!notif)}
+                className={cn("w-10 h-5 rounded-full transition-colors relative", notif ? "bg-primary" : "bg-muted")}
+              >
+                <span className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform", notif ? "left-5.5 translate-x-0" : "left-0.5")} style={{ left: notif ? "calc(100% - 18px)" : "2px" }} />
+              </button>
+            </div>
+          </div>
+        )}
+        {tab === "password" && (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>New Password</Label>
+              <Input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="Min. 6 characters" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Confirm New Password</Label>
+              <Input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
+            </div>
+          </div>
+        )}
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => { logout(); onClose(); }} className="gap-1.5 mr-auto text-destructive border-destructive/30 hover:bg-destructive/10">
+            <LogOut className="w-3.5 h-3.5" /> Sign Out
+          </Button>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={tab === "profile" ? handleSaveProfile : handleChangePassword} disabled={saving}>
+            {tab === "profile" ? "Save" : "Change Password"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const { data: settings } = useGetSettings({});
+  const { user } = useAuth();
+
+  const isAdmin = user?.role === "admin";
+  const nav = buildNav(isAdmin);
 
   return (
     <div
@@ -65,14 +191,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             const active = location === href || (href !== "/" && location.startsWith(href));
             return (
               <Link key={href} href={href}>
-                <div
-                  className={cn(
-                    "flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors cursor-pointer",
-                    active
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  )}
-                >
+                <div className={cn(
+                  "flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors cursor-pointer",
+                  active ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
+                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )}>
                   <Icon className="w-4 h-4 shrink-0" />
                   {label}
                 </div>
@@ -80,8 +203,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="p-4 border-t border-sidebar-border">
-          <p className="text-xs text-muted-foreground">v3.0 — Web Edition</p>
+        <div className="p-3 border-t border-sidebar-border">
+          <button
+            onClick={() => setUserMenuOpen(true)}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+          >
+            <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+              <User className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <div className="flex-1 text-left min-w-0">
+              <p className="text-xs font-medium truncate">{user?.username}</p>
+              <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+            </div>
+            <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
+          </button>
         </div>
       </aside>
 
@@ -93,9 +228,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <span className="text-sm font-semibold text-sidebar-foreground">Reloading Manager</span>
         </div>
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="text-sidebar-foreground">
-          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setUserMenuOpen(true)} className="text-sidebar-foreground">
+            <User className="w-5 h-5" />
+          </button>
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="text-sidebar-foreground">
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile nav drawer */}
@@ -110,9 +250,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     onClick={() => setMobileOpen(false)}
                     className={cn(
                       "flex items-center gap-2.5 px-3 py-2.5 rounded text-sm transition-colors cursor-pointer",
-                      active
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent"
+                      active ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
+                               : "text-sidebar-foreground hover:bg-sidebar-accent"
                     )}
                   >
                     <Icon className="w-4 h-4 shrink-0" />
@@ -136,6 +275,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </motion.div>
       </main>
+
+      <UserMenuDialog open={userMenuOpen} onClose={() => setUserMenuOpen(false)} />
     </div>
   );
 }
