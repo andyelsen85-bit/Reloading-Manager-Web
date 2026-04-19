@@ -15,7 +15,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Validation**: Zod (v3 via `"zod"` import), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (ESM bundle)
-- **Session management**: express-session (memory store, 30-day cookie)
+- **Session management**: express-session + connect-pg-simple (PostgreSQL session store, 30-day cookie)
 - **Email**: nodemailer (SMTP)
 - **Auth**: bcryptjs password hashing
 
@@ -38,9 +38,15 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - **History**: Per-cartridge reload summary with deleted loads count
 - **Charge Ladders (Load Dev)**: Multi-powder-charge sessions; record OAL/COAL/group size/velocity per level; select best charge
 - **User Management**: Multi-user system with roles (admin/user), activation toggle, password reset
-- **Email notifications**: SMTP config in Settings → Mail tab; notifications sent on load creation to users with notifications enabled
+- **Email notifications**: SMTP config in Settings → Mail tab; notifications sent on load created/completed/fired; per-user granular prefs (loadCreated, loadCompleted, loadFired, lowStock)
+- **Test email + mail history**: Send test email from Settings → Mail; view last 100 sent emails with status
+- **Backup/Restore**: Full JSON backup download and restore (admin); covers all tables
+- **Admin undo**: Admins can undo any workflow step AND undo the "Completed" and "Fired" statuses on LoadDetail
+- **Searchable combobox dropdowns**: All inventory forms use command+popover searchable dropdowns (RefCombobox.tsx) instead of datalists
+- **Strict step-order enforcement**: Steps blocked until all previous steps are done; skipped steps count as done
+- **Login Enter key**: Login form submits on Enter keypress
 - **Reference Lists**: Pre-populated calibers (46) and manufacturer lists (bullets, powders, primers, cartridges) — editable in Settings → Lists tab
-- **Settings**: Tabbed UI (General / Mail / Users / Lists) — thresholds, load numbering, branding, SMTP, user management, reference data
+- **Settings**: 5-tab UI (General / Mail / Backup / Users / Lists) — thresholds, load numbering, branding, SMTP, test mail, notification prefs, mail history, backup/restore, user management, reference data
 - **JSON export**: Full data export from dashboard
 - **Photo upload**: Loads, Bullets, Cartridges support photo upload (base64 in DB)
 - **Dymo print**: Print Label on LoadDetail generates a Dymo label via browser print
@@ -54,7 +60,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `ChargeLadders.tsx` — load development session list
 - `ChargeLadderDetail.tsx` — charge level management, result recording, best selection
 - `History.tsx` — reload history with deleted loads count column
-- `Settings.tsx` — tabbed: General / Mail / Users / Lists
+- `Settings.tsx` — 5-tab layout: General / Mail (SMTP, test, notification prefs, history) / Backup (download + restore) / Users / Lists
 
 ### API Routes (api-server)
 - `/api/auth/login`, `/api/auth/logout`, `/api/auth/me` — session auth

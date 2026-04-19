@@ -10,6 +10,7 @@ export const usersTable = pgTable("users", {
   role: text("role").notNull().default("user"),
   active: boolean("active").notNull().default(true),
   notificationsEnabled: boolean("notifications_enabled").notNull().default(true),
+  notificationPrefs: text("notification_prefs").default("{}"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

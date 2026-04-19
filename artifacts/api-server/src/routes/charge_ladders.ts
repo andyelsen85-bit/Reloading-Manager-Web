@@ -18,8 +18,9 @@ const CreateLadderBody = z.object({
   name: z.string().min(1),
   caliber: z.string().min(1),
   cartridgeId: z.number().int(),
-  bulletId: z.number().int(),
-  primerId: z.number().int(),
+  bulletId: z.number().int().optional().nullable(),
+  primerId: z.number().int().optional().nullable(),
+  cartridgesPerLevel: z.number().int().optional().default(5),
   notes: z.string().optional(),
   levels: z.array(LevelInput).optional().default([]),
 });
@@ -65,8 +66,9 @@ router.post("/charge-ladders", async (req, res) => {
     name: body.name,
     caliber: body.caliber,
     cartridgeId: body.cartridgeId,
-    bulletId: body.bulletId,
-    primerId: body.primerId,
+    bulletId: body.bulletId ?? null,
+    primerId: body.primerId ?? null,
+    cartridgesPerLevel: body.cartridgesPerLevel ?? 5,
     notes: body.notes ?? null,
   }).returning();
 

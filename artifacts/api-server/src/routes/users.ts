@@ -70,6 +70,7 @@ router.patch("/users/:id", async (req, res) => {
   if (body.role !== undefined) updates.role = body.role;
   if (body.active !== undefined) updates.active = body.active;
   if (body.notificationsEnabled !== undefined) updates.notificationsEnabled = body.notificationsEnabled;
+  if ((body as any).notificationPrefs !== undefined) updates.notificationPrefs = JSON.stringify((body as any).notificationPrefs);
 
   const [row] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning({
     id: usersTable.id,

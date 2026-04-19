@@ -7,3 +7,4 @@ export * from "./settings";
 export * from "./users";
 export * from "./reference_data";
 export * from "./charge_ladders";
+export * from "./email_log";

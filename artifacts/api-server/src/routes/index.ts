@@ -12,6 +12,7 @@ import authRouter from "./auth";
 import usersRouter from "./users";
 import referenceRouter from "./reference";
 import chargeLaddersRouter from "./charge_ladders";
+import backupRouter from "./backup";
 
 const router: IRouter = Router();
 
@@ -33,5 +34,6 @@ router.use(requireAdmin as any);
 
 router.use(usersRouter);
 router.use(settingsRouter);
+router.use(backupRouter);
 
 export default router;

@@ -30,13 +30,17 @@ async function getOrCreateSettings() {
   return rows[0];
 }
 
-async function sendNotification(subject: string, text: string) {
+type NotifEvent = "loadCreated" | "loadCompleted" | "loadFired" | "lowStock";
+
+async function sendNotification(subject: string, text: string, event: NotifEvent) {
   try {
     const settings = await getOrCreateSettings();
     if (!settings.smtpEnabled || !settings.smtpHost || !settings.smtpFrom) return;
 
-    const users = await db.select({ email: usersTable.email }).from(usersTable)
-      .where(eq(usersTable.notificationsEnabled, true));
+    const users = await db.select({
+      email: usersTable.email,
+      notificationPrefs: usersTable.notificationPrefs,
+    }).from(usersTable).where(eq(usersTable.notificationsEnabled, true));
     if (users.length === 0) return;
 
     const transporter = nodemailer.createTransport({
@@ -46,6 +50,11 @@ async function sendNotification(subject: string, text: string) {
     });
 
     for (const user of users) {
+      if (!user.email) continue;
+      let prefs: Record<string, boolean> = {};
+      try { prefs = JSON.parse(user.notificationPrefs ?? "{}"); } catch {}
+      const eventEnabled = event in prefs ? prefs[event] : true;
+      if (!eventEnabled) continue;
       await transporter.sendMail({ from: settings.smtpFrom, to: user.email, subject, text }).catch(() => {});
     }
   } catch {
@@ -94,7 +103,8 @@ router.post("/loads", async (req, res) => {
   // Send notification
   await sendNotification(
     `New Load Created: #${String(loadNumber).padStart(5, "0")} — ${cartridge.caliber}`,
-    `A new load (#${String(loadNumber).padStart(5, "0")}) has been created for ${cartridge.manufacturer} ${cartridge.caliber}, quantity: ${body.cartridgeQuantityUsed}`
+    `A new load (#${String(loadNumber).padStart(5, "0")}) has been created for ${cartridge.manufacturer} ${cartridge.caliber}, quantity: ${body.cartridgeQuantityUsed}`,
+    "loadCreated"
   );
 
   res.status(201).json(row);
@@ -237,6 +247,11 @@ router.post("/loads/:id/complete", async (req, res) => {
   }
 
   const [updated] = await db.update(loadsTable).set({ completed: true }).where(eq(loadsTable.id, id)).returning();
+  await sendNotification(
+    `Load Completed: #${String(load.loadNumber).padStart(5, "0")} — ${load.caliber}`,
+    `Load #${String(load.loadNumber).padStart(5, "0")} (${load.caliber}, ${load.cartridgeQuantityUsed} rounds) has been marked as completed.`,
+    "loadCompleted"
+  );
   res.json(updated);
 });
 
@@ -259,6 +274,50 @@ router.post("/loads/:id/fire", async (req, res) => {
   }
 
   const [updated] = await db.update(loadsTable).set({ fired: true, h2oWeightGr }).where(eq(loadsTable.id, id)).returning();
+  await sendNotification(
+    `Load Fired: #${String(load.loadNumber).padStart(5, "0")} — ${load.caliber}`,
+    `Load #${String(load.loadNumber).padStart(5, "0")} (${load.caliber}, ${load.cartridgeQuantityUsed} rounds) has been marked as fired.${h2oWeightGr ? ` H₂O: ${h2oWeightGr} gr` : ""}`,
+    "loadFired"
+  );
+  res.json(updated);
+});
+
+router.post("/loads/:id/undo-complete", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id || isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  const sessionUser = (req.session as any).userId;
+  if (!sessionUser) return res.status(401).json({ error: "Unauthorized" });
+  const [authUser] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUser));
+  if (!authUser || authUser.role !== "admin") return res.status(403).json({ error: "Admin only" });
+
+  const [load] = await db.select().from(loadsTable).where(eq(loadsTable.id, id));
+  if (!load) return res.status(404).json({ error: "Not found" });
+  if (!load.completed) return res.status(400).json({ error: "Load is not completed" });
+  if (load.fired) return res.status(400).json({ error: "Cannot undo completion after firing" });
+
+  const [updated] = await db.update(loadsTable).set({ completed: false }).where(eq(loadsTable.id, id)).returning();
+  res.json(updated);
+});
+
+router.post("/loads/:id/undo-fire", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id || isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+  const sessionUser = (req.session as any).userId;
+  if (!sessionUser) return res.status(401).json({ error: "Unauthorized" });
+  const [authUser] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUser));
+  if (!authUser || authUser.role !== "admin") return res.status(403).json({ error: "Admin only" });
+
+  const [load] = await db.select().from(loadsTable).where(eq(loadsTable.id, id));
+  if (!load) return res.status(404).json({ error: "Not found" });
+  if (!load.fired) return res.status(400).json({ error: "Load is not marked as fired" });
+
+  const [updated] = await db.update(loadsTable).set({ fired: false, h2oWeightGr: null }).where(eq(loadsTable.id, id)).returning();
+
+  const [cartridge] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, load.cartridgeId));
+  if (cartridge && cartridge.timesFired > 0) {
+    await db.update(cartridgesTable).set({ timesFired: cartridge.timesFired - 1 }).where(eq(cartridgesTable.id, cartridge.id));
+  }
+
   res.json(updated);
 });
 

@@ -1,6 +1,6 @@
 import { useState, useRef, Fragment } from "react";
 import { useListCartridges, useCreateCartridge, useUpdateCartridge, useDeleteCartridge, getListCartridgesQueryKey, useListLoads, getListLoadsQueryKey } from "@workspace/api-client-react";
-import { RefDatalist } from "@/components/RefDatalist";
+import { RefCombobox } from "@/components/RefCombobox";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
@@ -263,7 +263,7 @@ export default function Cartridges() {
       <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit Cartridge Batch</DialogTitle></DialogHeader>
-          <CartridgeFormFields form={form} setForm={setForm} showStep={true} />
+          <CartridgeFormFields form={form} setForm={setForm} showStep={false} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
             <Button onClick={handleEdit} disabled={updateMutation.isPending}>Save</Button>
@@ -305,13 +305,11 @@ function CartridgeFormFields({ form, setForm, showStep }: { form: CartridgeForm;
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label>Manufacturer</Label>
-          <Input list="cart-mfr-list" value={form.manufacturer} onChange={set("manufacturer")} />
-          <RefDatalist id="cart-mfr-list" category="cartridge_manufacturer" />
+          <RefCombobox category="cartridge_manufacturer" value={form.manufacturer} onValueChange={(v) => setForm({ ...form, manufacturer: v })} />
         </div>
         <div className="space-y-1">
           <Label>Caliber</Label>
-          <Input list="caliber-list" value={form.caliber} onChange={set("caliber")} />
-          <RefDatalist id="caliber-list" category="caliber" />
+          <RefCombobox category="caliber" value={form.caliber} onValueChange={(v) => setForm({ ...form, caliber: v })} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -365,7 +363,7 @@ function CartridgeFormFields({ form, setForm, showStep }: { form: CartridgeForm;
           <div className="mt-3 grid gap-3">
             <div className="space-y-1">
               <Label>Primer Type</Label>
-              <Input placeholder="e.g. Large Rifle (LR)" value={form.primerType} onChange={set("primerType")} />
+              <RefCombobox category="primer_type" value={form.primerType} onValueChange={(v) => setForm({ ...form, primerType: v })} placeholder="e.g. Large Rifle (LR)" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1"><Label>Avg Empty Weight (gr)</Label><Input type="number" step="0.1" value={form.avgEmptyWeightGr} onChange={set("avgEmptyWeightGr")} /></div>

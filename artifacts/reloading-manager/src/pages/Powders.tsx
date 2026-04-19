@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useListPowders, useCreatePowder, useUpdatePowder, useDeletePowder, getListPowdersQueryKey } from "@workspace/api-client-react";
-import { RefDatalist } from "@/components/RefDatalist";
+import { RefCombobox } from "@/components/RefCombobox";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2, Search, AlertTriangle } from "lucide-react";
@@ -164,13 +164,15 @@ function PowderFormFields({ form, setForm }: { form: PowderForm; setForm: (f: Po
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label>Manufacturer</Label>
-          <Input list="powder-mfr-list" value={form.manufacturer} onChange={set("manufacturer")} />
-          <RefDatalist id="powder-mfr-list" category="powder_manufacturer" />
+          <RefCombobox category="powder_manufacturer" value={form.manufacturer} onValueChange={(v) => setForm({ ...form, manufacturer: v })} />
         </div>
         <div className="space-y-1"><Label>Name</Label><Input value={form.name} onChange={set("name")} /></div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1"><Label>Type</Label><Input value={form.type} onChange={set("type")} placeholder="e.g. Rifle, Pistol" /></div>
+        <div className="space-y-1">
+          <Label>Type</Label>
+          <RefCombobox category="powder_type" value={form.type} onValueChange={(v) => setForm({ ...form, type: v })} placeholder="e.g. Rifle, Pistol" />
+        </div>
         <div className="space-y-1"><Label>Grains Available</Label><Input type="number" step="0.1" value={form.grainsAvailable} onChange={set("grainsAvailable")} /></div>
       </div>
       <div className="space-y-1"><Label>Notes</Label><Input value={form.notes} onChange={set("notes")} /></div>

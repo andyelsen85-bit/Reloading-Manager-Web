@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useListPrimers, useCreatePrimer, useUpdatePrimer, useDeletePrimer, getListPrimersQueryKey } from "@workspace/api-client-react";
-import { RefDatalist } from "@/components/RefDatalist";
+import { RefCombobox } from "@/components/RefCombobox";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2, Search, AlertTriangle } from "lucide-react";
@@ -163,10 +163,12 @@ function PrimerFormFields({ form, setForm }: { form: PrimerForm; setForm: (f: Pr
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label>Manufacturer</Label>
-          <Input list="primer-mfr-list" value={form.manufacturer} onChange={set("manufacturer")} />
-          <RefDatalist id="primer-mfr-list" category="primer_manufacturer" />
+          <RefCombobox category="primer_manufacturer" value={form.manufacturer} onValueChange={(v) => setForm({ ...form, manufacturer: v })} />
         </div>
-        <div className="space-y-1"><Label>Type</Label><Input value={form.type} onChange={set("type")} placeholder="e.g. Small Rifle, Large Pistol" /></div>
+        <div className="space-y-1">
+          <Label>Type</Label>
+          <RefCombobox category="primer_type" value={form.type} onValueChange={(v) => setForm({ ...form, type: v })} placeholder="e.g. Small Rifle, Large Pistol" />
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1"><Label>Qty Available</Label><Input type="number" value={form.quantityAvailable} onChange={set("quantityAvailable")} /></div>

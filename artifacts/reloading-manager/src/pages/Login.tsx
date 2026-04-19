@@ -73,6 +73,12 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && username && password && !loading) {
+                    e.preventDefault();
+                    handleSubmit(e as unknown as React.FormEvent);
+                  }
+                }}
               />
             </div>
             {error && (

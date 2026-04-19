@@ -1,10 +1,10 @@
 import { useRoute, useLocation } from "wouter";
-import { useGetLoad, getGetLoadQueryKey, useUpdateLoad, useCompleteLoad, useFireLoad, useListPrimers, useListPowders, useListBullets, useListCartridges, getListLoadsQueryKey, getGetDashboardOverviewQueryKey, getListCartridgesQueryKey, useGetChargeLadder, getGetChargeLadderQueryKey, useCreateChargeLadder, useAddChargeLevel, useSelectBestChargeLevel } from "@workspace/api-client-react";
+import { useGetLoad, getGetLoadQueryKey, useUpdateLoad, useCompleteLoad, useFireLoad, useListPrimers, useListPowders, useListBullets, useListCartridges, getListLoadsQueryKey, getGetDashboardOverviewQueryKey, getListCartridgesQueryKey, useGetChargeLadder, getGetChargeLadderQueryKey, useCreateChargeLadder, useAddChargeLevel, useUpdateChargeLevel, useDeleteChargeLevel, useSelectBestChargeLevel } from "@workspace/api-client-react";
 import type { Load } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useState, useRef } from "react";
-import { CheckCircle2, Circle, ChevronLeft, Loader2, SkipForward, Printer, Camera, X, Layers, Plus } from "lucide-react";
+import { CheckCircle2, Circle, ChevronLeft, Loader2, SkipForward, Printer, Camera, X, Layers, Plus, Trash2, Lock, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const WORKFLOW_STEPS = [
   { key: "washing", label: "Washing", num: 1 },
@@ -97,13 +98,15 @@ export default function LoadDetail() {
 
   const [ladderMode, setLadderMode] = useState(false);
   const [ladderCartCount, setLadderCartCount] = useState("5");
-  const [addLevelChargeGr, setAddLevelChargeGr] = useState("");
-  const [addLevelCartridgeCount, setAddLevelCartridgeCount] = useState("5");
-  const [addLevelPowderId, setAddLevelPowderId] = useState("");
 
   const createLadderMutation = useCreateChargeLadder();
   const addLevelMutation = useAddChargeLevel();
+  const updateLevelMutation = useUpdateChargeLevel();
+  const deleteLevelMutation = useDeleteChargeLevel();
   const selectBestMutation = useSelectBestChargeLevel();
+
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const ladderId = load?.chargeLadderId ?? 0;
   const { data: ladderDetail } = useGetChargeLadder(ladderId, {
@@ -128,6 +131,12 @@ export default function LoadDetail() {
   const effectiveLadderMode = !!load.chargeLadderId || ladderMode;
 
   const handleInitLadder = async () => {
+    const rds = Number(ladderCartCount) || 5;
+    const defaultLevels = Array.from({ length: 5 }, (_, i) => ({
+      chargeGr: 0,
+      cartridgeCount: rds,
+      sortOrder: i,
+    }));
     const ladder = await createLadderMutation.mutateAsync({
       data: {
         name: `Load #${load.id} Charge Ladder`,
@@ -135,27 +144,41 @@ export default function LoadDetail() {
         cartridgeId: load.cartridgeId,
         bulletId: load.bulletId ?? undefined,
         primerId: load.primerId ?? undefined,
-        cartridgesPerLevel: Number(ladderCartCount) || 5,
+        cartridgesPerLevel: rds,
+        levels: defaultLevels,
       },
     });
     await updateMutation.mutateAsync({ id, data: { chargeLadderId: ladder.id } });
     invalidate();
-    toast({ title: "Charge ladder initialized" });
+    toast({ title: "Charge ladder initialized with 5 levels" });
   };
 
   const handleAddLevel = async () => {
-    if (!load.chargeLadderId || !addLevelChargeGr) { toast({ title: "Enter charge weight", variant: "destructive" }); return; }
+    if (!load.chargeLadderId) return;
+    const currentCount = ladderDetail?.levels?.length ?? 0;
     await addLevelMutation.mutateAsync({
       id: load.chargeLadderId,
-      data: {
-        chargeGr: Number(addLevelChargeGr),
-        cartridgeCount: Number(addLevelCartridgeCount) || 5,
-        powderId: addLevelPowderId ? Number(addLevelPowderId) : undefined,
-      },
+      data: { chargeGr: 0, cartridgeCount: Number(ladderCartCount) || 5, sortOrder: currentCount },
     });
     qc.invalidateQueries({ queryKey: getGetChargeLadderQueryKey(load.chargeLadderId) });
-    setAddLevelChargeGr(""); setAddLevelCartridgeCount("5"); setAddLevelPowderId("");
-    toast({ title: "Charge level added" });
+    toast({ title: "Level added" });
+  };
+
+  const handleUpdateLevel = async (levelId: number, chargeGr: number, cartridgeCount: number) => {
+    if (!load.chargeLadderId) return;
+    await updateLevelMutation.mutateAsync({
+      id: load.chargeLadderId,
+      levelId,
+      data: { chargeGr, cartridgeCount },
+    });
+    qc.invalidateQueries({ queryKey: getGetChargeLadderQueryKey(load.chargeLadderId) });
+  };
+
+  const handleDeleteLevel = async (levelId: number) => {
+    if (!load.chargeLadderId) return;
+    await deleteLevelMutation.mutateAsync({ id: load.chargeLadderId, levelId });
+    qc.invalidateQueries({ queryKey: getGetChargeLadderQueryKey(load.chargeLadderId) });
+    toast({ title: "Level removed" });
   };
 
   const cart = cartridges.find((c) => c.id === load.cartridgeId);
@@ -174,6 +197,33 @@ export default function LoadDetail() {
     await updateMutation.mutateAsync({ id, data: { skippedSteps: JSON.stringify(skipped) } });
     invalidate();
     toast({ title: "Step unskipped" });
+  };
+
+  const handleUndoStep = async (step: string) => {
+    const undoData: Record<string, unknown> = {};
+    switch (step) {
+      case "washing": undoData.washingMinutes = null; break;
+      case "calibration": undoData.calibrationType = null; break;
+      case "trim": undoData.l6In = null; break;
+      case "annealing": undoData.annealingDone = false; break;
+      case "second_washing": undoData.secondWashingMinutes = null; break;
+      case "priming": undoData.primerId = null; undoData.primerQuantityUsed = null; break;
+      case "powder": undoData.powderId = null; undoData.powderChargeGr = null; break;
+      case "bullet_seating": undoData.bulletId = null; undoData.coalIn = null; undoData.oalIn = null; break;
+    }
+    await updateMutation.mutateAsync({ id, data: undoData as any });
+    invalidate();
+    toast({ title: `Step "${step}" undone` });
+  };
+
+  const isStepBlocked = (step: string): boolean => {
+    const order = ["washing", "calibration", "trim", "annealing", "second_washing", "priming", "powder", "bullet_seating"];
+    const idx = order.indexOf(step);
+    if (idx <= 0) return false;
+    for (let i = 0; i < idx; i++) {
+      if (!isStepDone(load, order[i])) return true;
+    }
+    return false;
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -259,6 +309,20 @@ export default function LoadDetail() {
     await completeMutation.mutateAsync({ id });
     invalidate();
     toast({ title: "Load marked as completed! Inventory deducted." });
+  };
+
+  const handleUndoComplete = async () => {
+    if (!window.confirm("Undo completion? The load will return to In Progress status.")) return;
+    const res = await fetch(`/api/loads/${id}/undo-complete`, { method: "POST", credentials: "include" });
+    if (res.ok) { invalidate(); toast({ title: "Completion undone" }); }
+    else { const d = await res.json(); toast({ title: "Failed", description: d.error, variant: "destructive" }); }
+  };
+
+  const handleUndoFire = async () => {
+    if (!window.confirm("Undo fired status? H₂O weight and fired flag will be cleared.")) return;
+    const res = await fetch(`/api/loads/${id}/undo-fire`, { method: "POST", credentials: "include" });
+    if (res.ok) { invalidate(); toast({ title: "Fired status undone" }); }
+    else { const d = await res.json(); toast({ title: "Failed", description: d.error, variant: "destructive" }); }
   };
 
   const handleFire = async () => {
@@ -449,6 +513,7 @@ export default function LoadDetail() {
             summary={!isStepSkipped(load, "washing") && load.washingMinutes != null ? `${load.washingMinutes} min` : null}
             open={activeStep === "washing"} onToggle={() => setActiveStep(activeStep === "washing" ? null : "washing")}
             onSkip={() => handleSkipStep("washing")} onUnskip={() => handleUnskipStep("washing")}
+            onUndo={isAdmin && isStepDone(load, "washing") && !isStepSkipped(load, "washing") ? () => handleUndoStep("washing") : undefined}
           >
             <div className="space-y-2">
               <Label>Washing Duration (minutes)</Label>
@@ -458,9 +523,11 @@ export default function LoadDetail() {
           </StepCard>
 
           <StepCard label="2. Calibration" done={isStepDone(load, "calibration")} skipped={isStepSkipped(load, "calibration")}
+            blocked={isStepBlocked("calibration")}
             summary={!isStepSkipped(load, "calibration") ? load.calibrationType : null}
             open={activeStep === "calibration"} onToggle={() => setActiveStep(activeStep === "calibration" ? null : "calibration")}
             onSkip={() => handleSkipStep("calibration")} onUnskip={() => handleUnskipStep("calibration")}
+            onUndo={isAdmin && isStepDone(load, "calibration") && !isStepSkipped(load, "calibration") ? () => handleUndoStep("calibration") : undefined}
           >
             <div className="space-y-2">
               <Label>Calibration Type</Label>
@@ -477,9 +544,11 @@ export default function LoadDetail() {
           </StepCard>
 
           <StepCard label="3. Trim" done={isStepDone(load, "trim")} skipped={isStepSkipped(load, "trim")}
+            blocked={isStepBlocked("trim")}
             summary={!isStepSkipped(load, "trim") && load.l6In != null ? `L6: ${load.l6In} in` : null}
             open={activeStep === "trim"} onToggle={() => setActiveStep(activeStep === "trim" ? null : "trim")}
             onSkip={() => handleSkipStep("trim")} onUnskip={() => handleUnskipStep("trim")}
+            onUndo={isAdmin && isStepDone(load, "trim") && !isStepSkipped(load, "trim") ? () => handleUndoStep("trim") : undefined}
           >
             <div className="space-y-2">
               <Label>L6 Measurement (inches)</Label>
@@ -489,6 +558,7 @@ export default function LoadDetail() {
           </StepCard>
 
           <StepCard label="4. Annealing" done={isStepDone(load, "annealing")} skipped={isStepSkipped(load, "annealing")}
+            blocked={isStepBlocked("annealing")}
             summary={!isStepSkipped(load, "annealing") && load.annealingDone ? "Done" : null}
             open={activeStep === "annealing"} onToggle={() => setActiveStep(activeStep === "annealing" ? null : "annealing")}
             onSkip={() => handleSkipStep("annealing")} onUnskip={() => handleUnskipStep("annealing")}
@@ -511,9 +581,11 @@ export default function LoadDetail() {
           </StepCard>
 
           <StepCard label="5. Second Washing" done={isStepDone(load, "second_washing")} skipped={isStepSkipped(load, "second_washing")}
+            blocked={isStepBlocked("second_washing")}
             summary={!isStepSkipped(load, "second_washing") && load.secondWashingMinutes != null ? `${load.secondWashingMinutes} min` : null}
             open={activeStep === "second_washing"} onToggle={() => setActiveStep(activeStep === "second_washing" ? null : "second_washing")}
             onSkip={() => handleSkipStep("second_washing")} onUnskip={() => handleUnskipStep("second_washing")}
+            onUndo={isAdmin && isStepDone(load, "second_washing") && !isStepSkipped(load, "second_washing") ? () => handleUndoStep("second_washing") : undefined}
           >
             <div className="space-y-2">
               <Label>Second Washing Duration (minutes)</Label>
@@ -523,9 +595,11 @@ export default function LoadDetail() {
           </StepCard>
 
           <StepCard label="6. Priming" done={isStepDone(load, "priming")} skipped={isStepSkipped(load, "priming")}
+            blocked={isStepBlocked("priming")}
             summary={!isStepSkipped(load, "priming") && load.primerId != null ? `Primer #${load.primerId} · ${load.primerQuantityUsed} pcs` : null}
             open={activeStep === "priming"} onToggle={() => setActiveStep(activeStep === "priming" ? null : "priming")}
             onSkip={() => handleSkipStep("priming")} onUnskip={() => handleUnskipStep("priming")}
+            onUndo={isAdmin && isStepDone(load, "priming") && !isStepSkipped(load, "priming") ? () => handleUndoStep("priming") : undefined}
           >
             <div className="space-y-2">
               <Label>Select Primer</Label>
@@ -548,6 +622,7 @@ export default function LoadDetail() {
             label="7. Powder"
             done={isStepDone(load, "powder")}
             skipped={isStepSkipped(load, "powder")}
+            blocked={isStepBlocked("powder")}
             summary={!isStepSkipped(load, "powder") && load.chargeLadderId != null
               ? `Charge Ladder #${load.chargeLadderId} · ${ladderDetail?.levels?.length ?? "?"} levels`
               : !isStepSkipped(load, "powder") && load.powderId != null
@@ -557,6 +632,7 @@ export default function LoadDetail() {
             onToggle={() => setActiveStep(activeStep === "powder" ? null : "powder")}
             onSkip={() => handleSkipStep("powder")}
             onUnskip={() => handleUnskipStep("powder")}
+            onUndo={isAdmin && isStepDone(load, "powder") && !isStepSkipped(load, "powder") ? () => handleUndoStep("powder") : undefined}
           >
             <div className="space-y-3">
               {/* Mode Toggle — only show if no ladder linked yet */}
@@ -586,58 +662,43 @@ export default function LoadDetail() {
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Layers className="w-3.5 h-3.5 text-primary" />
                       <span className="font-medium text-foreground">Charge Ladder #{load.chargeLadderId}</span>
-                      {ladderDetail?.ladder && <span>· {ladderDetail.ladder.caliber} · {ladderDetail.ladder.cartridgesPerLevel} rounds/level</span>}
+                      {ladderDetail?.ladder && <span>· {ladderDetail.ladder.caliber}</span>}
                     </div>
 
-                    {/* Charge levels list */}
-                    {(ladderDetail?.levels ?? []).length > 0 ? (
-                      <div className="space-y-1.5">
-                        {(ladderDetail?.levels ?? []).map((lvl, i) => (
-                          <div key={lvl.id} className={cn(
-                            "flex items-center gap-3 p-2.5 rounded border text-sm",
-                            ladderDetail?.ladder?.bestLevelId === lvl.id
-                              ? "border-green-600/50 bg-green-950/20 text-green-300"
-                              : "border-border bg-muted/20"
-                          )}>
-                            <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs font-bold shrink-0">{i + 1}</span>
-                            <span className="font-mono font-semibold">{lvl.chargeGr} gr</span>
-                            <span className="text-muted-foreground text-xs">· {lvl.cartridgeCount} rds</span>
-                            {lvl.powderId && <span className="text-muted-foreground text-xs">· Powder #{lvl.powderId}</span>}
-                            <span className={cn("ml-auto text-xs capitalize", lvl.status === "fired" ? "text-amber-400" : "text-muted-foreground")}>{lvl.status}</span>
-                            {ladderDetail?.ladder?.bestLevelId === lvl.id && <span className="text-xs text-green-400 font-medium">✓ Best</span>}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground italic">No charge levels yet — add the first one below.</p>
-                    )}
-
-                    {/* Add level form */}
-                    <div className="border border-dashed border-border rounded p-3 space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Add Charge Level</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <Label className="text-xs">Charge (gr) *</Label>
-                          <Input type="number" step="0.1" placeholder="e.g. 43.5" value={addLevelChargeGr} onChange={(e) => setAddLevelChargeGr(e.target.value)} className="h-8 text-sm" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Rounds</Label>
-                          <Input type="number" placeholder="5" value={addLevelCartridgeCount} onChange={(e) => setAddLevelCartridgeCount(e.target.value)} className="h-8 text-sm" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Powder</Label>
-                          <Select value={addLevelPowderId} onValueChange={setAddLevelPowderId}>
-                            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Optional" /></SelectTrigger>
-                            <SelectContent>
-                              {powders.map((p) => <SelectItem key={p.id} value={String(p.id)}>#{p.id} — {p.name}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <Button size="sm" onClick={handleAddLevel} disabled={addLevelMutation.isPending} className="gap-1.5">
-                        <Plus className="w-3.5 h-3.5" /> Add Level
-                      </Button>
+                    {/* Editable levels table */}
+                    <div className="rounded border border-border overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="px-2 py-1.5 text-left text-xs text-muted-foreground w-8">#</th>
+                            <th className="px-2 py-1.5 text-left text-xs text-muted-foreground">Charge (gr)</th>
+                            <th className="px-2 py-1.5 text-left text-xs text-muted-foreground">Rounds</th>
+                            <th className="px-2 py-1.5 text-left text-xs text-muted-foreground">Status</th>
+                            <th className="px-2 py-1.5 text-center text-xs text-muted-foreground w-8"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {(ladderDetail?.levels ?? []).map((lvl, i) => (
+                            <LevelEditorRow
+                              key={lvl.id}
+                              index={i}
+                              level={lvl}
+                              isBest={ladderDetail?.ladder?.bestLevelId === lvl.id}
+                              onUpdate={handleUpdateLevel}
+                              onDelete={handleDeleteLevel}
+                              updating={updateLevelMutation.isPending || deleteLevelMutation.isPending}
+                            />
+                          ))}
+                          {(ladderDetail?.levels ?? []).length === 0 && (
+                            <tr><td colSpan={5} className="px-3 py-4 text-center text-xs text-muted-foreground italic">No charge levels yet</td></tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
+
+                    <Button size="sm" variant="outline" onClick={handleAddLevel} disabled={addLevelMutation.isPending} className="gap-1.5">
+                      <Plus className="w-3.5 h-3.5" /> Add Row
+                    </Button>
                   </div>
                 ) : (
                   /* No ladder linked yet — show init form */
@@ -680,9 +741,11 @@ export default function LoadDetail() {
           </StepCard>
 
           <StepCard label="8. Bullet Seating" done={isStepDone(load, "bullet_seating")} skipped={isStepSkipped(load, "bullet_seating")}
+            blocked={isStepBlocked("bullet_seating")}
             summary={!isStepSkipped(load, "bullet_seating") && load.bulletId != null ? `Bullet #${load.bulletId} · COAL ${load.coalIn}" · OAL ${load.oalIn}"` : null}
             open={activeStep === "bullet_seating"} onToggle={() => setActiveStep(activeStep === "bullet_seating" ? null : "bullet_seating")}
             onSkip={() => handleSkipStep("bullet_seating")} onUnskip={() => handleUnskipStep("bullet_seating")}
+            onUndo={isAdmin && isStepDone(load, "bullet_seating") && !isStepSkipped(load, "bullet_seating") ? () => handleUndoStep("bullet_seating") : undefined}
           >
             <div className="space-y-2">
               <Label>Select Bullet</Label>
@@ -731,21 +794,35 @@ export default function LoadDetail() {
                     Mark Complete
                   </Button>
                 ) : (
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <CheckCircle2 className="w-5 h-5 text-green-400" />
                     {!load.fired ? (
-                      <Button
-                        variant="outline"
-                        onClick={() => setFireDialogOpen(true)}
-                        className="gap-2 border-amber-600/50 text-amber-400 hover:bg-amber-950/30"
-                      >
-                        Mark as Fired
-                      </Button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Button
+                          variant="outline"
+                          onClick={() => setFireDialogOpen(true)}
+                          className="gap-2 border-amber-600/50 text-amber-400 hover:bg-amber-950/30"
+                        >
+                          Mark as Fired
+                        </Button>
+                        {isAdmin && (
+                          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-muted-foreground hover:text-destructive" onClick={handleUndoComplete}>
+                            <RotateCcw className="w-3 h-3" /> Undo Complete
+                          </Button>
+                        )}
+                      </div>
                     ) : (
-                      <div className="text-right">
-                        <span className="text-sm text-amber-400 font-semibold block">Fired</span>
-                        {load.h2oWeightGr != null && (
-                          <span className="text-xs text-muted-foreground">H₂O: {load.h2oWeightGr} gr</span>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <div className="text-right">
+                          <span className="text-sm text-amber-400 font-semibold block">Fired</span>
+                          {load.h2oWeightGr != null && (
+                            <span className="text-xs text-muted-foreground">H₂O: {load.h2oWeightGr} gr</span>
+                          )}
+                        </div>
+                        {isAdmin && (
+                          <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-muted-foreground hover:text-destructive" onClick={handleUndoFire}>
+                            <RotateCcw className="w-3 h-3" /> Undo Fired
+                          </Button>
                         )}
                       </div>
                     )}
@@ -837,31 +914,42 @@ function StepCard({
   label,
   done,
   skipped,
+  blocked,
   summary,
   open,
   onToggle,
   onSkip,
   onUnskip,
+  onUndo,
   children,
 }: {
   label: string;
   done: boolean;
   skipped: boolean;
+  blocked?: boolean;
   summary: string | null | undefined;
   open: boolean;
   onToggle: () => void;
   onSkip: () => void;
   onUnskip: () => void;
+  onUndo?: () => void;
   children: React.ReactNode;
 }) {
   return (
     <Card className={cn(
       "border-card-border transition-colors",
+      blocked ? "opacity-60" :
       skipped ? "border-slate-600/30 bg-slate-900/20" : done ? "border-green-700/30" : ""
     )}>
-      <button className="w-full text-left p-4 flex items-center justify-between" onClick={onToggle}>
+      <button
+        className="w-full text-left p-4 flex items-center justify-between"
+        onClick={blocked ? undefined : onToggle}
+        disabled={blocked}
+      >
         <div className="flex items-center gap-3">
-          {skipped ? (
+          {blocked ? (
+            <Lock className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+          ) : skipped ? (
             <SkipForward className="w-4 h-4 text-slate-500 shrink-0" />
           ) : done ? (
             <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
@@ -869,31 +957,41 @@ function StepCard({
             <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
           )}
           <span className={cn("text-sm font-medium",
+            blocked ? "text-muted-foreground/60" :
             skipped ? "text-slate-500 line-through" : done ? "text-green-300" : "text-foreground"
           )}>{label}</span>
-          {skipped && <span className="text-xs text-slate-500">Skipped</span>}
-          {!skipped && summary && <span className="text-xs text-muted-foreground">{summary}</span>}
+          {blocked && <span className="text-xs text-muted-foreground/50">Complete previous step first</span>}
+          {!blocked && skipped && <span className="text-xs text-slate-500">Skipped</span>}
+          {!blocked && !skipped && summary && <span className="text-xs text-muted-foreground">{summary}</span>}
         </div>
         <div className="flex items-center gap-2">
-          {skipped ? (
+          {!blocked && skipped ? (
             <span
               className="text-xs text-slate-400 hover:text-foreground cursor-pointer px-1 py-0.5 rounded hover:bg-muted"
               onClick={(e) => { e.stopPropagation(); onUnskip(); }}
             >
               Undo skip
             </span>
-          ) : !done ? (
+          ) : !blocked && !done ? (
             <span
               className="text-xs text-muted-foreground hover:text-amber-400 cursor-pointer flex items-center gap-0.5 px-1 py-0.5 rounded hover:bg-muted"
               onClick={(e) => { e.stopPropagation(); onSkip(); }}
             >
               <SkipForward className="w-3 h-3" /> Skip
             </span>
+          ) : !blocked && done && onUndo ? (
+            <span
+              className="text-xs text-muted-foreground hover:text-destructive cursor-pointer flex items-center gap-0.5 px-1 py-0.5 rounded hover:bg-muted"
+              onClick={(e) => { e.stopPropagation(); onUndo(); }}
+              title="Admin: undo this step"
+            >
+              <RotateCcw className="w-3 h-3" /> Undo
+            </span>
           ) : null}
-          <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>
+          {!blocked && <span className="text-xs text-muted-foreground">{open ? "▲" : "▼"}</span>}
         </div>
       </button>
-      {open && !skipped && (
+      {open && !skipped && !blocked && (
         <motion.div
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: "auto", opacity: 1 }}
@@ -905,5 +1003,94 @@ function StepCard({
         </motion.div>
       )}
     </Card>
+  );
+}
+
+function LevelEditorRow({
+  index,
+  level,
+  isBest,
+  onUpdate,
+  onDelete,
+  updating,
+}: {
+  index: number;
+  level: { id: number; chargeGr: number; cartridgeCount: number; status: string };
+  isBest: boolean;
+  onUpdate: (id: number, chargeGr: number, cartridgeCount: number) => Promise<void>;
+  onDelete: (id: number) => Promise<void>;
+  updating: boolean;
+}) {
+  const [chargeGr, setChargeGr] = useState(String(level.chargeGr === 0 ? "" : level.chargeGr));
+  const [cartridgeCount, setCartridgeCount] = useState(String(level.cartridgeCount));
+  const [saving, setSaving] = useState(false);
+
+  const handleBlur = async () => {
+    const newCharge = Number(chargeGr) || 0;
+    const newCount = Number(cartridgeCount) || 1;
+    if (newCharge === level.chargeGr && newCount === level.cartridgeCount) return;
+    setSaving(true);
+    try { await onUpdate(level.id, newCharge, newCount); } finally { setSaving(false); }
+  };
+
+  return (
+    <tr className={cn(isBest ? "bg-green-950/20" : "")}>
+      <td className="px-2 py-1">
+        <span className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs font-bold">{index + 1}</span>
+      </td>
+      <td className="px-2 py-1">
+        <div className="flex items-center gap-1">
+          <Input
+            type="number"
+            step="0.1"
+            placeholder="0.0"
+            value={chargeGr}
+            onChange={(e) => setChargeGr(e.target.value)}
+            onBlur={handleBlur}
+            className="h-7 w-20 text-sm font-mono"
+            disabled={saving || updating}
+          />
+          <span className="text-xs text-muted-foreground">gr</span>
+        </div>
+      </td>
+      <td className="px-2 py-1">
+        <div className="flex items-center gap-1">
+          <Input
+            type="number"
+            min="1"
+            placeholder="5"
+            value={cartridgeCount}
+            onChange={(e) => setCartridgeCount(e.target.value)}
+            onBlur={handleBlur}
+            className="h-7 w-16 text-sm"
+            disabled={saving || updating}
+          />
+          <span className="text-xs text-muted-foreground">rds</span>
+        </div>
+      </td>
+      <td className="px-2 py-1">
+        <span className={cn("text-xs capitalize px-1.5 py-0.5 rounded",
+          level.status === "fired" ? "bg-amber-950/40 text-amber-400" :
+          level.status === "planned" ? "bg-muted text-muted-foreground" :
+          "bg-muted text-muted-foreground"
+        )}>
+          {isBest && <span className="text-green-400">✓ </span>}
+          {level.status}
+        </span>
+      </td>
+      <td className="px-1 py-1 text-center">
+        {saving ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground mx-auto" />
+        ) : (
+          <button
+            onClick={() => onDelete(level.id)}
+            disabled={updating}
+            className="text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </td>
+    </tr>
   );
 }

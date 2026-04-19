@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { settingsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { settingsTable, emailLogTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
+import { sendMail } from "../lib/mailer";
 
 const router = Router();
 
@@ -37,6 +38,29 @@ router.patch("/settings", async (req, res) => {
   if (body.smtpEnabled !== undefined) updates.smtpEnabled = body.smtpEnabled;
   const [updated] = await db.update(settingsTable).set(updates).where(eq(settingsTable.id, settings.id)).returning();
   res.json(updated);
+});
+
+router.post("/settings/test-mail", async (req, res) => {
+  const userId = (req.session as any).userId;
+  const { to } = req.body as { to?: string };
+  if (!to) return res.status(400).json({ error: "Missing 'to' address" });
+
+  const result = await sendMail(
+    to,
+    "Reloading Manager — Test Email",
+    `This is a test email sent from Reloading Manager on ${new Date().toLocaleString()}.`
+  );
+
+  if (result.ok) {
+    res.json({ ok: true, message: "Test email sent successfully" });
+  } else {
+    res.status(500).json({ ok: false, error: result.error });
+  }
+});
+
+router.get("/settings/mail-history", async (_req, res) => {
+  const rows = await db.select().from(emailLogTable).orderBy(desc(emailLogTable.sentAt)).limit(100);
+  res.json(rows);
 });
 
 export default router;

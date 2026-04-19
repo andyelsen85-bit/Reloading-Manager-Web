@@ -1,8 +1,8 @@
 import { useState, useRef } from "react";
 import { useGetSettings, useUpdateSettings, getGetSettingsQueryKey, useListUsers, useCreateUser, useUpdateUser, useDeleteUser, useResetUserPassword, getListUsersQueryKey, useListReferenceData, getListReferenceDataQueryKey, useCreateReferenceItem, useDeleteReferenceItem, useUpdateReferenceItem } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Save, Upload, X, Image, Hash, Mail, Users, List, ShieldCheck, Pencil, Trash2, Plus, Eye, EyeOff, ToggleLeft, ToggleRight } from "lucide-react";
+import { Save, Upload, X, Image, Hash, Mail, Users, List, Send, History, Download, HardDriveDownload, RotateCcw, Pencil, Trash2, Plus, Eye, EyeOff, ToggleLeft, ToggleRight, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -285,10 +285,111 @@ export default function Settings() {
   const [background, setBackground] = useState<string | null | undefined>(undefined);
 
   const [smtp, setSmtp] = useState({ host: "", port: "", user: "", pass: "", from: "", enabled: false, loaded: false });
+  const [testMailTo, setTestMailTo] = useState("");
+  const [testMailBusy, setTestMailBusy] = useState(false);
+  const [restoreBusy, setRestoreBusy] = useState(false);
+  const restoreRef = useRef<HTMLInputElement>(null);
+
+  const { data: mailHistory, refetch: refetchHistory } = useQuery<any[]>({
+    queryKey: ["mail-history"],
+    queryFn: async () => {
+      const res = await fetch("/api/settings/mail-history", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch mail history");
+      return res.json();
+    },
+    initialData: [],
+  });
+
+  const defaultPrefs = { loadCreated: true, loadCompleted: true, loadFired: true, lowStock: true };
+  const { data: notifPrefs, refetch: refetchPrefs } = useQuery<typeof defaultPrefs>({
+    queryKey: ["notification-prefs"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/notification-prefs", { credentials: "include" });
+      if (!res.ok) return defaultPrefs;
+      return res.json();
+    },
+    initialData: defaultPrefs,
+  });
+  const [localPrefs, setLocalPrefs] = useState<typeof defaultPrefs | null>(null);
+  const prefs = localPrefs ?? notifPrefs ?? defaultPrefs;
+
+  const handleSavePrefs = async () => {
+    await fetch("/api/auth/notification-prefs", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(prefs),
+    });
+    await refetchPrefs();
+    setLocalPrefs(null);
+    toast({ title: "Notification preferences saved" });
+  };
 
   if (settings && !smtp.loaded) {
     setSmtp({ host: settings.smtpHost ?? "", port: String(settings.smtpPort ?? 587), user: settings.smtpUser ?? "", pass: settings.smtpPass ?? "", from: settings.smtpFrom ?? "", enabled: settings.smtpEnabled ?? false, loaded: true });
   }
+
+  const handleTestMail = async () => {
+    if (!testMailTo) return;
+    setTestMailBusy(true);
+    try {
+      const res = await fetch("/api/settings/test-mail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ to: testMailTo }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: "Test email sent", description: `Email sent to ${testMailTo}` });
+        refetchHistory();
+      } else {
+        toast({ title: "Failed to send", description: data.error, variant: "destructive" });
+      }
+    } finally {
+      setTestMailBusy(false);
+    }
+  };
+
+  const handleDownloadBackup = async () => {
+    const res = await fetch("/api/backup", { credentials: "include" });
+    if (!res.ok) { toast({ title: "Backup failed", variant: "destructive" }); return; }
+    const blob = await res.blob();
+    const filename = `reloading-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Backup downloaded", description: filename });
+  };
+
+  const handleRestoreBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    let data: any;
+    try { data = JSON.parse(text); } catch { toast({ title: "Invalid file", description: "Not a valid JSON backup", variant: "destructive" }); return; }
+    if (!window.confirm("This will REPLACE all your data with the backup. Are you sure?")) return;
+    setRestoreBusy(true);
+    try {
+      const res = await fetch("/api/restore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        toast({ title: "Restore complete", description: "Data has been restored from backup" });
+        qc.invalidateQueries();
+      } else {
+        toast({ title: "Restore failed", description: result.error, variant: "destructive" });
+      }
+    } finally {
+      setRestoreBusy(false);
+      if (restoreRef.current) restoreRef.current.value = "";
+    }
+  };
 
   const current = {
     bulletThreshold: bulletThreshold !== "" ? Number(bulletThreshold) : settings?.bulletLowStockThreshold ?? 100,
@@ -322,9 +423,10 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="general">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="general" className="gap-1.5 text-xs"><Hash className="w-3.5 h-3.5" /> General</TabsTrigger>
           <TabsTrigger value="mail" className="gap-1.5 text-xs"><Mail className="w-3.5 h-3.5" /> Mail</TabsTrigger>
+          <TabsTrigger value="backup" className="gap-1.5 text-xs"><HardDriveDownload className="w-3.5 h-3.5" /> Backup</TabsTrigger>
           <TabsTrigger value="users" className="gap-1.5 text-xs"><Users className="w-3.5 h-3.5" /> Users</TabsTrigger>
           <TabsTrigger value="lists" className="gap-1.5 text-xs"><List className="w-3.5 h-3.5" /> Lists</TabsTrigger>
         </TabsList>
@@ -395,6 +497,110 @@ export default function Settings() {
           <div className="flex justify-end">
             <Button onClick={handleSaveSmtp} disabled={updateMutation.isPending} className="gap-2"><Save className="w-4 h-4" /> Save Mail Settings</Button>
           </div>
+
+          <Card className="border-card-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2"><Send className="w-4 h-4" /> Test Email</CardTitle>
+              <p className="text-xs text-muted-foreground">Send a test message to verify your SMTP settings are working</p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <Input type="email" placeholder="test@example.com" value={testMailTo} onChange={(e) => setTestMailTo(e.target.value)} className="flex-1" />
+                <Button onClick={handleTestMail} disabled={testMailBusy || !testMailTo} className="gap-2 shrink-0">
+                  <Send className="w-4 h-4" />{testMailBusy ? "Sending…" : "Send Test"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-card-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2"><BadgeCheck className="w-4 h-4" /> My Notification Preferences</CardTitle>
+              <p className="text-xs text-muted-foreground">Choose which events send you an email (requires email to be set on your account)</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(["loadCreated", "loadCompleted", "loadFired", "lowStock"] as const).map((key) => (
+                <div key={key} className="flex items-center gap-2">
+                  <Switch
+                    checked={prefs[key]}
+                    onCheckedChange={(c) => setLocalPrefs({ ...prefs, [key]: c })}
+                  />
+                  <Label className="text-sm font-normal">
+                    {key === "loadCreated" ? "New load created" :
+                     key === "loadCompleted" ? "Load completed (inventory deducted)" :
+                     key === "loadFired" ? "Load marked as fired" :
+                     "Low inventory alerts"}
+                  </Label>
+                </div>
+              ))}
+              <div className="flex justify-end pt-1">
+                <Button size="sm" onClick={handleSavePrefs} className="gap-2 h-8 text-xs">
+                  <Save className="w-3.5 h-3.5" /> Save Preferences
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-card-border">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-semibold flex items-center gap-2"><History className="w-4 h-4" /> Mail History</CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">Last 100 emails sent by the system</p>
+              </div>
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => refetchHistory()}>
+                <Download className="w-3 h-3" /> Refresh
+              </Button>
+            </CardHeader>
+            <CardContent className="p-0">
+              {(!mailHistory || mailHistory.length === 0) ? (
+                <p className="text-xs text-muted-foreground px-6 pb-4">No emails sent yet.</p>
+              ) : (
+                <div className="divide-y divide-border max-h-64 overflow-y-auto">
+                  {mailHistory.map((row: any) => (
+                    <div key={row.id} className="px-6 py-2.5 flex items-start gap-3">
+                      <span className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${row.status === "sent" ? "bg-green-500" : "bg-destructive"}`} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-medium truncate">{row.subject}</span>
+                          <span className="text-xs text-muted-foreground">→ {row.toAddress}</span>
+                        </div>
+                        {row.error && <p className="text-xs text-destructive mt-0.5">{row.error}</p>}
+                        <p className="text-xs text-muted-foreground">{new Date(row.sentAt).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Backup Tab */}
+        <TabsContent value="backup" className="space-y-4 mt-4">
+          <Card className="border-card-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2"><Download className="w-4 h-4" /> Download Backup</CardTitle>
+              <p className="text-xs text-muted-foreground">Download a full JSON backup of all your data — cartridges, bullets, powders, primers, loads, settings, and charge ladders</p>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={handleDownloadBackup} className="gap-2">
+                <HardDriveDownload className="w-4 h-4" /> Download Backup
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border-card-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2"><RotateCcw className="w-4 h-4" /> Restore from Backup</CardTitle>
+              <p className="text-xs text-muted-foreground text-amber-500 font-medium">Warning: this will replace all existing data with the backup. This cannot be undone.</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <input ref={restoreRef} type="file" accept=".json" className="hidden" onChange={handleRestoreBackup} />
+              <Button variant="outline" onClick={() => restoreRef.current?.click()} disabled={restoreBusy} className="gap-2 border-destructive/50 text-destructive hover:bg-destructive/10">
+                <Upload className="w-4 h-4" />{restoreBusy ? "Restoring…" : "Choose Backup File"}
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Users Tab */}

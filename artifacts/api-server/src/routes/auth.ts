@@ -63,6 +63,32 @@ router.patch("/auth/profile", requireAuth as any, async (req, res) => {
   res.json({ id: user.id, username: user.username, email: user.email, role: user.role, notificationsEnabled: user.notificationsEnabled });
 });
 
+router.get("/auth/notification-prefs", requireAuth as any, async (req, res) => {
+  const userId = (req.session as any).userId;
+  const [user] = await db.select({ notificationPrefs: usersTable.notificationPrefs }).from(usersTable).where(eq(usersTable.id, userId));
+  if (!user) return res.status(404).json({ error: "Not found" });
+  let prefs = { loadCreated: true, loadCompleted: true, loadFired: true, lowStock: true };
+  try { const saved = JSON.parse(user.notificationPrefs ?? "{}"); prefs = { ...prefs, ...saved }; } catch {}
+  res.json(prefs);
+});
+
+router.patch("/auth/notification-prefs", requireAuth as any, async (req, res) => {
+  const userId = (req.session as any).userId;
+  const body = req.body as Record<string, boolean>;
+  const allowed = ["loadCreated", "loadCompleted", "loadFired", "lowStock"];
+  const prefs: Record<string, boolean> = {};
+  for (const key of allowed) {
+    if (typeof body[key] === "boolean") prefs[key] = body[key];
+  }
+  const [existing] = await db.select({ notificationPrefs: usersTable.notificationPrefs }).from(usersTable).where(eq(usersTable.id, userId));
+  let current: Record<string, boolean> = {};
+  try { current = JSON.parse(existing?.notificationPrefs ?? "{}"); } catch {}
+  const merged = { ...current, ...prefs };
+  const [user] = await db.update(usersTable).set({ notificationPrefs: JSON.stringify(merged) }).where(eq(usersTable.id, userId)).returning();
+  if (!user) return res.status(404).json({ error: "Not found" });
+  res.json(merged);
+});
+
 router.post("/auth/change-password", requireAuth as any, async (req, res) => {
   const userId = (req.session as any).userId;
   const body = ChangePasswordBody.parse(req.body);
