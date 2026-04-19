@@ -76,21 +76,25 @@ router.post("/loads", async (req, res) => {
   const [cartridge] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, body.cartridgeId));
   if (!cartridge) return res.status(404).json({ error: "Cartridge not found" });
 
-  let loadNumber: number;
+  let loadNumber = 0;
+  let reloadingCycle = 1;
+
   if (body.parentLoadId != null) {
+    // New cycle: inherit the parent's loadNumber (no counter change)
     const [parentLoad] = await db.select({ loadNumber: loadsTable.loadNumber }).from(loadsTable).where(eq(loadsTable.id, body.parentLoadId));
     if (!parentLoad) return res.status(404).json({ error: "Parent load not found" });
     loadNumber = parentLoad.loadNumber ?? body.parentLoadId;
-  } else {
-    const settings = await getOrCreateSettings();
-    loadNumber = settings.nextLoadNumber;
-    await db.update(settingsTable).set({ nextLoadNumber: loadNumber + 1 }).where(eq(settingsTable.id, settings.id));
-  }
-
-  let reloadingCycle = 1;
-  if (body.parentLoadId != null) {
+    // Cycle = highest existing cycle for this batch + 1
     const [{ maxCycle }] = await db.select({ maxCycle: max(loadsTable.reloadingCycle) }).from(loadsTable).where(eq(loadsTable.loadNumber, loadNumber));
     reloadingCycle = (maxCycle ?? 0) + 1;
+  } else {
+    // New load: claim the next number atomically to prevent concurrent duplicates
+    await db.transaction(async (tx) => {
+      const [settings] = await tx.select().from(settingsTable);
+      if (!settings) throw new Error("Settings not found");
+      loadNumber = settings.nextLoadNumber;
+      await tx.update(settingsTable).set({ nextLoadNumber: loadNumber + 1 }).where(eq(settingsTable.id, settings.id));
+    });
   }
 
   const today = new Date().toISOString().split("T")[0];
@@ -107,11 +111,14 @@ router.post("/loads", async (req, res) => {
     fired: false,
   }).returning();
 
-  // Adjust cartridge quantityLoaded immediately on load creation
-  await db.update(cartridgesTable).set({
-    quantityLoaded: cartridge.quantityLoaded + body.cartridgeQuantityUsed,
-    currentStep: "Washing",
-  }).where(eq(cartridgesTable.id, cartridge.id));
+  // Only adjust cartridge quantityLoaded for brand-new loads, not new cycles
+  // (new cycles reuse the same brass — no additional inventory consumed)
+  if (body.parentLoadId == null) {
+    await db.update(cartridgesTable).set({
+      quantityLoaded: cartridge.quantityLoaded + body.cartridgeQuantityUsed,
+      currentStep: "Washing",
+    }).where(eq(cartridgesTable.id, cartridge.id));
+  }
 
   // Send notification
   await sendNotification(

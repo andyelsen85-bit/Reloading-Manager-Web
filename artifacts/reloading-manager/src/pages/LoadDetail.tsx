@@ -4,7 +4,7 @@ import type { Load } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useState, useRef } from "react";
-import { CheckCircle2, Circle, ChevronLeft, Loader2, SkipForward, Printer, Camera, X, Layers, Plus, Trash2, Lock, RotateCcw } from "lucide-react";
+import { CheckCircle2, Circle, ChevronLeft, Loader2, SkipForward, Camera, X, Layers, Plus, Trash2, Lock, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -595,9 +595,6 @@ export default function LoadDetail() {
             </h1>
             <p className="text-sm text-muted-foreground">{load.caliber} · {load.cartridgeQuantityUsed} rounds · Cycle {load.reloadingCycle} · {load.date}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5 shrink-0">
-            <Printer className="w-4 h-4" /> Print
-          </Button>
         </div>
 
         {/* Summary */}
