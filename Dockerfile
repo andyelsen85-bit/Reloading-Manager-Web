@@ -1,7 +1,7 @@
 ################################
 # Stage 1 – Install all dependencies
 ################################
-FROM node:22-alpine AS deps
+FROM node:22-slim AS deps
 
 RUN npm install -g pnpm@10
 
@@ -49,8 +49,11 @@ RUN node docker/build-migrate.mjs
 
 ################################
 # Stage 4 – Production image
+# Use slim (Debian/glibc) to match the lockfile platform — do NOT use alpine
+# (musl) because the pnpm lockfile was generated on a glibc system and the
+# native rollup/esbuild binaries are glibc-only.
 ################################
-FROM node:22-alpine AS production
+FROM node:22-slim AS production
 
 WORKDIR /app
 
