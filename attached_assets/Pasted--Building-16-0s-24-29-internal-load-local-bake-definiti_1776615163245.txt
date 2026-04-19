@@ -1,0 +1,79 @@
+[+] Building 16.0s (24/29)
+ => [internal] load local bake definitions                                                                                        0.0s
+ => => reading from stdin 496B                                                                                                    0.0s
+ => [internal] load build definition from Dockerfile                                                                              0.0s
+ => => transferring dockerfile: 2.65kB                                                                                            0.0s
+ => [internal] load metadata for docker.io/library/node:22-slim                                                                   0.6s
+ => [internal] load .dockerignore                                                                                                 0.0s
+ => => transferring context: 190B                                                                                                 0.0s
+ => [internal] load build context                                                                                                 0.0s
+ => => transferring context: 11.44kB                                                                                              0.0s
+ => CACHED [deps  1/11] FROM docker.io/library/node:22-slim@sha256:f3a68cf41a855d227d1b0ab832bed9749469ef38cf4f58182fb8c893bc462  0.0s
+ => => resolve docker.io/library/node:22-slim@sha256:f3a68cf41a855d227d1b0ab832bed9749469ef38cf4f58182fb8c893bc462383             0.0s
+ => CACHED [production 2/7] WORKDIR /app                                                                                          0.0s
+ => [deps  2/11] RUN npm install -g pnpm@10                                                                                       2.3s
+ => [deps  3/11] WORKDIR /workspace                                                                                               0.1s
+ => [deps  4/11] COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./                                                          0.1s
+ => [deps  5/11] COPY lib/api-spec/package.json         ./lib/api-spec/                                                           0.1s
+ => [deps  6/11] COPY lib/api-client-react/package.json ./lib/api-client-react/                                                   0.1s
+ => [deps  7/11] COPY lib/api-zod/package.json          ./lib/api-zod/                                                            0.1s
+ => [deps  8/11] COPY lib/db/package.json               ./lib/db/                                                                 0.1s
+ => [deps  9/11] COPY artifacts/api-server/package.json         ./artifacts/api-server/                                           0.1s
+ => [deps 10/11] COPY artifacts/reloading-manager/package.json  ./artifacts/reloading-manager/                                    0.1s
+ => [deps 11/11] RUN pnpm install --frozen-lockfile                                                                               9.7s
+ => [build-frontend 1/3] COPY lib/ ./lib/                                                                                         0.8s
+ => [build-frontend 2/3] COPY artifacts/reloading-manager/ ./artifacts/reloading-manager/                                         0.1s
+ => [build-api 2/5] COPY artifacts/api-server/ ./artifacts/api-server/                                                            0.1s
+ => [build-api 3/5] COPY docker/build-migrate.mjs ./docker/build-migrate.mjs                                                      0.1s
+ => ERROR [build-frontend 3/3] RUN pnpm --filter @workspace/reloading-manager run build                                           1.6s
+ => [build-api 4/5] RUN pnpm --filter @workspace/api-server run build                                                             1.3s
+ => CANCELED [build-api 5/5] RUN node docker/build-migrate.mjs                                                                    0.3s
+------
+ > [build-frontend 3/3] RUN pnpm --filter @workspace/reloading-manager run build:
+0.716
+0.716 > @workspace/reloading-manager@0.0.0 build /workspace/artifacts/reloading-manager
+0.716 > vite build --config vite.config.ts
+0.716
+0.985 ▲ [WARNING] Cannot find base config file "../../tsconfig.base.json" [tsconfig.json]
+0.985
+0.985     tsconfig.json:2:13:
+0.985       2 │   "extends": "../../tsconfig.base.json",
+0.985         ╵              ~~~~~~~~~~~~~~~~~~~~~~~~~~
+0.985
+1.258 vite v7.3.1 building client environment for production...
+1.423 ✓ 0 modules transformed.
+1.430 ✗ Build failed in 102ms
+1.430 error during build:
+1.430 [vite:build-html] failed to resolve "extends":"../../tsconfig.base.json" in /workspace/artifacts/reloading-manager/tsconfig.json
+1.430 file: /workspace/artifacts/reloading-manager/index.html
+1.430     at resolveExtends (file:///workspace/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:5809:8)
+1.430     at parseExtends (file:///workspace/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:5775:71)
+1.430     at parse$13 (file:///workspace/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:5677:23)
+1.430     at async loadTsconfigJsonForFile (file:///workspace/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:6286:37)
+1.430     at async transformWithEsbuild (file:///workspace/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:6086:55)
+1.430     at async Object.transform (file:///workspace/node_modules/.pnpm/vite@7.3.1_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:6172:20)
+1.430     at async transform (file:///workspace/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/node-entry.js:21269:16)
+1.430     at async ModuleLoader.addModuleSource (file:///workspace/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/es/shared/node-entry.js:21497:36)
+1.486 /workspace/artifacts/reloading-manager:
+1.486  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/reloading-manager@0.0.0 build: `vite build --config vite.config.ts`
+1.486 Exit status 1
+------
+[+] build 0/1
+ ⠙ Image reloading-app Building                                                                                                   16.0s
+Dockerfile:33
+
+--------------------
+
+  31 |     ENV BASE_PATH=/ PORT=3000 NODE_ENV=production
+
+  32 |
+
+  33 | >>> RUN pnpm --filter @workspace/reloading-manager run build
+
+  34 |
+
+  35 |     ################################
+
+--------------------
+
+failed to solve: process "/bin/sh -c pnpm --filter @workspace/reloading-manager run build" did not complete successfully: exit code: 1
