@@ -138,7 +138,15 @@ router.patch("/loads/:id", async (req, res) => {
   if (body.annealingMinutes !== undefined) updates.annealingMinutes = body.annealingMinutes;
   if (body.annealingDone !== undefined) updates.annealingDone = body.annealingDone;
   if (body.secondWashingMinutes !== undefined) updates.secondWashingMinutes = body.secondWashingMinutes;
+  if (body.secondWashingDate !== undefined) updates.secondWashingDate = body.secondWashingDate;
   if (body.calibrationType !== undefined) updates.calibrationType = body.calibrationType;
+  if (body.calibrationDate !== undefined) updates.calibrationDate = body.calibrationDate;
+  if (body.trimDate !== undefined) updates.trimDate = body.trimDate;
+  if (body.washingDate !== undefined) updates.washingDate = body.washingDate;
+  if (body.annealingDate !== undefined) updates.annealingDate = body.annealingDate;
+  if (body.primingDate !== undefined) updates.primingDate = body.primingDate;
+  if (body.powderDate !== undefined) updates.powderDate = body.powderDate;
+  if (body.bulletSeatingDate !== undefined) updates.bulletSeatingDate = body.bulletSeatingDate;
   if (body.skippedSteps !== undefined) updates.skippedSteps = body.skippedSteps;
   if (body.photoBase64 !== undefined) updates.photoBase64 = body.photoBase64;
   if (body.notes !== undefined) updates.notes = body.notes;
@@ -264,6 +272,7 @@ router.post("/loads/:id/fire", async (req, res) => {
 
   const bodyResult = FireLoadBody.safeParse(req.body);
   const h2oWeightGr = bodyResult.success ? (bodyResult.data.h2oWeightGr ?? null) : null;
+  const firedDate = bodyResult.success ? (bodyResult.data.firedDate ?? new Date().toISOString().split("T")[0]) : new Date().toISOString().split("T")[0];
 
   const [cartridge] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, load.cartridgeId));
   if (cartridge) {
@@ -273,7 +282,7 @@ router.post("/loads/:id/fire", async (req, res) => {
     }).where(eq(cartridgesTable.id, cartridge.id));
   }
 
-  const [updated] = await db.update(loadsTable).set({ fired: true, h2oWeightGr }).where(eq(loadsTable.id, id)).returning();
+  const [updated] = await db.update(loadsTable).set({ fired: true, h2oWeightGr, firedDate }).where(eq(loadsTable.id, id)).returning();
   await sendNotification(
     `Load Fired: #${String(load.loadNumber).padStart(5, "0")} — ${load.caliber}`,
     `Load #${String(load.loadNumber).padStart(5, "0")} (${load.caliber}, ${load.cartridgeQuantityUsed} rounds) has been marked as fired.${h2oWeightGr ? ` H₂O: ${h2oWeightGr} gr` : ""}`,

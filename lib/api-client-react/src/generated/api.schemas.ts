@@ -286,15 +286,24 @@ export interface Load {
   oalIn?: number | null;
   l6In?: number | null;
   washingMinutes?: number | null;
+  washingDate?: string | null;
   annealingMinutes?: number | null;
   annealingDone: boolean;
+  annealingDate?: string | null;
   secondWashingMinutes?: number | null;
+  secondWashingDate?: string | null;
   calibrationType?: string | null;
+  calibrationDate?: string | null;
+  trimDate?: string | null;
   skippedSteps?: string | null;
   h2oWeightGr?: number | null;
   photoBase64?: string | null;
+  primingDate?: string | null;
+  powderDate?: string | null;
+  bulletSeatingDate?: string | null;
   completed: boolean;
   fired: boolean;
+  firedDate?: string | null;
   notes?: string | null;
   chargeLadderId?: number | null;
   deletedAt?: string | null;
@@ -319,12 +328,20 @@ export interface UpdateLoadBody {
   oalIn?: number;
   l6In?: number;
   washingMinutes?: number;
+  washingDate?: string | null;
   annealingMinutes?: number;
   annealingDone?: boolean;
+  annealingDate?: string | null;
   secondWashingMinutes?: number;
+  secondWashingDate?: string | null;
   calibrationType?: string;
+  calibrationDate?: string | null;
+  trimDate?: string | null;
   skippedSteps?: string;
   photoBase64?: string | null;
+  primingDate?: string | null;
+  powderDate?: string | null;
+  bulletSeatingDate?: string | null;
   notes?: string;
   chargeLadderId?: number | null;
 }
@@ -342,6 +359,7 @@ export interface DeleteLoadBody {
 
 export interface FireLoadBody {
   h2oWeightGr?: number;
+  firedDate?: string | null;
   bestChargeLevelId?: number | null;
 }
 

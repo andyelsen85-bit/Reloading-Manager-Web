@@ -146,8 +146,8 @@ export default function Dashboard() {
                       key={l.id}
                       className={cn(
                         "border-b border-border/50 transition-colors cursor-pointer",
-                        l.completed ? "bg-green-950/10 hover:bg-green-950/20" :
                         l.fired ? "bg-amber-950/10 hover:bg-amber-950/20" :
+                        l.completed ? "bg-green-950/10 hover:bg-green-950/20" :
                         "hover:bg-muted/20",
                         i === (overview!.recentLoads.length - 1) && "border-0"
                       )}
@@ -159,11 +159,11 @@ export default function Dashboard() {
                       <td className="px-4 py-2.5 text-muted-foreground">{l.date}</td>
                       <td className="px-4 py-2.5">
                         <span className={cn("text-xs font-medium",
-                          l.completed ? "text-green-400" :
                           l.fired ? "text-amber-400" :
+                          l.completed ? "text-green-400" :
                           "text-muted-foreground"
                         )}>
-                          {l.completed ? "Completed" : l.fired ? "Fired" : "Active"}
+                          {l.fired ? "Fired" : l.completed ? "Completed" : "Active"}
                         </span>
                       </td>
                       <td className="px-4 py-2.5 text-right">

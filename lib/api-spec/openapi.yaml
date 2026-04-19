@@ -1574,15 +1574,30 @@ components:
         washingMinutes:
           type: integer
           nullable: true
+        washingDate:
+          type: string
+          nullable: true
         annealingMinutes:
           type: integer
           nullable: true
         annealingDone:
           type: boolean
+        annealingDate:
+          type: string
+          nullable: true
         secondWashingMinutes:
           type: integer
           nullable: true
+        secondWashingDate:
+          type: string
+          nullable: true
         calibrationType:
+          type: string
+          nullable: true
+        calibrationDate:
+          type: string
+          nullable: true
+        trimDate:
           type: string
           nullable: true
         skippedSteps:
@@ -1594,10 +1609,22 @@ components:
         photoBase64:
           type: string
           nullable: true
+        primingDate:
+          type: string
+          nullable: true
+        powderDate:
+          type: string
+          nullable: true
+        bulletSeatingDate:
+          type: string
+          nullable: true
         completed:
           type: boolean
         fired:
           type: boolean
+        firedDate:
+          type: string
+          nullable: true
         notes:
           type: string
           nullable: true
@@ -1650,17 +1677,41 @@ components:
           type: number
         washingMinutes:
           type: integer
+        washingDate:
+          type: string
+          nullable: true
         annealingMinutes:
           type: integer
         annealingDone:
           type: boolean
+        annealingDate:
+          type: string
+          nullable: true
         secondWashingMinutes:
           type: integer
+        secondWashingDate:
+          type: string
+          nullable: true
         calibrationType:
           type: string
+        calibrationDate:
+          type: string
+          nullable: true
+        trimDate:
+          type: string
+          nullable: true
         skippedSteps:
           type: string
         photoBase64:
+          type: string
+          nullable: true
+        primingDate:
+          type: string
+          nullable: true
+        powderDate:
+          type: string
+          nullable: true
+        bulletSeatingDate:
           type: string
           nullable: true
         notes:
@@ -1690,6 +1741,9 @@ components:
       properties:
         h2oWeightGr:
           type: number
+        firedDate:
+          type: string
+          nullable: true
         bestChargeLevelId:
           type: integer
           nullable: true

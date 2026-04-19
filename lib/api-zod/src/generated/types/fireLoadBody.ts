@@ -8,5 +8,6 @@
 
 export interface FireLoadBody {
   h2oWeightGr?: number;
+  firedDate?: string | null;
   bestChargeLevelId?: number | null;
 }

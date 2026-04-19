@@ -81,20 +81,30 @@ export default function LoadDetail() {
   const [activeStep, setActiveStep] = useState<string | null>(null);
 
   const [washingMinutes, setWashingMinutes] = useState("");
+  const [washingDate, setWashingDate] = useState("");
   const [calibrationType, setCalibrationType] = useState("");
+  const [calibrationDate, setCalibrationDate] = useState("");
   const [l6In, setL6In] = useState("");
+  const [trimDate, setTrimDate] = useState("");
   const [_annealingMinutes, _setAnnealingMinutes] = useState("");
+  const [annealingDate, setAnnealingDate] = useState("");
   const [secondWashingMinutes, setSecondWashingMinutes] = useState("");
+  const [secondWashingDate, setSecondWashingDate] = useState("");
   const [primerId, setPrimerId] = useState("");
+  const [primingDate, setPrimingDate] = useState("");
   const [powderId, setPowderId] = useState("");
   const [powderChargeGr, setPowderChargeGr] = useState("");
+  const [powderDate, setPowderDate] = useState("");
   const [bulletId, setBulletId] = useState("");
   const [coalIn, setCoalIn] = useState("");
   const [oalIn, setOalIn] = useState("");
+  const [bulletSeatingDate, setBulletSeatingDate] = useState("");
 
   const [fireDialogOpen, setFireDialogOpen] = useState(false);
   const [h2oWeightGr, setH2oWeightGr] = useState("");
+  const [firedDate, setFiredDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [selectedBestLevelId, setSelectedBestLevelId] = useState("");
+  const [startingNewCycle, setStartingNewCycle] = useState(false);
 
   const [ladderMode, setLadderMode] = useState(false);
   const [ladderCartCount, setLadderCartCount] = useState("5");
@@ -246,63 +256,85 @@ export default function LoadDetail() {
 
   const handleSaveWashing = async () => {
     if (!washingMinutes) { toast({ title: "Enter washing minutes", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { washingMinutes: Number(washingMinutes) } });
+    await updateMutation.mutateAsync({ id, data: { washingMinutes: Number(washingMinutes), washingDate: washingDate || new Date().toISOString().split("T")[0] } });
     invalidate(); setActiveStep(null);
     toast({ title: "Washing recorded" });
   };
 
   const handleSaveCalibration = async () => {
     if (!calibrationType) { toast({ title: "Select calibration type", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { calibrationType } });
+    await updateMutation.mutateAsync({ id, data: { calibrationType, calibrationDate: calibrationDate || new Date().toISOString().split("T")[0] } });
     invalidate(); setActiveStep(null);
     toast({ title: "Calibration recorded" });
   };
 
   const handleSaveTrim = async () => {
     if (!l6In) { toast({ title: "Enter L6 measurement", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { l6In: Number(l6In) } });
+    await updateMutation.mutateAsync({ id, data: { l6In: Number(l6In), trimDate: trimDate || new Date().toISOString().split("T")[0] } });
     invalidate(); setActiveStep(null);
     toast({ title: "Trim recorded" });
   };
 
   const handleMarkAnnealingDone = async () => {
-    await updateMutation.mutateAsync({ id, data: { annealingDone: true } });
+    await updateMutation.mutateAsync({ id, data: { annealingDone: true, annealingDate: annealingDate || new Date().toISOString().split("T")[0] } });
     invalidate(); setActiveStep(null);
     toast({ title: "Annealing marked done" });
   };
 
   const handleMarkAnnealingUndone = async () => {
-    await updateMutation.mutateAsync({ id, data: { annealingDone: false } });
+    await updateMutation.mutateAsync({ id, data: { annealingDone: false, annealingDate: null } });
     invalidate();
     toast({ title: "Annealing unmarked" });
   };
 
   const handleSaveSecondWashing = async () => {
     if (!secondWashingMinutes) { toast({ title: "Enter minutes", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { secondWashingMinutes: Number(secondWashingMinutes) } });
+    await updateMutation.mutateAsync({ id, data: { secondWashingMinutes: Number(secondWashingMinutes), secondWashingDate: secondWashingDate || new Date().toISOString().split("T")[0] } });
     invalidate(); setActiveStep(null);
     toast({ title: "Second washing recorded" });
   };
 
   const handleSavePriming = async () => {
     if (!primerId) { toast({ title: "Select a primer", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { primerId: Number(primerId), primerQuantityUsed: load.cartridgeQuantityUsed } });
+    await updateMutation.mutateAsync({ id, data: { primerId: Number(primerId), primerQuantityUsed: load.cartridgeQuantityUsed, primingDate: primingDate || new Date().toISOString().split("T")[0] } });
     invalidate(); setActiveStep(null);
     toast({ title: "Priming recorded" });
   };
 
   const handleSavePowder = async () => {
     if (!powderId || !powderChargeGr) { toast({ title: "Select powder and charge", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { powderId: Number(powderId), powderChargeGr: Number(powderChargeGr) } });
+    await updateMutation.mutateAsync({ id, data: { powderId: Number(powderId), powderChargeGr: Number(powderChargeGr), powderDate: powderDate || new Date().toISOString().split("T")[0] } });
     invalidate(); setActiveStep(null);
     toast({ title: "Powder recorded" });
   };
 
   const handleSaveBulletSeating = async () => {
     if (!bulletId || !coalIn || !oalIn) { toast({ title: "Fill all fields", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { bulletId: Number(bulletId), bulletQuantityUsed: load.cartridgeQuantityUsed, coalIn: Number(coalIn), oalIn: Number(oalIn) } });
+    await updateMutation.mutateAsync({ id, data: { bulletId: Number(bulletId), bulletQuantityUsed: load.cartridgeQuantityUsed, coalIn: Number(coalIn), oalIn: Number(oalIn), bulletSeatingDate: bulletSeatingDate || new Date().toISOString().split("T")[0] } });
     invalidate(); setActiveStep(null);
     toast({ title: "Bullet seating recorded" });
+  };
+
+  const handleStartNewCycle = async () => {
+    if (!window.confirm(`Start a new reload cycle for this cartridge batch? A new load record will be created (Cycle ${(load.reloadingCycle ?? 1) + 1}).`)) return;
+    setStartingNewCycle(true);
+    try {
+      const res = await fetch("/api/loads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ cartridgeId: load.cartridgeId, cartridgeQuantityUsed: load.cartridgeQuantityUsed }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? "Failed"); }
+      const newLoad = await res.json();
+      invalidate();
+      toast({ title: `New cycle started — Load #${newLoad.id}` });
+      navigate(`/loads/${newLoad.id}`);
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setStartingNewCycle(false);
+    }
   };
 
   const handleComplete = async () => {
@@ -326,9 +358,10 @@ export default function LoadDetail() {
   };
 
   const handleFire = async () => {
-    const fireData: { h2oWeightGr?: number; bestChargeLevelId?: number } = {};
+    const fireData: { h2oWeightGr?: number; bestChargeLevelId?: number; firedDate?: string } = {};
     if (h2oWeightGr) fireData.h2oWeightGr = Number(h2oWeightGr);
     if (selectedBestLevelId) fireData.bestChargeLevelId = Number(selectedBestLevelId);
+    if (firedDate) fireData.firedDate = firedDate;
     await fireMutation.mutateAsync({ id, data: fireData });
     if (load.chargeLadderId && selectedBestLevelId) {
       await selectBestMutation.mutateAsync({ id: load.chargeLadderId, data: { levelId: Number(selectedBestLevelId) } });
@@ -510,109 +543,138 @@ export default function LoadDetail() {
         {/* Steps */}
         <div className="space-y-3">
           <StepCard label="1. Washing" done={isStepDone(load, "washing")} skipped={isStepSkipped(load, "washing")}
-            summary={!isStepSkipped(load, "washing") && load.washingMinutes != null ? `${load.washingMinutes} min` : null}
+            summary={!isStepSkipped(load, "washing") && load.washingMinutes != null ? `${load.washingMinutes} min${load.washingDate ? ` · ${load.washingDate}` : ""}` : null}
             open={activeStep === "washing"} onToggle={() => setActiveStep(activeStep === "washing" ? null : "washing")}
             onSkip={() => handleSkipStep("washing")} onUnskip={() => handleUnskipStep("washing")}
             onUndo={isAdmin && isStepDone(load, "washing") && !isStepSkipped(load, "washing") ? () => handleUndoStep("washing") : undefined}
           >
             <div className="space-y-2">
-              <Label>Washing Duration (minutes)</Label>
-              <Input type="number" placeholder="e.g. 30" defaultValue={load.washingMinutes ?? ""} onChange={(e) => setWashingMinutes(e.target.value)} />
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label>Duration (minutes)</Label>
+                  <Input type="number" placeholder="e.g. 30" defaultValue={load.washingMinutes ?? ""} onChange={(e) => setWashingMinutes(e.target.value)} /></div>
+                <div><Label>Date</Label>
+                  <Input type="date" value={washingDate || load.washingDate || ""} onChange={(e) => setWashingDate(e.target.value)} /></div>
+              </div>
               <Button size="sm" onClick={handleSaveWashing} disabled={updateMutation.isPending}>Save</Button>
             </div>
           </StepCard>
 
           <StepCard label="2. Calibration" done={isStepDone(load, "calibration")} skipped={isStepSkipped(load, "calibration")}
             blocked={isStepBlocked("calibration")}
-            summary={!isStepSkipped(load, "calibration") ? load.calibrationType : null}
+            summary={!isStepSkipped(load, "calibration") ? `${load.calibrationType ?? ""}${load.calibrationDate ? ` · ${load.calibrationDate}` : ""}` || null : null}
             open={activeStep === "calibration"} onToggle={() => setActiveStep(activeStep === "calibration" ? null : "calibration")}
             onSkip={() => handleSkipStep("calibration")} onUnskip={() => handleUnskipStep("calibration")}
             onUndo={isAdmin && isStepDone(load, "calibration") && !isStepSkipped(load, "calibration") ? () => handleUndoStep("calibration") : undefined}
           >
             <div className="space-y-2">
-              <Label>Calibration Type</Label>
-              <Select defaultValue={load.calibrationType ?? ""} onValueChange={setCalibrationType}>
-                <SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Full Size">Full Size</SelectItem>
-                  <SelectItem value="Neck Size">Neck Size</SelectItem>
-                  <SelectItem value="Shoulder Bump">Shoulder Bump</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label>Calibration Type</Label>
+                  <Select defaultValue={load.calibrationType ?? ""} onValueChange={setCalibrationType}>
+                    <SelectTrigger><SelectValue placeholder="Select type..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Full Size">Full Size</SelectItem>
+                      <SelectItem value="Neck Size">Neck Size</SelectItem>
+                      <SelectItem value="Shoulder Bump">Shoulder Bump</SelectItem>
+                    </SelectContent>
+                  </Select></div>
+                <div><Label>Date</Label>
+                  <Input type="date" value={calibrationDate || load.calibrationDate || ""} onChange={(e) => setCalibrationDate(e.target.value)} /></div>
+              </div>
               <Button size="sm" onClick={handleSaveCalibration} disabled={updateMutation.isPending}>Save</Button>
             </div>
           </StepCard>
 
           <StepCard label="3. Trim" done={isStepDone(load, "trim")} skipped={isStepSkipped(load, "trim")}
             blocked={isStepBlocked("trim")}
-            summary={!isStepSkipped(load, "trim") && load.l6In != null ? `L6: ${load.l6In} in` : null}
+            summary={!isStepSkipped(load, "trim") && load.l6In != null ? `L6: ${load.l6In} in${load.trimDate ? ` · ${load.trimDate}` : ""}` : null}
             open={activeStep === "trim"} onToggle={() => setActiveStep(activeStep === "trim" ? null : "trim")}
             onSkip={() => handleSkipStep("trim")} onUnskip={() => handleUnskipStep("trim")}
             onUndo={isAdmin && isStepDone(load, "trim") && !isStepSkipped(load, "trim") ? () => handleUndoStep("trim") : undefined}
           >
             <div className="space-y-2">
-              <Label>L6 Measurement (inches)</Label>
-              <Input type="number" step="0.001" placeholder="e.g. 2.105" defaultValue={load.l6In ?? ""} onChange={(e) => setL6In(e.target.value)} />
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label>L6 Measurement (inches)</Label>
+                  <Input type="number" step="0.001" placeholder="e.g. 2.105" defaultValue={load.l6In ?? ""} onChange={(e) => setL6In(e.target.value)} /></div>
+                <div><Label>Date</Label>
+                  <Input type="date" value={trimDate || load.trimDate || ""} onChange={(e) => setTrimDate(e.target.value)} /></div>
+              </div>
               <Button size="sm" onClick={handleSaveTrim} disabled={updateMutation.isPending}>Save</Button>
             </div>
           </StepCard>
 
           <StepCard label="4. Annealing" done={isStepDone(load, "annealing")} skipped={isStepSkipped(load, "annealing")}
             blocked={isStepBlocked("annealing")}
-            summary={!isStepSkipped(load, "annealing") && load.annealingDone ? "Done" : null}
+            summary={!isStepSkipped(load, "annealing") && load.annealingDone ? `Done${load.annealingDate ? ` · ${load.annealingDate}` : ""}` : null}
             open={activeStep === "annealing"} onToggle={() => setActiveStep(activeStep === "annealing" ? null : "annealing")}
             onSkip={() => handleSkipStep("annealing")} onUnskip={() => handleUnskipStep("annealing")}
           >
-            <div className="flex items-center gap-3">
-              {load.annealingDone ? (
-                <>
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                  <span className="text-sm text-green-400 font-medium">Annealing completed</span>
-                  <Button size="sm" variant="outline" className="ml-auto" onClick={handleMarkAnnealingUndone} disabled={updateMutation.isPending}>Undo</Button>
-                </>
-              ) : (
-                <>
-                  <Circle className="w-5 h-5 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Mark annealing as done when finished</span>
-                  <Button size="sm" className="ml-auto" onClick={handleMarkAnnealingDone} disabled={updateMutation.isPending}>Mark Done</Button>
-                </>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                {load.annealingDone ? (
+                  <>
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    <span className="text-sm text-green-400 font-medium">Annealing completed</span>
+                    <Button size="sm" variant="outline" className="ml-auto" onClick={handleMarkAnnealingUndone} disabled={updateMutation.isPending}>Undo</Button>
+                  </>
+                ) : (
+                  <>
+                    <Circle className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Mark annealing as done</span>
+                  </>
+                )}
+              </div>
+              {!load.annealingDone && (
+                <div className="grid grid-cols-2 gap-2 items-end">
+                  <div><Label>Date</Label>
+                    <Input type="date" value={annealingDate} onChange={(e) => setAnnealingDate(e.target.value)} /></div>
+                  <Button size="sm" onClick={handleMarkAnnealingDone} disabled={updateMutation.isPending}>Mark Done</Button>
+                </div>
               )}
+              {load.annealingDate && <p className="text-xs text-muted-foreground">Date: {load.annealingDate}</p>}
             </div>
           </StepCard>
 
           <StepCard label="5. Second Washing" done={isStepDone(load, "second_washing")} skipped={isStepSkipped(load, "second_washing")}
             blocked={isStepBlocked("second_washing")}
-            summary={!isStepSkipped(load, "second_washing") && load.secondWashingMinutes != null ? `${load.secondWashingMinutes} min` : null}
+            summary={!isStepSkipped(load, "second_washing") && load.secondWashingMinutes != null ? `${load.secondWashingMinutes} min${load.secondWashingDate ? ` · ${load.secondWashingDate}` : ""}` : null}
             open={activeStep === "second_washing"} onToggle={() => setActiveStep(activeStep === "second_washing" ? null : "second_washing")}
             onSkip={() => handleSkipStep("second_washing")} onUnskip={() => handleUnskipStep("second_washing")}
             onUndo={isAdmin && isStepDone(load, "second_washing") && !isStepSkipped(load, "second_washing") ? () => handleUndoStep("second_washing") : undefined}
           >
             <div className="space-y-2">
-              <Label>Second Washing Duration (minutes)</Label>
-              <Input type="number" placeholder="e.g. 20" defaultValue={load.secondWashingMinutes ?? ""} onChange={(e) => setSecondWashingMinutes(e.target.value)} />
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label>Duration (minutes)</Label>
+                  <Input type="number" placeholder="e.g. 20" defaultValue={load.secondWashingMinutes ?? ""} onChange={(e) => setSecondWashingMinutes(e.target.value)} /></div>
+                <div><Label>Date</Label>
+                  <Input type="date" value={secondWashingDate || load.secondWashingDate || ""} onChange={(e) => setSecondWashingDate(e.target.value)} /></div>
+              </div>
               <Button size="sm" onClick={handleSaveSecondWashing} disabled={updateMutation.isPending}>Save</Button>
             </div>
           </StepCard>
 
           <StepCard label="6. Priming" done={isStepDone(load, "priming")} skipped={isStepSkipped(load, "priming")}
             blocked={isStepBlocked("priming")}
-            summary={!isStepSkipped(load, "priming") && load.primerId != null ? `Primer #${load.primerId} · ${load.primerQuantityUsed} pcs` : null}
+            summary={!isStepSkipped(load, "priming") && load.primerId != null ? `Primer #${load.primerId} · ${load.primerQuantityUsed} pcs${load.primingDate ? ` · ${load.primingDate}` : ""}` : null}
             open={activeStep === "priming"} onToggle={() => setActiveStep(activeStep === "priming" ? null : "priming")}
             onSkip={() => handleSkipStep("priming")} onUnskip={() => handleUnskipStep("priming")}
             onUndo={isAdmin && isStepDone(load, "priming") && !isStepSkipped(load, "priming") ? () => handleUndoStep("priming") : undefined}
           >
             <div className="space-y-2">
-              <Label>Select Primer</Label>
-              <Select defaultValue={load.primerId != null ? String(load.primerId) : ""} onValueChange={setPrimerId}>
-                <SelectTrigger><SelectValue placeholder="Select primer..." /></SelectTrigger>
-                <SelectContent>
-                  {primers.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>
-                      #{p.id} — {p.manufacturer} {p.type} ({p.quantityAvailable} avail.)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label>Select Primer</Label>
+                  <Select defaultValue={load.primerId != null ? String(load.primerId) : ""} onValueChange={setPrimerId}>
+                    <SelectTrigger><SelectValue placeholder="Select primer..." /></SelectTrigger>
+                    <SelectContent>
+                      {primers.map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          #{p.id} — {p.manufacturer} {p.type} ({p.quantityAvailable} avail.)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select></div>
+                <div><Label>Date</Label>
+                  <Input type="date" value={primingDate || load.primingDate || ""} onChange={(e) => setPrimingDate(e.target.value)} /></div>
+              </div>
               <p className="text-xs text-muted-foreground">Quantity used: {load.cartridgeQuantityUsed} (matches round count)</p>
               <Button size="sm" onClick={handleSavePriming} disabled={updateMutation.isPending}>Save</Button>
             </div>
@@ -718,17 +780,21 @@ export default function LoadDetail() {
               ) : (
                 /* SINGLE MODE */
                 <div className="space-y-2">
-                  <Label>Select Powder</Label>
-                  <Select defaultValue={load.powderId != null ? String(load.powderId) : ""} onValueChange={setPowderId}>
-                    <SelectTrigger><SelectValue placeholder="Select powder..." /></SelectTrigger>
-                    <SelectContent>
-                      {powders.map((p) => (
-                        <SelectItem key={p.id} value={String(p.id)}>
-                          #{p.id} — {p.manufacturer} {p.name} ({p.grainsAvailable.toFixed(1)} gr avail.)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div><Label>Select Powder</Label>
+                      <Select defaultValue={load.powderId != null ? String(load.powderId) : ""} onValueChange={setPowderId}>
+                        <SelectTrigger><SelectValue placeholder="Select powder..." /></SelectTrigger>
+                        <SelectContent>
+                          {powders.map((p) => (
+                            <SelectItem key={p.id} value={String(p.id)}>
+                              #{p.id} — {p.manufacturer} {p.name} ({p.grainsAvailable.toFixed(1)} gr avail.)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select></div>
+                    <div><Label>Date</Label>
+                      <Input type="date" value={powderDate || load.powderDate || ""} onChange={(e) => setPowderDate(e.target.value)} /></div>
+                  </div>
                   <Label>Charge per round (grains)</Label>
                   <Input type="number" step="0.1" placeholder="e.g. 43.5" defaultValue={load.powderChargeGr ?? ""} onChange={(e) => setPowderChargeGr(e.target.value)} />
                   {powderChargeGr && (
@@ -742,23 +808,27 @@ export default function LoadDetail() {
 
           <StepCard label="8. Bullet Seating" done={isStepDone(load, "bullet_seating")} skipped={isStepSkipped(load, "bullet_seating")}
             blocked={isStepBlocked("bullet_seating")}
-            summary={!isStepSkipped(load, "bullet_seating") && load.bulletId != null ? `Bullet #${load.bulletId} · COAL ${load.coalIn}" · OAL ${load.oalIn}"` : null}
+            summary={!isStepSkipped(load, "bullet_seating") && load.bulletId != null ? `Bullet #${load.bulletId} · COAL ${load.coalIn}" · OAL ${load.oalIn}"${load.bulletSeatingDate ? ` · ${load.bulletSeatingDate}` : ""}` : null}
             open={activeStep === "bullet_seating"} onToggle={() => setActiveStep(activeStep === "bullet_seating" ? null : "bullet_seating")}
             onSkip={() => handleSkipStep("bullet_seating")} onUnskip={() => handleUnskipStep("bullet_seating")}
             onUndo={isAdmin && isStepDone(load, "bullet_seating") && !isStepSkipped(load, "bullet_seating") ? () => handleUndoStep("bullet_seating") : undefined}
           >
             <div className="space-y-2">
-              <Label>Select Bullet</Label>
-              <Select defaultValue={load.bulletId != null ? String(load.bulletId) : ""} onValueChange={setBulletId}>
-                <SelectTrigger><SelectValue placeholder="Select bullet..." /></SelectTrigger>
-                <SelectContent>
-                  {bullets.map((b) => (
-                    <SelectItem key={b.id} value={String(b.id)}>
-                      #{b.id} — {b.manufacturer} {b.model} {b.weightGr}gr ({b.quantityAvailable} avail.)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-2">
+                <div><Label>Select Bullet</Label>
+                  <Select defaultValue={load.bulletId != null ? String(load.bulletId) : ""} onValueChange={setBulletId}>
+                    <SelectTrigger><SelectValue placeholder="Select bullet..." /></SelectTrigger>
+                    <SelectContent>
+                      {bullets.map((b) => (
+                        <SelectItem key={b.id} value={String(b.id)}>
+                          #{b.id} — {b.manufacturer} {b.model} {b.weightGr}gr ({b.quantityAvailable} avail.)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select></div>
+                <div><Label>Date</Label>
+                  <Input type="date" value={bulletSeatingDate || load.bulletSeatingDate || ""} onChange={(e) => setBulletSeatingDate(e.target.value)} /></div>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <Label>COAL (inches)</Label>
@@ -815,10 +885,20 @@ export default function LoadDetail() {
                       <div className="flex items-center gap-3 flex-wrap">
                         <div className="text-right">
                           <span className="text-sm text-amber-400 font-semibold block">Fired</span>
+                          {load.firedDate && <span className="text-xs text-muted-foreground block">{load.firedDate}</span>}
                           {load.h2oWeightGr != null && (
                             <span className="text-xs text-muted-foreground">H₂O: {load.h2oWeightGr} gr</span>
                           )}
                         </div>
+                        <Button
+                          onClick={handleStartNewCycle}
+                          disabled={startingNewCycle}
+                          className="gap-2 bg-primary/80 hover:bg-primary text-white"
+                          size="sm"
+                        >
+                          {startingNewCycle && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                          Start New Reload Cycle
+                        </Button>
                         {isAdmin && (
                           <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-muted-foreground hover:text-destructive" onClick={handleUndoFire}>
                             <RotateCcw className="w-3 h-3" /> Undo Fired
@@ -863,17 +943,27 @@ export default function LoadDetail() {
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <Label>H₂O Weight (grains) — optional</Label>
-              <Input
-                type="number"
-                step="0.01"
-                placeholder="e.g. 53.40"
-                value={h2oWeightGr}
-                onChange={(e) => setH2oWeightGr(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">Water weight measurement at time of firing</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Fired Date</Label>
+                <Input
+                  type="date"
+                  value={firedDate}
+                  onChange={(e) => setFiredDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>H₂O Weight (grains) — optional</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g. 53.40"
+                  value={h2oWeightGr}
+                  onChange={(e) => setH2oWeightGr(e.target.value)}
+                />
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground -mt-1">Water weight measurement at time of firing</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFireDialogOpen(false)}>Cancel</Button>

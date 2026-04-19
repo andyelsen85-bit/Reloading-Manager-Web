@@ -17,12 +17,20 @@ export interface UpdateLoadBody {
   oalIn?: number;
   l6In?: number;
   washingMinutes?: number;
+  washingDate?: string | null;
   annealingMinutes?: number;
   annealingDone?: boolean;
+  annealingDate?: string | null;
   secondWashingMinutes?: number;
+  secondWashingDate?: string | null;
   calibrationType?: string;
+  calibrationDate?: string | null;
+  trimDate?: string | null;
   skippedSteps?: string;
   photoBase64?: string | null;
+  primingDate?: string | null;
+  powderDate?: string | null;
+  bulletSeatingDate?: string | null;
   notes?: string;
   chargeLadderId?: number | null;
 }
