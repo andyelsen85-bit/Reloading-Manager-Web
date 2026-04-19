@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useListChargeLadders, useCreateChargeLadder, useDeleteChargeLadder, getListChargeLaddersQueryKey, useListCartridges, getListCartridgesQueryKey, useListBullets, getListBulletsQueryKey, useListPrimers, getListPrimersQueryKey } from "@workspace/api-client-react";
+import { useListChargeLadders, useCreateChargeLadder, useDeleteChargeLadder, getListChargeLaddersQueryKey, useListCartridges, getListCartridgesQueryKey, useListBullets, getListBulletsQueryKey, useListPrimers, getListPrimersQueryKey, useListPowders, getListPowdersQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
@@ -21,6 +21,9 @@ const STATUS_COLORS: Record<string, string> = {
   complete: "bg-green-900/40 text-green-300 border-green-800",
 };
 
+type LevelRow = { chargeGr: string; cartridgeCount: string; powderId: string };
+const defaultLevel = (): LevelRow => ({ chargeGr: "", cartridgeCount: "3", powderId: "" });
+
 export default function ChargeLadders() {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -29,27 +32,32 @@ export default function ChargeLadders() {
   const { data: cartridges = [] } = useListCartridges({ query: { queryKey: getListCartridgesQueryKey() } });
   const { data: bullets = [] } = useListBullets({ query: { queryKey: getListBulletsQueryKey() } });
   const { data: primers = [] } = useListPrimers({ query: { queryKey: getListPrimersQueryKey() } });
+  const { data: powders = [] } = useListPowders({ query: { queryKey: getListPowdersQueryKey() } });
   const createMutation = useCreateChargeLadder();
   const deleteMutation = useDeleteChargeLadder();
 
   const [addOpen, setAddOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: "", cartridgeId: "", bulletId: "", primerId: "", cartridgesPerLevel: "3", notes: "" });
-  const [levelRows, setLevelRows] = useState<{ chargeGr: string; cartridgeCount: string }[]>([{ chargeGr: "", cartridgeCount: "3" }, { chargeGr: "", cartridgeCount: "3" }, { chargeGr: "", cartridgeCount: "3" }]);
+  const [form, setForm] = useState({ name: "", cartridgeId: "", bulletId: "", primerId: "", notes: "" });
+  const [levelRows, setLevelRows] = useState<LevelRow[]>([defaultLevel(), defaultLevel(), defaultLevel()]);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListChargeLaddersQueryKey() });
 
-  const addLevelRow = () => setLevelRows([...levelRows, { chargeGr: "", cartridgeCount: form.cartridgesPerLevel }]);
+  const addLevelRow = () => setLevelRows([...levelRows, defaultLevel()]);
   const removeLevelRow = (i: number) => setLevelRows(levelRows.filter((_, idx) => idx !== i));
 
   const handleAdd = async () => {
     if (!form.name || !form.cartridgeId) {
       toast({ title: "Name and cartridge are required", variant: "destructive" }); return;
     }
+    if (!form.bulletId || !form.primerId) {
+      toast({ title: "Bullet and primer are required for a charge ladder", variant: "destructive" }); return;
+    }
     const cart = cartridges.find((c) => c.id === Number(form.cartridgeId));
     const validLevels = levelRows.filter((r) => r.chargeGr !== "").map((r, i) => ({
       chargeGr: Number(r.chargeGr),
-      cartridgeCount: Number(r.cartridgeCount) || Number(form.cartridgesPerLevel),
+      cartridgeCount: Number(r.cartridgeCount) || 3,
+      powderId: r.powderId ? Number(r.powderId) : undefined,
       sortOrder: i,
     }));
 
@@ -58,17 +66,16 @@ export default function ChargeLadders() {
         name: form.name,
         caliber: cart?.caliber ?? "",
         cartridgeId: Number(form.cartridgeId),
-        bulletId: form.bulletId ? Number(form.bulletId) : undefined,
-        primerId: form.primerId ? Number(form.primerId) : undefined,
-        cartridgesPerLevel: Number(form.cartridgesPerLevel),
+        bulletId: Number(form.bulletId),
+        primerId: Number(form.primerId),
         notes: form.notes || undefined,
         levels: validLevels,
       },
     });
     invalidate();
     setAddOpen(false);
-    setForm({ name: "", cartridgeId: "", bulletId: "", primerId: "", cartridgesPerLevel: "3", notes: "" });
-    setLevelRows([{ chargeGr: "", cartridgeCount: "3" }, { chargeGr: "", cartridgeCount: "3" }, { chargeGr: "", cartridgeCount: "3" }]);
+    setForm({ name: "", cartridgeId: "", bulletId: "", primerId: "", notes: "" });
+    setLevelRows([defaultLevel(), defaultLevel(), defaultLevel()]);
     toast({ title: "Charge ladder created" });
   };
 
@@ -118,7 +125,7 @@ export default function ChargeLadders() {
                   <span className="font-semibold text-sm text-foreground">{l.name}</span>
                   {l.bestLevelId && <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />}
                 </div>
-                <p className="text-xs text-muted-foreground">{l.caliber} · {l.cartridgesPerLevel} cartridges/level</p>
+                <p className="text-xs text-muted-foreground">{l.caliber}</p>
               </div>
               <Badge variant="outline" className={STATUS_COLORS[l.status] ?? ""}>{l.status}</Badge>
               <div className="flex gap-1">
@@ -143,12 +150,12 @@ export default function ChargeLadders() {
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2 space-y-1">
-                <Label>Session Name</Label>
-                <Input placeholder="e.g. 6.5 Creedmoor Berger 140gr Ladder" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                <Label>Session Name <span className="text-destructive">*</span></Label>
+                <Input placeholder="e.g. 6.5 CM Berger 140gr Ladder" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </div>
-              <div className="space-y-1">
-                <Label>Cartridge Batch</Label>
-                <Select value={form.cartridgeId} onValueChange={(v) => { const c = cartridges.find((x) => x.id === Number(v)); setForm({ ...form, cartridgeId: v }); }}>
+              <div className="col-span-2 space-y-1">
+                <Label>Cartridge Batch <span className="text-destructive">*</span></Label>
+                <Select value={form.cartridgeId} onValueChange={(v) => setForm({ ...form, cartridgeId: v })}>
                   <SelectTrigger><SelectValue placeholder="Select batch..." /></SelectTrigger>
                   <SelectContent>
                     {cartridges.map((c) => (
@@ -158,11 +165,7 @@ export default function ChargeLadders() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>Cartridges per Level</Label>
-                <Input type="number" min={1} value={form.cartridgesPerLevel} onChange={(e) => setForm({ ...form, cartridgesPerLevel: e.target.value })} />
-              </div>
-              <div className="space-y-1">
-                <Label>Bullet (optional)</Label>
+                <Label>Bullet <span className="text-destructive">*</span></Label>
                 <Select value={form.bulletId} onValueChange={(v) => setForm({ ...form, bulletId: v })}>
                   <SelectTrigger><SelectValue placeholder="Select bullet..." /></SelectTrigger>
                   <SelectContent>
@@ -171,7 +174,7 @@ export default function ChargeLadders() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label>Primer (optional)</Label>
+                <Label>Primer <span className="text-destructive">*</span></Label>
                 <Select value={form.primerId} onValueChange={(v) => setForm({ ...form, primerId: v })}>
                   <SelectTrigger><SelectValue placeholder="Select primer..." /></SelectTrigger>
                   <SelectContent>
@@ -187,20 +190,30 @@ export default function ChargeLadders() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Charge Levels (powder charge per level)</Label>
+                <Label>Charge Levels</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addLevelRow}>+ Add Level</Button>
               </div>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="text-xs text-muted-foreground mb-1">For each level: quantity (rds), powder, and charge in grains</div>
+              <div className="space-y-2 max-h-56 overflow-y-auto">
                 {levelRows.map((row, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-6 text-right">{idx + 1}.</span>
-                    <div className="flex items-center gap-1">
-                      <Input placeholder="Charge (gr)" type="number" step="0.1" className="w-28 h-8 text-sm" value={row.chargeGr} onChange={(e) => setLevelRows(levelRows.map((r, i) => i === idx ? { ...r, chargeGr: e.target.value } : r))} />
-                      <span className="text-xs text-muted-foreground">gr</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Input placeholder="Qty" type="number" className="w-20 h-8 text-sm" value={row.cartridgeCount} onChange={(e) => setLevelRows(levelRows.map((r, i) => i === idx ? { ...r, cartridgeCount: e.target.value } : r))} />
+                  <div key={idx} className="flex items-center gap-2 p-2 rounded border border-border/50 bg-muted/10">
+                    <span className="text-xs text-muted-foreground w-5 text-right shrink-0">{idx + 1}.</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Input placeholder="Qty" type="number" className="w-16 h-7 text-xs" value={row.cartridgeCount}
+                        onChange={(e) => setLevelRows(levelRows.map((r, i) => i === idx ? { ...r, cartridgeCount: e.target.value } : r))} />
                       <span className="text-xs text-muted-foreground">rds</span>
+                    </div>
+                    <Select value={row.powderId} onValueChange={(v) => setLevelRows(levelRows.map((r, i) => i === idx ? { ...r, powderId: v } : r))}>
+                      <SelectTrigger className="h-7 text-xs flex-1 min-w-0"><SelectValue placeholder="Powder..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">— None —</SelectItem>
+                        {powders.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.manufacturer} {p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Input placeholder="gr" type="number" step="0.1" className="w-20 h-7 text-xs" value={row.chargeGr}
+                        onChange={(e) => setLevelRows(levelRows.map((r, i) => i === idx ? { ...r, chargeGr: e.target.value } : r))} />
+                      <span className="text-xs text-muted-foreground">gr</span>
                     </div>
                     {levelRows.length > 1 && (
                       <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive shrink-0" onClick={() => removeLevelRow(idx)}>×</Button>

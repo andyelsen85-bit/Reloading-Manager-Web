@@ -11,6 +11,7 @@ export interface ChargeLevel {
   ladderId: number;
   chargeGr: number;
   cartridgeCount: number;
+  powderId?: number | null;
   sortOrder: number;
   status: string;
   notes?: string | null;

@@ -45,7 +45,7 @@ function isStepDone(load: Load | undefined, step: string): boolean {
     case "washing": return load.washingMinutes != null && load.washingMinutes > 0;
     case "calibration": return !!load.calibrationType;
     case "trim": return load.l6In != null;
-    case "annealing": return (load.annealingMinutes != null && load.annealingMinutes > 0);
+    case "annealing": return load.annealingDone === true;
     case "second_washing": return load.secondWashingMinutes != null && load.secondWashingMinutes > 0;
     case "priming": return load.primerId != null;
     case "powder": return load.powderId != null;
@@ -82,7 +82,7 @@ export default function LoadDetail() {
   const [washingMinutes, setWashingMinutes] = useState("");
   const [calibrationType, setCalibrationType] = useState("");
   const [l6In, setL6In] = useState("");
-  const [annealingMinutes, setAnnealingMinutes] = useState("");
+  const [_annealingMinutes, _setAnnealingMinutes] = useState("");
   const [secondWashingMinutes, setSecondWashingMinutes] = useState("");
   const [primerId, setPrimerId] = useState("");
   const [powderId, setPowderId] = useState("");
@@ -165,11 +165,16 @@ export default function LoadDetail() {
     toast({ title: "Trim recorded" });
   };
 
-  const handleSaveAnnealing = async () => {
-    if (!annealingMinutes) { toast({ title: "Enter annealing minutes", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { annealingMinutes: Number(annealingMinutes) } });
+  const handleMarkAnnealingDone = async () => {
+    await updateMutation.mutateAsync({ id, data: { annealingDone: true } });
     invalidate(); setActiveStep(null);
-    toast({ title: "Annealing recorded" });
+    toast({ title: "Annealing marked done" });
+  };
+
+  const handleMarkAnnealingUndone = async () => {
+    await updateMutation.mutateAsync({ id, data: { annealingDone: false } });
+    invalidate();
+    toast({ title: "Annealing unmarked" });
   };
 
   const handleSaveSecondWashing = async () => {
@@ -207,7 +212,7 @@ export default function LoadDetail() {
   };
 
   const handleFire = async () => {
-    await fireMutation.mutateAsync({ id, data: h2oWeightGr ? { h2oWeightGr: Number(h2oWeightGr) } : undefined });
+    await fireMutation.mutateAsync({ id, data: h2oWeightGr ? { h2oWeightGr: Number(h2oWeightGr) } : {} });
     invalidate();
     setFireDialogOpen(false);
     setH2oWeightGr("");
@@ -222,26 +227,86 @@ export default function LoadDetail() {
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
-          #dymo-label, #dymo-label * { visibility: visible !important; }
-          #dymo-label {
+          #a4-print, #a4-print * { visibility: visible !important; }
+          #a4-print {
             position: fixed !important;
             top: 0 !important; left: 0 !important;
-            width: 3.5in !important; height: 1.4in !important;
-            overflow: hidden !important;
+            width: 210mm !important; min-height: 297mm !important;
             background: white !important; color: black !important;
-            padding: 0.1in !important;
-            font-family: Arial, sans-serif !important;
-            display: flex !important; flex-direction: column !important; justify-content: center !important;
+            padding: 18mm 20mm !important;
+            font-family: Arial, Helvetica, sans-serif !important;
+            box-sizing: border-box !important;
           }
+          @page { size: A4; margin: 0; }
         }
       `}</style>
 
-      <div id="dymo-label" style={{ display: "none" }}>
-        <div style={{ fontSize: "16pt", fontWeight: "bold" }}>{formatLoadNum(load.loadNumber)}</div>
-        <div style={{ fontSize: "11pt" }}>{load.caliber} · {load.cartridgeQuantityUsed} rds · Cycle {load.reloadingCycle}</div>
-        {load.bulletId && <div style={{ fontSize: "9pt" }}>Bullet #{load.bulletId} · COAL {load.coalIn}" · OAL {load.oalIn}"</div>}
-        {load.powderChargeGr != null && <div style={{ fontSize: "9pt" }}>Powder #{load.powderId} · {load.powderChargeGr} gr/rd</div>}
-        <div style={{ fontSize: "9pt" }}>{load.date}</div>
+      <div id="a4-print" style={{ display: "none" }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid black", paddingBottom: "6mm", marginBottom: "6mm" }}>
+          <div>
+            <div style={{ fontSize: "22pt", fontWeight: "bold", fontFamily: "monospace" }}>{formatLoadNum(load.loadNumber)}</div>
+            <div style={{ fontSize: "12pt", color: "#333" }}>Load Record — {load.date}</div>
+          </div>
+          <div style={{ textAlign: "right", fontSize: "10pt", color: "#555" }}>
+            <div>Caliber: <strong>{load.caliber}</strong></div>
+            <div>Rounds: <strong>{load.cartridgeQuantityUsed}</strong></div>
+            <div>Cycle #<strong>{load.reloadingCycle}</strong></div>
+          </div>
+        </div>
+
+        {/* Two-column detail grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6mm", fontSize: "10pt" }}>
+          {/* Left column */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "4mm" }}>
+            <Section title="Cartridge">
+              <Row label="Manufacturer" value={cart?.manufacturer ?? "—"} />
+              <Row label="Caliber" value={load.caliber} />
+              <Row label="Qty Used" value={String(load.cartridgeQuantityUsed)} />
+            </Section>
+            <Section title="Preparation">
+              <Row label="Calibration" value={load.calibrationType ?? "—"} />
+              <Row label="L6 (trim)" value={load.l6In != null ? `${load.l6In} in` : "—"} />
+              <Row label="Washing" value={load.washingMinutes != null ? `${load.washingMinutes} min` : "—"} />
+              <Row label="2nd Washing" value={load.secondWashingMinutes != null ? `${load.secondWashingMinutes} min` : "—"} />
+              <Row label="Annealing" value={load.annealingDone ? "Done" : "—"} />
+            </Section>
+          </div>
+          {/* Right column */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "4mm" }}>
+            <Section title="Primer">
+              {(() => { const p = primers.find((x) => x.id === load.primerId); return <><Row label="Primer" value={p ? `${p.manufacturer} ${p.type}` : load.primerId != null ? `#${load.primerId}` : "—"} /><Row label="Qty" value={load.primerQuantityUsed != null ? String(load.primerQuantityUsed) : "—"} /></>; })()}
+            </Section>
+            <Section title="Powder">
+              {(() => { const p = powders.find((x) => x.id === load.powderId); return <><Row label="Powder" value={p ? `${p.manufacturer} ${p.name}` : load.powderId != null ? `#${load.powderId}` : "—"} /><Row label="Charge / rd" value={load.powderChargeGr != null ? `${load.powderChargeGr} gr` : "—"} /><Row label="Total charge" value={powderTotal != null ? `${powderTotal} gr` : "—"} /></>; })()}
+            </Section>
+            <Section title="Bullet Seating">
+              {(() => { const b = bullets.find((x) => x.id === load.bulletId); return <><Row label="Bullet" value={b ? `${b.manufacturer} ${b.model} ${b.weightGr}gr` : load.bulletId != null ? `#${load.bulletId}` : "—"} /><Row label="COAL" value={load.coalIn != null ? `${load.coalIn} in` : "—"} /><Row label="OAL" value={load.oalIn != null ? `${load.oalIn} in` : "—"} /></>; })()}
+            </Section>
+          </div>
+        </div>
+
+        {/* Notes */}
+        {load.notes && (
+          <div style={{ marginTop: "6mm", fontSize: "10pt" }}>
+            <div style={{ fontWeight: "bold", borderBottom: "1px solid #bbb", paddingBottom: "1mm", marginBottom: "2mm" }}>Notes</div>
+            <div>{load.notes}</div>
+          </div>
+        )}
+
+        {/* Photo */}
+        {load.photoBase64 && (
+          <div style={{ marginTop: "6mm" }}>
+            <div style={{ fontWeight: "bold", fontSize: "10pt", borderBottom: "1px solid #bbb", paddingBottom: "1mm", marginBottom: "2mm" }}>Photo</div>
+            <img src={load.photoBase64} alt="Load" style={{ maxHeight: "60mm", maxWidth: "80mm", objectFit: "contain", border: "1px solid #ccc" }} />
+          </div>
+        )}
+
+        {/* Footer */}
+        <div style={{ position: "absolute", bottom: "12mm", left: "20mm", right: "20mm", borderTop: "1px solid #ccc", paddingTop: "3mm", display: "flex", justifyContent: "space-between", fontSize: "8pt", color: "#888" }}>
+          <span>Reloading Manager</span>
+          <span>Printed {new Date().toLocaleDateString()}</span>
+        </div>
       </div>
 
       <div className="space-y-5 max-w-3xl">
@@ -257,7 +322,7 @@ export default function LoadDetail() {
             <p className="text-sm text-muted-foreground">{load.caliber} · {load.cartridgeQuantityUsed} rounds · Cycle {load.reloadingCycle} · {load.date}</p>
           </div>
           <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5 shrink-0">
-            <Printer className="w-4 h-4" /> Print Label
+            <Printer className="w-4 h-4" /> Print
           </Button>
         </div>
 
@@ -367,14 +432,24 @@ export default function LoadDetail() {
           </StepCard>
 
           <StepCard label="4. Annealing" done={isStepDone(load, "annealing")} skipped={isStepSkipped(load, "annealing")}
-            summary={!isStepSkipped(load, "annealing") && load.annealingMinutes != null ? `${load.annealingMinutes} min` : null}
+            summary={!isStepSkipped(load, "annealing") && load.annealingDone ? "Done" : null}
             open={activeStep === "annealing"} onToggle={() => setActiveStep(activeStep === "annealing" ? null : "annealing")}
             onSkip={() => handleSkipStep("annealing")} onUnskip={() => handleUnskipStep("annealing")}
           >
-            <div className="space-y-2">
-              <Label>Annealing Duration (minutes)</Label>
-              <Input type="number" placeholder="e.g. 15" defaultValue={load.annealingMinutes ?? ""} onChange={(e) => setAnnealingMinutes(e.target.value)} />
-              <Button size="sm" onClick={handleSaveAnnealing} disabled={updateMutation.isPending}>Save</Button>
+            <div className="flex items-center gap-3">
+              {load.annealingDone ? (
+                <>
+                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  <span className="text-sm text-green-400 font-medium">Annealing completed</span>
+                  <Button size="sm" variant="outline" className="ml-auto" onClick={handleMarkAnnealingUndone} disabled={updateMutation.isPending}>Undo</Button>
+                </>
+              ) : (
+                <>
+                  <Circle className="w-5 h-5 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Mark annealing as done when finished</span>
+                  <Button size="sm" className="ml-auto" onClick={handleMarkAnnealingDone} disabled={updateMutation.isPending}>Mark Done</Button>
+                </>
+              )}
             </div>
           </StepCard>
 
@@ -550,6 +625,24 @@ export default function LoadDetail() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ fontWeight: "bold", borderBottom: "1px solid #bbb", paddingBottom: "1mm", marginBottom: "2mm" }}>{title}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "1mm" }}>{children}</div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: "4mm" }}>
+      <span style={{ color: "#555" }}>{label}</span>
+      <span style={{ fontWeight: 500 }}>{value}</span>
+    </div>
   );
 }
 

@@ -21,6 +21,7 @@ export const chargeLevelsTable = pgTable("charge_levels", {
   ladderId: integer("ladder_id").notNull().references(() => chargeLaddersTable.id, { onDelete: "cascade" }),
   chargeGr: doublePrecision("charge_gr").notNull(),
   cartridgeCount: integer("cartridge_count").notNull().default(3),
+  powderId: integer("powder_id"),
   sortOrder: integer("sort_order").notNull().default(0),
   status: text("status").notNull().default("planned"),
   notes: text("notes"),

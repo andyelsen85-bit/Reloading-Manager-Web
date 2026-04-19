@@ -128,6 +128,14 @@ export interface Cartridge {
   l6In?: string | null;
   notes?: string | null;
   photoBase64?: string | null;
+  primerType?: string | null;
+  avgEmptyWeightGr?: number | null;
+  avgInternalVolumeGr?: number | null;
+  avgShoulderDiameterIn?: number | null;
+  avgBaseDiameterIn?: number | null;
+  avgNeckWallThicknessIn?: number | null;
+  ampAztecCode?: string | null;
+  ampPilotNumber?: string | null;
   createdAt: string;
 }
 
@@ -138,6 +146,14 @@ export interface CreateCartridgeBody {
   quantityTotal: number;
   notes?: string;
   photoBase64?: string;
+  primerType?: string;
+  avgEmptyWeightGr?: number;
+  avgInternalVolumeGr?: number;
+  avgShoulderDiameterIn?: number;
+  avgBaseDiameterIn?: number;
+  avgNeckWallThicknessIn?: number;
+  ampAztecCode?: string;
+  ampPilotNumber?: string;
 }
 
 export interface UpdateCartridgeBody {
@@ -149,6 +165,14 @@ export interface UpdateCartridgeBody {
   l6In?: string;
   notes?: string;
   photoBase64?: string | null;
+  primerType?: string | null;
+  avgEmptyWeightGr?: number | null;
+  avgInternalVolumeGr?: number | null;
+  avgShoulderDiameterIn?: number | null;
+  avgBaseDiameterIn?: number | null;
+  avgNeckWallThicknessIn?: number | null;
+  ampAztecCode?: string | null;
+  ampPilotNumber?: string | null;
 }
 
 export interface Bullet {
@@ -254,6 +278,7 @@ export interface Load {
   l6In?: number | null;
   washingMinutes?: number | null;
   annealingMinutes?: number | null;
+  annealingDone: boolean;
   secondWashingMinutes?: number | null;
   calibrationType?: string | null;
   skippedSteps?: string | null;
@@ -285,6 +310,7 @@ export interface UpdateLoadBody {
   l6In?: number;
   washingMinutes?: number;
   annealingMinutes?: number;
+  annealingDone?: boolean;
   secondWashingMinutes?: number;
   calibrationType?: string;
   skippedSteps?: string;
@@ -314,7 +340,7 @@ export interface ChargeLadder {
   cartridgeId: number;
   bulletId?: number | null;
   primerId?: number | null;
-  cartridgesPerLevel: number;
+  cartridgesPerLevel?: number;
   notes?: string | null;
   status: string;
   bestLevelId?: number | null;
@@ -326,6 +352,7 @@ export interface ChargeLevel {
   ladderId: number;
   chargeGr: number;
   cartridgeCount: number;
+  powderId?: number | null;
   sortOrder: number;
   status: string;
   notes?: string | null;
@@ -344,15 +371,15 @@ export interface ChargeLadderDetail {
 export type CreateChargeLadderBodyLevelsItem = {
   chargeGr: number;
   cartridgeCount?: number;
+  powderId?: number;
 };
 
 export interface CreateChargeLadderBody {
   name: string;
   caliber: string;
   cartridgeId: number;
-  bulletId?: number;
-  primerId?: number;
-  cartridgesPerLevel: number;
+  bulletId: number;
+  primerId: number;
   notes?: string;
   levels?: CreateChargeLadderBodyLevelsItem[];
 }
@@ -368,6 +395,7 @@ export interface UpdateChargeLadderBody {
 export interface CreateChargeLevelBody {
   chargeGr: number;
   cartridgeCount?: number;
+  powderId?: number;
   sortOrder?: number;
   notes?: string;
 }
@@ -375,6 +403,7 @@ export interface CreateChargeLevelBody {
 export interface UpdateChargeLevelBody {
   chargeGr?: number;
   cartridgeCount?: number;
+  powderId?: number | null;
   status?: string;
   notes?: string;
   oalIn?: number;

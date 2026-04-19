@@ -9,4 +9,5 @@
 export type CreateChargeLadderBodyLevelsItem = {
   chargeGr: number;
   cartridgeCount?: number;
+  powderId?: number;
 };

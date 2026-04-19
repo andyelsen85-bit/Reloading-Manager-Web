@@ -15,4 +15,12 @@ export interface UpdateCartridgeBody {
   l6In?: string;
   notes?: string;
   photoBase64?: string | null;
+  primerType?: string | null;
+  avgEmptyWeightGr?: number | null;
+  avgInternalVolumeGr?: number | null;
+  avgShoulderDiameterIn?: number | null;
+  avgBaseDiameterIn?: number | null;
+  avgNeckWallThicknessIn?: number | null;
+  ampAztecCode?: string | null;
+  ampPilotNumber?: string | null;
 }

@@ -52,6 +52,8 @@ const REFERENCE_CATEGORIES = [
   { key: "bullet_manufacturer", label: "Bullet Manufacturers" },
   { key: "powder_manufacturer", label: "Powder Manufacturers" },
   { key: "primer_manufacturer", label: "Primer Manufacturers" },
+  { key: "powder_type", label: "Powder Types" },
+  { key: "primer_type", label: "Primer Types" },
 ];
 
 function ReferenceListEditor() {

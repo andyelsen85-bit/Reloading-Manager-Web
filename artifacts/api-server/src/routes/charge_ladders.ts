@@ -9,6 +9,7 @@ const router = Router();
 const LevelInput = z.object({
   chargeGr: z.number(),
   cartridgeCount: z.number().optional().default(3),
+  powderId: z.number().optional(),
   sortOrder: z.number().optional().default(0),
   notes: z.string().optional(),
 });
@@ -17,9 +18,8 @@ const CreateLadderBody = z.object({
   name: z.string().min(1),
   caliber: z.string().min(1),
   cartridgeId: z.number().int(),
-  bulletId: z.number().optional(),
-  primerId: z.number().optional(),
-  cartridgesPerLevel: z.number().default(3),
+  bulletId: z.number().int(),
+  primerId: z.number().int(),
   notes: z.string().optional(),
   levels: z.array(LevelInput).optional().default([]),
 });
@@ -35,6 +35,7 @@ const UpdateLadderBody = z.object({
 const CreateLevelBody = z.object({
   chargeGr: z.number(),
   cartridgeCount: z.number().optional().default(3),
+  powderId: z.number().optional(),
   sortOrder: z.number().optional().default(0),
   notes: z.string().optional(),
 });
@@ -42,6 +43,7 @@ const CreateLevelBody = z.object({
 const UpdateLevelBody = z.object({
   chargeGr: z.number().optional(),
   cartridgeCount: z.number().optional(),
+  powderId: z.number().nullable().optional(),
   status: z.string().optional(),
   notes: z.string().optional(),
   oalIn: z.number().optional(),
@@ -63,14 +65,20 @@ router.post("/charge-ladders", async (req, res) => {
     name: body.name,
     caliber: body.caliber,
     cartridgeId: body.cartridgeId,
-    bulletId: body.bulletId ?? null,
-    primerId: body.primerId ?? null,
-    cartridgesPerLevel: body.cartridgesPerLevel,
+    bulletId: body.bulletId,
+    primerId: body.primerId,
     notes: body.notes ?? null,
   }).returning();
 
   if (body.levels && body.levels.length > 0) {
-    const sortedLevels = body.levels.map((l, i) => ({ ...l, sortOrder: l.sortOrder ?? i, ladderId: ladder.id }));
+    const sortedLevels = body.levels.map((l, i) => ({
+      ladderId: ladder.id,
+      chargeGr: l.chargeGr,
+      cartridgeCount: l.cartridgeCount ?? 3,
+      powderId: l.powderId ?? null,
+      sortOrder: l.sortOrder ?? i,
+      notes: l.notes ?? null,
+    }));
     await db.insert(chargeLevelsTable).values(sortedLevels);
   }
 
@@ -112,6 +120,7 @@ router.post("/charge-ladders/:id/levels", async (req, res) => {
     ladderId,
     chargeGr: body.chargeGr,
     cartridgeCount: body.cartridgeCount ?? 3,
+    powderId: body.powderId ?? null,
     sortOrder: body.sortOrder ?? 0,
     notes: body.notes ?? null,
   }).returning();
@@ -124,6 +133,7 @@ router.patch("/charge-ladders/:id/levels/:levelId", async (req, res) => {
   const updates: Record<string, unknown> = {};
   if (body.chargeGr !== undefined) updates.chargeGr = body.chargeGr;
   if (body.cartridgeCount !== undefined) updates.cartridgeCount = body.cartridgeCount;
+  if (body.powderId !== undefined) updates.powderId = body.powderId;
   if (body.status !== undefined) updates.status = body.status;
   if (body.notes !== undefined) updates.notes = body.notes;
   if (body.oalIn !== undefined) updates.oalIn = body.oalIn;

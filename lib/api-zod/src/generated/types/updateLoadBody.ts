@@ -18,6 +18,7 @@ export interface UpdateLoadBody {
   l6In?: number;
   washingMinutes?: number;
   annealingMinutes?: number;
+  annealingDone?: boolean;
   secondWashingMinutes?: number;
   calibrationType?: string;
   skippedSteps?: string;

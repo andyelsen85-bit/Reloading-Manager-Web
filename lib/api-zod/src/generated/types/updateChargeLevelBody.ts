@@ -9,6 +9,7 @@
 export interface UpdateChargeLevelBody {
   chargeGr?: number;
   cartridgeCount?: number;
+  powderId?: number | null;
   status?: string;
   notes?: string;
   oalIn?: number;

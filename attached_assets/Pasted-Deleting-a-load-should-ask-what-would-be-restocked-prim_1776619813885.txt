@@ -1,0 +1,52 @@
+Deleting a load should ask what would be restocked, primers, powder, bullets and a note
+Please add a user management. To create users set passwords, ask for their email addresses, an define a mail server feature to send mails for new loads, or add powder, bullets, cartridges,..
+Add all known calibers, Bullet Primer and Powder Manufacturers, give the possibility under a Settings Submenu to edit the lists, so do not need to rewrite the app.
+Cartridge Number should be adjusted as soon a load is created, and not at the complete status.
+Add a collapse to the cartridge list, to show the used cartridges in the corresponding batches, and their status of the load and not the status of the global cartridge ID, this is not correct when using a certain number of cartridges for a load batch, each load is on his own step
+History should also take in mind deleted loads
+A new option for load development should be added.
+Charge Ladder Planning & Building
+The workflow should mirror the existing “loads” process, but with one key difference:
+there are multiple charge variants within a single development session.
+The system should therefore:
+Ask how many cartridges will be built per charge level.
+Ask what powder charge each level will use.
+After Firing
+When the user selects “Fired”, the system should prompt them to indicate which charge performed best.
+
+
+Powder Type are (And add to Settings page to edit the list if needed):
+- Stick
+- Ball
+- Flake
+- Flattened Ball
+
+Primer Types (And add to Settings page to edit the list if needed):
+- Small Pistol (SP)
+- Large Pistol (LP)
+- Small Rifle (SR)
+- Large Rifle (LR)
+
+Annealing: Ask only if done, no minutes or other Do not need the information, mostly it is done by specific machines.
+
+For Cartridges, add Fields but not mandatory. Seperate them from the actual fields, they are not known for some cartridges:
+- Primer Type (From the list)
+- Average Empty Weight in Grains
+- Average Internal Volume in Grains H2O
+- Avarage Shoulder Diameter in inch
+- Average Base Diameter in inch
+- Avarage Neck Wall Thickness in inch
+- AMP Aztec Code
+- AMP Pilot Number
+
+Charge Ladders:
+Cartridges per Level remove this field, they are asked for each level
+Bullet and Primer are mandatory
+Add Powder selection for every Charge Level
+First Charge rds
+Second Powder Selection
+Third Charge in grains
+
+Change Printing to DinA4 Layout with every details about the load. For LAbelwriter this is not working.
+
+Add default user admin with password admin

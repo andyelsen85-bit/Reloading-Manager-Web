@@ -25,6 +25,15 @@ router.post("/cartridges", async (req, res) => {
     productionCharge: body.productionCharge,
     quantityTotal: body.quantityTotal,
     notes: body.notes ?? null,
+    photoBase64: body.photoBase64 ?? null,
+    primerType: body.primerType ?? null,
+    avgEmptyWeightGr: body.avgEmptyWeightGr ?? null,
+    avgInternalVolumeGr: body.avgInternalVolumeGr ?? null,
+    avgShoulderDiameterIn: body.avgShoulderDiameterIn ?? null,
+    avgBaseDiameterIn: body.avgBaseDiameterIn ?? null,
+    avgNeckWallThicknessIn: body.avgNeckWallThicknessIn ?? null,
+    ampAztecCode: body.ampAztecCode ?? null,
+    ampPilotNumber: body.ampPilotNumber ?? null,
   }).returning();
   res.status(201).json(row);
 });
@@ -48,6 +57,14 @@ router.patch("/cartridges/:id", async (req, res) => {
   if (body.l6In !== undefined) updates.l6In = body.l6In;
   if (body.notes !== undefined) updates.notes = body.notes;
   if (body.photoBase64 !== undefined) updates.photoBase64 = body.photoBase64;
+  if (body.primerType !== undefined) updates.primerType = body.primerType;
+  if (body.avgEmptyWeightGr !== undefined) updates.avgEmptyWeightGr = body.avgEmptyWeightGr;
+  if (body.avgInternalVolumeGr !== undefined) updates.avgInternalVolumeGr = body.avgInternalVolumeGr;
+  if (body.avgShoulderDiameterIn !== undefined) updates.avgShoulderDiameterIn = body.avgShoulderDiameterIn;
+  if (body.avgBaseDiameterIn !== undefined) updates.avgBaseDiameterIn = body.avgBaseDiameterIn;
+  if (body.avgNeckWallThicknessIn !== undefined) updates.avgNeckWallThicknessIn = body.avgNeckWallThicknessIn;
+  if (body.ampAztecCode !== undefined) updates.ampAztecCode = body.ampAztecCode;
+  if (body.ampPilotNumber !== undefined) updates.ampPilotNumber = body.ampPilotNumber;
   const [row] = await db.update(cartridgesTable).set(updates).where(eq(cartridgesTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   res.json(row);

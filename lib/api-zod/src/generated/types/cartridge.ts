@@ -19,5 +19,13 @@ export interface Cartridge {
   l6In?: string | null;
   notes?: string | null;
   photoBase64?: string | null;
+  primerType?: string | null;
+  avgEmptyWeightGr?: number | null;
+  avgInternalVolumeGr?: number | null;
+  avgShoulderDiameterIn?: number | null;
+  avgBaseDiameterIn?: number | null;
+  avgNeckWallThicknessIn?: number | null;
+  ampAztecCode?: string | null;
+  ampPilotNumber?: string | null;
   createdAt: Date;
 }

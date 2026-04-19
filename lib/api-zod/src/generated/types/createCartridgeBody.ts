@@ -13,4 +13,12 @@ export interface CreateCartridgeBody {
   quantityTotal: number;
   notes?: string;
   photoBase64?: string;
+  primerType?: string;
+  avgEmptyWeightGr?: number;
+  avgInternalVolumeGr?: number;
+  avgShoulderDiameterIn?: number;
+  avgBaseDiameterIn?: number;
+  avgNeckWallThicknessIn?: number;
+  ampAztecCode?: string;
+  ampPilotNumber?: string;
 }

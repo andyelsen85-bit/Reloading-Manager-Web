@@ -24,6 +24,7 @@ export const loadsTable = pgTable("loads", {
   l6In: doublePrecision("l6_in"),
   washingMinutes: integer("washing_minutes"),
   annealingMinutes: integer("annealing_minutes"),
+  annealingDone: boolean("annealing_done").notNull().default(false),
   secondWashingMinutes: integer("second_washing_minutes"),
   calibrationType: text("calibration_type"),
   skippedSteps: text("skipped_steps"),

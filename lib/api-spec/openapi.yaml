@@ -1198,6 +1198,30 @@ components:
         photoBase64:
           type: string
           nullable: true
+        primerType:
+          type: string
+          nullable: true
+        avgEmptyWeightGr:
+          type: number
+          nullable: true
+        avgInternalVolumeGr:
+          type: number
+          nullable: true
+        avgShoulderDiameterIn:
+          type: number
+          nullable: true
+        avgBaseDiameterIn:
+          type: number
+          nullable: true
+        avgNeckWallThicknessIn:
+          type: number
+          nullable: true
+        ampAztecCode:
+          type: string
+          nullable: true
+        ampPilotNumber:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1217,6 +1241,22 @@ components:
         notes:
           type: string
         photoBase64:
+          type: string
+        primerType:
+          type: string
+        avgEmptyWeightGr:
+          type: number
+        avgInternalVolumeGr:
+          type: number
+        avgShoulderDiameterIn:
+          type: number
+        avgBaseDiameterIn:
+          type: number
+        avgNeckWallThicknessIn:
+          type: number
+        ampAztecCode:
+          type: string
+        ampPilotNumber:
           type: string
       required: [manufacturer, caliber, productionCharge, quantityTotal]
 
@@ -1238,6 +1278,30 @@ components:
         notes:
           type: string
         photoBase64:
+          type: string
+          nullable: true
+        primerType:
+          type: string
+          nullable: true
+        avgEmptyWeightGr:
+          type: number
+          nullable: true
+        avgInternalVolumeGr:
+          type: number
+          nullable: true
+        avgShoulderDiameterIn:
+          type: number
+          nullable: true
+        avgBaseDiameterIn:
+          type: number
+          nullable: true
+        avgNeckWallThicknessIn:
+          type: number
+          nullable: true
+        ampAztecCode:
+          type: string
+          nullable: true
+        ampPilotNumber:
           type: string
           nullable: true
 
@@ -1459,6 +1523,8 @@ components:
         annealingMinutes:
           type: integer
           nullable: true
+        annealingDone:
+          type: boolean
         secondWashingMinutes:
           type: integer
           nullable: true
@@ -1491,7 +1557,7 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [id, cartridgeId, cartridgeProductionCharge, reloadingCycle, date, caliber, cartridgeQuantityUsed, completed, fired, createdAt]
+      required: [id, cartridgeId, cartridgeProductionCharge, reloadingCycle, date, caliber, cartridgeQuantityUsed, completed, fired, annealingDone, createdAt]
 
     CreateLoadBody:
       type: object
@@ -1529,6 +1595,8 @@ components:
           type: integer
         annealingMinutes:
           type: integer
+        annealingDone:
+          type: boolean
         secondWashingMinutes:
           type: integer
         calibrationType:
@@ -1593,7 +1661,7 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [id, name, caliber, cartridgeId, cartridgesPerLevel, status, createdAt]
+      required: [id, name, caliber, cartridgeId, status, createdAt]
 
     ChargeLadderDetail:
       type: object
@@ -1619,8 +1687,6 @@ components:
           type: integer
         primerId:
           type: integer
-        cartridgesPerLevel:
-          type: integer
         notes:
           type: string
         levels:
@@ -1632,8 +1698,10 @@ components:
                 type: number
               cartridgeCount:
                 type: integer
+              powderId:
+                type: integer
             required: [chargeGr]
-      required: [name, caliber, cartridgeId, cartridgesPerLevel]
+      required: [name, caliber, cartridgeId, bulletId, primerId]
 
     UpdateChargeLadderBody:
       type: object
@@ -1662,6 +1730,9 @@ components:
           type: number
         cartridgeCount:
           type: integer
+        powderId:
+          type: integer
+          nullable: true
         sortOrder:
           type: integer
         status:
@@ -1693,6 +1764,8 @@ components:
           type: number
         cartridgeCount:
           type: integer
+        powderId:
+          type: integer
         sortOrder:
           type: integer
         notes:
@@ -1706,6 +1779,9 @@ components:
           type: number
         cartridgeCount:
           type: integer
+        powderId:
+          type: integer
+          nullable: true
         status:
           type: string
         notes:

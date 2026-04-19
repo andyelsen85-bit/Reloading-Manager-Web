@@ -13,7 +13,7 @@ export interface ChargeLadder {
   cartridgeId: number;
   bulletId?: number | null;
   primerId?: number | null;
-  cartridgesPerLevel: number;
+  cartridgesPerLevel?: number;
   notes?: string | null;
   status: string;
   bestLevelId?: number | null;

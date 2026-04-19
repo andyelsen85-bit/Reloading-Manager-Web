@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -14,6 +14,14 @@ export const cartridgesTable = pgTable("cartridges", {
   l6In: text("l6_in"),
   notes: text("notes"),
   photoBase64: text("photo_base64"),
+  primerType: text("primer_type"),
+  avgEmptyWeightGr: doublePrecision("avg_empty_weight_gr"),
+  avgInternalVolumeGr: doublePrecision("avg_internal_volume_gr"),
+  avgShoulderDiameterIn: doublePrecision("avg_shoulder_diameter_in"),
+  avgBaseDiameterIn: doublePrecision("avg_base_diameter_in"),
+  avgNeckWallThicknessIn: doublePrecision("avg_neck_wall_thickness_in"),
+  ampAztecCode: text("amp_aztec_code"),
+  ampPilotNumber: text("amp_pilot_number"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

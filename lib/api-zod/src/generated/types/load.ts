@@ -28,6 +28,7 @@ export interface Load {
   l6In?: number | null;
   washingMinutes?: number | null;
   annealingMinutes?: number | null;
+  annealingDone: boolean;
   secondWashingMinutes?: number | null;
   calibrationType?: string | null;
   skippedSteps?: string | null;

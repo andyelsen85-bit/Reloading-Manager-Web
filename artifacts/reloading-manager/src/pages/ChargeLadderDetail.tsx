@@ -3,7 +3,8 @@ import { useParams, useLocation } from "wouter";
 import {
   useGetChargeLadder, useUpdateChargeLadder, useAddChargeLevel, useUpdateChargeLevel, useDeleteChargeLevel, useSelectBestChargeLevel,
   getGetChargeLadderQueryKey,
-  useListCartridges, useListBullets, useListPrimers, getListCartridgesQueryKey, getListBulletsQueryKey, getListPrimersQueryKey,
+  useListCartridges, useListBullets, useListPrimers, useListPowders,
+  getListCartridgesQueryKey, getListBulletsQueryKey, getListPrimersQueryKey, getListPowdersQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -20,8 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 type ChargeLevel = {
-  id: number; ladderId: number; chargeGr: number; cartridgeCount: number; sortOrder: number;
-  status: string; notes?: string | null; oalIn?: number | null; coalIn?: number | null;
+  id: number; ladderId: number; chargeGr: number; cartridgeCount: number; powderId?: number | null;
+  sortOrder: number; status: string; notes?: string | null; oalIn?: number | null; coalIn?: number | null;
   groupSizeMm?: number | null; velocityFps?: number | null; createdAt: string;
 };
 
@@ -44,6 +45,7 @@ export default function ChargeLadderDetail() {
   const { data: cartridges = [] } = useListCartridges({ query: { queryKey: getListCartridgesQueryKey() } });
   const { data: bullets = [] } = useListBullets({ query: { queryKey: getListBulletsQueryKey() } });
   const { data: primers = [] } = useListPrimers({ query: { queryKey: getListPrimersQueryKey() } });
+  const { data: powders = [] } = useListPowders({ query: { queryKey: getListPowdersQueryKey() } });
 
   const updateLadder = useUpdateChargeLadder();
   const addLevel = useAddChargeLevel();
@@ -56,7 +58,7 @@ export default function ChargeLadderDetail() {
   const [deleteLevelId, setDeleteLevelId] = useState<number | null>(null);
   const [selectBestOpen, setSelectBestOpen] = useState(false);
 
-  const [newLevel, setNewLevel] = useState({ chargeGr: "", cartridgeCount: "3", notes: "" });
+  const [newLevel, setNewLevel] = useState({ chargeGr: "", cartridgeCount: "3", powderId: "", notes: "" });
   const [editForm, setEditForm] = useState({ status: "", notes: "", oalIn: "", coalIn: "", groupSizeMm: "", velocityFps: "" });
 
   const invalidate = () => qc.invalidateQueries({ queryKey });
@@ -71,8 +73,8 @@ export default function ChargeLadderDetail() {
 
   const handleAddLevel = async () => {
     if (!newLevel.chargeGr) return;
-    await addLevel.mutateAsync({ id, data: { chargeGr: Number(newLevel.chargeGr), cartridgeCount: Number(newLevel.cartridgeCount) || 3, sortOrder: levels.length, notes: newLevel.notes || undefined } });
-    invalidate(); setAddLevelOpen(false); setNewLevel({ chargeGr: "", cartridgeCount: "3", notes: "" });
+    await addLevel.mutateAsync({ id, data: { chargeGr: Number(newLevel.chargeGr), cartridgeCount: Number(newLevel.cartridgeCount) || 3, powderId: newLevel.powderId ? Number(newLevel.powderId) : undefined, sortOrder: levels.length, notes: newLevel.notes || undefined } });
+    invalidate(); setAddLevelOpen(false); setNewLevel({ chargeGr: "", cartridgeCount: "3", powderId: "", notes: "" });
     toast({ title: "Level added" });
   };
 
@@ -180,6 +182,7 @@ export default function ChargeLadderDetail() {
                         <span className="text-xs text-muted-foreground">#{i + 1}</span>
                         <span className="font-bold text-primary text-lg font-mono">{level.chargeGr}gr</span>
                         <span className="text-xs text-muted-foreground">· {level.cartridgeCount} rds</span>
+                        {level.powderId && (() => { const p = powders.find((pw) => pw.id === level.powderId); return p ? <span className="text-xs text-muted-foreground">· {p.manufacturer} {p.name}</span> : null; })()}
                         {isBest && <span className="flex items-center gap-1 text-xs text-amber-400 font-semibold"><Star className="w-3 h-3 fill-amber-400" /> BEST</span>}
                         <Badge variant="outline" className={`ml-auto ${STATUS_LABELS[level.status]?.color ?? ""}`}>{STATUS_LABELS[level.status]?.label ?? level.status}</Badge>
                       </div>
@@ -210,17 +213,27 @@ export default function ChargeLadderDetail() {
       {/* Add Level Dialog */}
       <Dialog open={addLevelOpen} onOpenChange={setAddLevelOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Add Charge Level</DialogTitle><DialogDescription>Specify the powder charge and cartridge count for this level.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Add Charge Level</DialogTitle><DialogDescription>Specify the powder, charge weight, and cartridge count for this level.</DialogDescription></DialogHeader>
           <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label>Powder (optional override)</Label>
+              <Select value={newLevel.powderId} onValueChange={(v) => setNewLevel({ ...newLevel, powderId: v })}>
+                <SelectTrigger><SelectValue placeholder="Use session powder or select..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">— Inherit from session —</SelectItem>
+                  {powders.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.manufacturer} {p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex gap-3">
-              <div className="space-y-1 flex-1"><Label>Powder Charge (gr)</Label><Input type="number" step="0.1" placeholder="42.5" value={newLevel.chargeGr} onChange={(e) => setNewLevel({ ...newLevel, chargeGr: e.target.value })} /></div>
-              <div className="space-y-1 w-24"><Label>Qty</Label><Input type="number" value={newLevel.cartridgeCount} onChange={(e) => setNewLevel({ ...newLevel, cartridgeCount: e.target.value })} /></div>
+              <div className="space-y-1 flex-1"><Label>Powder Charge (gr) <span className="text-destructive">*</span></Label><Input type="number" step="0.1" placeholder="42.5" value={newLevel.chargeGr} onChange={(e) => setNewLevel({ ...newLevel, chargeGr: e.target.value })} /></div>
+              <div className="space-y-1 w-24"><Label>Qty (rds)</Label><Input type="number" value={newLevel.cartridgeCount} onChange={(e) => setNewLevel({ ...newLevel, cartridgeCount: e.target.value })} /></div>
             </div>
             <div className="space-y-1"><Label>Notes (optional)</Label><Input value={newLevel.notes} onChange={(e) => setNewLevel({ ...newLevel, notes: e.target.value })} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddLevelOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddLevel} disabled={addLevel.isPending}>Add</Button>
+            <Button onClick={handleAddLevel} disabled={addLevel.isPending}>Add Level</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

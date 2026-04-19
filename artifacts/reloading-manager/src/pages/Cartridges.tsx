@@ -15,8 +15,20 @@ import StepBadge from "@/components/StepBadge";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-type CartridgeForm = { manufacturer: string; caliber: string; productionCharge: string; quantityTotal: string; currentStep: string; l6In: string; notes: string; photoBase64: string | null };
-const empty: CartridgeForm = { manufacturer: "", caliber: "", productionCharge: "", quantityTotal: "", currentStep: "New", l6In: "", notes: "", photoBase64: null };
+type CartridgeForm = {
+  manufacturer: string; caliber: string; productionCharge: string; quantityTotal: string;
+  currentStep: string; l6In: string; notes: string; photoBase64: string | null;
+  primerType: string; avgEmptyWeightGr: string; avgInternalVolumeGr: string;
+  avgShoulderDiameterIn: string; avgBaseDiameterIn: string; avgNeckWallThicknessIn: string;
+  ampAztecCode: string; ampPilotNumber: string;
+};
+const empty: CartridgeForm = {
+  manufacturer: "", caliber: "", productionCharge: "", quantityTotal: "",
+  currentStep: "New", l6In: "", notes: "", photoBase64: null,
+  primerType: "", avgEmptyWeightGr: "", avgInternalVolumeGr: "",
+  avgShoulderDiameterIn: "", avgBaseDiameterIn: "", avgNeckWallThicknessIn: "",
+  ampAztecCode: "", ampPilotNumber: "",
+};
 
 const formatLoadNum = (n: number | null | undefined) => n == null ? "—" : "#" + String(n).padStart(5, "0");
 
@@ -44,18 +56,29 @@ export default function Cartridges() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListCartridgesQueryKey() });
 
+  const cartridgeExtraData = (f: CartridgeForm) => ({
+    primerType: f.primerType || undefined,
+    avgEmptyWeightGr: f.avgEmptyWeightGr ? Number(f.avgEmptyWeightGr) : undefined,
+    avgInternalVolumeGr: f.avgInternalVolumeGr ? Number(f.avgInternalVolumeGr) : undefined,
+    avgShoulderDiameterIn: f.avgShoulderDiameterIn ? Number(f.avgShoulderDiameterIn) : undefined,
+    avgBaseDiameterIn: f.avgBaseDiameterIn ? Number(f.avgBaseDiameterIn) : undefined,
+    avgNeckWallThicknessIn: f.avgNeckWallThicknessIn ? Number(f.avgNeckWallThicknessIn) : undefined,
+    ampAztecCode: f.ampAztecCode || undefined,
+    ampPilotNumber: f.ampPilotNumber || undefined,
+  });
+
   const handleAdd = async () => {
     if (!form.manufacturer || !form.caliber || !form.productionCharge || !form.quantityTotal) {
       toast({ title: "Missing fields", variant: "destructive" }); return;
     }
-    await createMutation.mutateAsync({ data: { manufacturer: form.manufacturer, caliber: form.caliber, productionCharge: form.productionCharge, quantityTotal: Number(form.quantityTotal), notes: form.notes || undefined, photoBase64: form.photoBase64 ?? undefined } });
+    await createMutation.mutateAsync({ data: { manufacturer: form.manufacturer, caliber: form.caliber, productionCharge: form.productionCharge, quantityTotal: Number(form.quantityTotal), notes: form.notes || undefined, photoBase64: form.photoBase64 ?? undefined, ...cartridgeExtraData(form) } });
     invalidate(); setAddOpen(false); setForm(empty);
     toast({ title: "Cartridge batch added" });
   };
 
   const handleEdit = async () => {
     if (!editItem) return;
-    await updateMutation.mutateAsync({ id: editItem.id, data: { manufacturer: form.manufacturer, caliber: form.caliber, productionCharge: form.productionCharge, quantityTotal: Number(form.quantityTotal), currentStep: form.currentStep, l6In: form.l6In || undefined, notes: form.notes || undefined, photoBase64: form.photoBase64 } });
+    await updateMutation.mutateAsync({ id: editItem.id, data: { manufacturer: form.manufacturer, caliber: form.caliber, productionCharge: form.productionCharge, quantityTotal: Number(form.quantityTotal), currentStep: form.currentStep, l6In: form.l6In || undefined, notes: form.notes || undefined, photoBase64: form.photoBase64, ...cartridgeExtraData(form) } });
     invalidate(); setEditItem(null); setForm(empty);
     toast({ title: "Cartridge updated" });
   };
@@ -69,7 +92,17 @@ export default function Cartridges() {
 
   const openEdit = (c: (typeof cartridges)[0]) => {
     setEditItem(c);
-    setForm({ manufacturer: c.manufacturer, caliber: c.caliber, productionCharge: c.productionCharge, quantityTotal: String(c.quantityTotal), currentStep: c.currentStep, l6In: c.l6In ?? "", notes: c.notes ?? "", photoBase64: c.photoBase64 ?? null });
+    setForm({
+      manufacturer: c.manufacturer, caliber: c.caliber, productionCharge: c.productionCharge,
+      quantityTotal: String(c.quantityTotal), currentStep: c.currentStep,
+      l6In: c.l6In ?? "", notes: c.notes ?? "", photoBase64: c.photoBase64 ?? null,
+      primerType: c.primerType ?? "", avgEmptyWeightGr: c.avgEmptyWeightGr != null ? String(c.avgEmptyWeightGr) : "",
+      avgInternalVolumeGr: c.avgInternalVolumeGr != null ? String(c.avgInternalVolumeGr) : "",
+      avgShoulderDiameterIn: c.avgShoulderDiameterIn != null ? String(c.avgShoulderDiameterIn) : "",
+      avgBaseDiameterIn: c.avgBaseDiameterIn != null ? String(c.avgBaseDiameterIn) : "",
+      avgNeckWallThicknessIn: c.avgNeckWallThicknessIn != null ? String(c.avgNeckWallThicknessIn) : "",
+      ampAztecCode: c.ampAztecCode ?? "", ampPilotNumber: c.ampPilotNumber ?? "",
+    });
   };
 
   const toggleExpand = (id: number) => setExpandedId(expandedId === id ? null : id);
@@ -199,7 +232,7 @@ export default function Cartridges() {
       )}
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Add Cartridge Batch</DialogTitle></DialogHeader>
           <CartridgeFormFields form={form} setForm={setForm} showStep={false} />
           <DialogFooter>
@@ -210,7 +243,7 @@ export default function Cartridges() {
       </Dialog>
 
       <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
-        <DialogContent>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit Cartridge Batch</DialogTitle></DialogHeader>
           <CartridgeFormFields form={form} setForm={setForm} showStep={true} />
           <DialogFooter>
@@ -239,6 +272,7 @@ export default function Cartridges() {
 function CartridgeFormFields({ form, setForm, showStep }: { form: CartridgeForm; setForm: (f: CartridgeForm) => void; showStep: boolean }) {
   const set = (key: keyof CartridgeForm) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
   const photoRef = useRef<HTMLInputElement>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -290,6 +324,38 @@ function CartridgeFormFields({ form, setForm, showStep }: { form: CartridgeForm;
           </div>
         )}
         <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+      </div>
+
+      <div className="border-t border-border pt-3">
+        <button
+          type="button"
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+        >
+          <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", showAdvanced && "rotate-90")} />
+          Ballistic &amp; Identification Fields (optional)
+        </button>
+        {showAdvanced && (
+          <div className="mt-3 grid gap-3">
+            <div className="space-y-1">
+              <Label>Primer Type</Label>
+              <Input placeholder="e.g. Large Rifle (LR)" value={form.primerType} onChange={set("primerType")} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1"><Label>Avg Empty Weight (gr)</Label><Input type="number" step="0.1" value={form.avgEmptyWeightGr} onChange={set("avgEmptyWeightGr")} /></div>
+              <div className="space-y-1"><Label>Avg Internal Volume (gr H₂O)</Label><Input type="number" step="0.1" value={form.avgInternalVolumeGr} onChange={set("avgInternalVolumeGr")} /></div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1"><Label>Shoulder Dia. (in)</Label><Input type="number" step="0.001" value={form.avgShoulderDiameterIn} onChange={set("avgShoulderDiameterIn")} /></div>
+              <div className="space-y-1"><Label>Base Dia. (in)</Label><Input type="number" step="0.001" value={form.avgBaseDiameterIn} onChange={set("avgBaseDiameterIn")} /></div>
+              <div className="space-y-1"><Label>Neck Wall Thickness (in)</Label><Input type="number" step="0.0001" value={form.avgNeckWallThicknessIn} onChange={set("avgNeckWallThicknessIn")} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1"><Label>AMP Aztec Code</Label><Input value={form.ampAztecCode} onChange={set("ampAztecCode")} /></div>
+              <div className="space-y-1"><Label>AMP Pilot Number</Label><Input value={form.ampPilotNumber} onChange={set("ampPilotNumber")} /></div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

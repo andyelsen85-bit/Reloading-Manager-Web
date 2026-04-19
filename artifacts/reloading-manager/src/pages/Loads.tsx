@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useListLoads, useCreateLoad, useDeleteLoad, getListLoadsQueryKey, useListCartridges, getListCartridgesQueryKey } from "@workspace/api-client-react";
+import type { Load } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
@@ -15,7 +16,7 @@ import StepBadge from "@/components/StepBadge";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-type LoadRow = ReturnType<typeof useListLoads>["data"] extends Array<infer T> | undefined ? T : never;
+type LoadRow = Load;
 
 export default function Loads() {
   const qc = useQueryClient();

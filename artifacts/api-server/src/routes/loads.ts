@@ -126,6 +126,7 @@ router.patch("/loads/:id", async (req, res) => {
   if (body.l6In !== undefined) updates.l6In = body.l6In;
   if (body.washingMinutes !== undefined) updates.washingMinutes = body.washingMinutes;
   if (body.annealingMinutes !== undefined) updates.annealingMinutes = body.annealingMinutes;
+  if (body.annealingDone !== undefined) updates.annealingDone = body.annealingDone;
   if (body.secondWashingMinutes !== undefined) updates.secondWashingMinutes = body.secondWashingMinutes;
   if (body.calibrationType !== undefined) updates.calibrationType = body.calibrationType;
   if (body.skippedSteps !== undefined) updates.skippedSteps = body.skippedSteps;

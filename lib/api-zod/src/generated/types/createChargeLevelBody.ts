@@ -9,6 +9,7 @@
 export interface CreateChargeLevelBody {
   chargeGr: number;
   cartridgeCount?: number;
+  powderId?: number;
   sortOrder?: number;
   notes?: string;
 }
