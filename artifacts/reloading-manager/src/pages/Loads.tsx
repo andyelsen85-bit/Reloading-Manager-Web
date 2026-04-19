@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useListLoads, useCreateLoad, useDeleteLoad, getListLoadsQueryKey, useListCartridges, getListCartridgesQueryKey } from "@workspace/api-client-react";
 import type { Load } from "@workspace/api-client-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -67,6 +68,14 @@ export default function Loads() {
   const [form, setForm] = useState({ cartridgeId: "", cartridgeQuantityUsed: "", notes: "" });
   const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
   const [showFiredFor, setShowFiredFor] = useState<Set<number>>(new Set());
+  const [showDeletedFor, setShowDeletedFor] = useState<Set<number>>(new Set());
+
+  const { data: deletedLoads = [] } = useQuery<Load[]>({
+    queryKey: ["loads-with-deleted"],
+    queryFn: () => fetch("/api/loads?includeDeleted=true", { credentials: "include" }).then(r => r.json()),
+    enabled: showDeletedFor.size > 0,
+    select: (data) => data.filter(l => l.deletedAt != null),
+  });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: getListLoadsQueryKey() });
@@ -120,6 +129,9 @@ export default function Loads() {
   const toggleShowFired = (id: number) =>
     setShowFiredFor((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
+  const toggleShowDeleted = (id: number) =>
+    setShowDeletedFor((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
   const grouped = cartridges
     .map((c) => ({ cartridge: c, loads: loads.filter((l) => l.cartridgeId === c.id) }))
     .filter((g) => g.loads.length > 0);
@@ -148,6 +160,8 @@ export default function Loads() {
             const nonFiredLoads = g.loads.filter((l) => !l.fired);
             const showFired = showFiredFor.has(g.cartridge.id);
             const visibleLoads = showFired ? g.loads : nonFiredLoads;
+            const showDeleted = showDeletedFor.has(g.cartridge.id);
+            const groupDeletedLoads = showDeleted ? deletedLoads.filter((l) => l.cartridgeId === g.cartridge.id) : [];
             const hasActive = nonFiredLoads.some((l) => !l.completed);
             return (
               <div key={g.cartridge.id} className="rounded-lg border border-border overflow-hidden">
@@ -230,18 +244,45 @@ export default function Loads() {
                             </motion.tr>
                           );
                         })}
+                        {groupDeletedLoads.map((l, i) => (
+                          <motion.tr
+                            key={`del-${l.id}`}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.03 }}
+                            className="border-b border-border/50 bg-red-950/10 opacity-60"
+                          >
+                            <td className="px-3 py-2.5 font-semibold font-mono line-through text-muted-foreground">{formatBatchId(l.loadNumber, l.reloadingCycle)}</td>
+                            <td className="px-3 py-2.5 font-mono text-muted-foreground">{l.cartridgeQuantityUsed}</td>
+                            <td className="px-3 py-2.5 font-mono text-muted-foreground">{l.reloadingCycle}</td>
+                            <td className="px-3 py-2.5 text-muted-foreground">{l.date}</td>
+                            <td className="px-3 py-2.5">—</td>
+                            <td className="px-3 py-2.5">
+                              <span className="text-xs font-medium text-red-400">Deleted</span>
+                            </td>
+                            <td className="px-3 py-2.5">
+                              {l.deletedNote && <span className="text-xs text-muted-foreground italic">{l.deletedNote}</span>}
+                            </td>
+                          </motion.tr>
+                        ))}
                       </tbody>
                     </table>
-                    {firedLoads.length > 0 && (
-                      <div className="px-4 py-2 border-t border-border/30 bg-muted/5">
+                    <div className="px-4 py-2 border-t border-border/30 bg-muted/5 flex flex-wrap gap-x-4 gap-y-1">
+                      {firedLoads.length > 0 && (
                         <button
                           className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
                           onClick={() => toggleShowFired(g.cartridge.id)}
                         >
                           {showFired ? "Hide fired loads" : `Show ${firedLoads.length} fired load${firedLoads.length > 1 ? "s" : ""}`}
                         </button>
-                      </div>
-                    )}
+                      )}
+                      <button
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+                        onClick={() => toggleShowDeleted(g.cartridge.id)}
+                      >
+                        {showDeleted ? "Hide deleted loads" : "Show deleted loads"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

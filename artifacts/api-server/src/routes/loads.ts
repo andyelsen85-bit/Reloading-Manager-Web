@@ -64,10 +64,11 @@ async function sendNotification(subject: string, text: string, event: NotifEvent
 
 const router = Router();
 
-router.get("/loads", async (_req, res) => {
-  const rows = await db.select().from(loadsTable)
-    .where(isNull(loadsTable.deletedAt))
-    .orderBy(desc(loadsTable.id));
+router.get("/loads", async (req, res) => {
+  const includeDeleted = req.query.includeDeleted === "true";
+  const rows = includeDeleted
+    ? await db.select().from(loadsTable).orderBy(desc(loadsTable.id))
+    : await db.select().from(loadsTable).where(isNull(loadsTable.deletedAt)).orderBy(desc(loadsTable.id));
   res.json(rows);
 });
 
