@@ -38,7 +38,7 @@ app.use(session({
   store: new PgStore({
     conString: process.env["DATABASE_URL"],
     tableName: "session",
-    createTableIfMissing: false,
+    createTableIfMissing: true,
   }),
   secret: process.env["SESSION_SECRET"] ?? "reloading-manager-secret",
   resave: false,
