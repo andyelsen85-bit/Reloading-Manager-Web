@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { loadsTable, cartridgesTable, bulletsTable, powdersTable, primersTable, settingsTable, usersTable, chargeLevelsTable } from "@workspace/db";
-import { eq, desc, isNull, isNotNull } from "drizzle-orm";
+import { eq, desc, isNull, isNotNull, count } from "drizzle-orm";
 import {
   CreateLoadBody,
   UpdateLoadBody,
@@ -87,12 +87,18 @@ router.post("/loads", async (req, res) => {
     await db.update(settingsTable).set({ nextLoadNumber: loadNumber + 1 }).where(eq(settingsTable.id, settings.id));
   }
 
+  let reloadingCycle = 1;
+  if (body.parentLoadId != null) {
+    const [{ c }] = await db.select({ c: count() }).from(loadsTable).where(eq(loadsTable.loadNumber, loadNumber));
+    reloadingCycle = (c ?? 0) + 1;
+  }
+
   const today = new Date().toISOString().split("T")[0];
   const [row] = await db.insert(loadsTable).values({
     loadNumber,
     cartridgeId: body.cartridgeId,
     cartridgeProductionCharge: cartridge.productionCharge,
-    reloadingCycle: body.parentLoadId != null ? cartridge.timesFired + 1 : 1,
+    reloadingCycle,
     date: today,
     caliber: cartridge.caliber,
     cartridgeQuantityUsed: body.cartridgeQuantityUsed,
