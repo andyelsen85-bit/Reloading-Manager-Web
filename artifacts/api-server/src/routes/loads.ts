@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { loadsTable, cartridgesTable, bulletsTable, powdersTable, primersTable, settingsTable, usersTable, chargeLevelsTable } from "@workspace/db";
-import { eq, desc, isNull, isNotNull, count } from "drizzle-orm";
+import { eq, desc, isNull, isNotNull, max } from "drizzle-orm";
 import {
   CreateLoadBody,
   UpdateLoadBody,
@@ -89,8 +89,8 @@ router.post("/loads", async (req, res) => {
 
   let reloadingCycle = 1;
   if (body.parentLoadId != null) {
-    const [{ c }] = await db.select({ c: count() }).from(loadsTable).where(eq(loadsTable.loadNumber, loadNumber));
-    reloadingCycle = (c ?? 0) + 1;
+    const [{ maxCycle }] = await db.select({ maxCycle: max(loadsTable.reloadingCycle) }).from(loadsTable).where(eq(loadsTable.loadNumber, loadNumber));
+    reloadingCycle = (maxCycle ?? 0) + 1;
   }
 
   const today = new Date().toISOString().split("T")[0];
