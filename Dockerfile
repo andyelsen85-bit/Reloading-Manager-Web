@@ -40,13 +40,11 @@ FROM deps AS build-api
 
 COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
-COPY docker/build-migrate.mjs ./docker/build-migrate.mjs
 
 RUN pnpm --filter @workspace/api-server run build
 
-# Bundle the standalone migration script via a Node.js build script
-# (avoids relying on a specific binary path in pnpm's virtual store)
-RUN node docker/build-migrate.mjs
+# Bundle the migration script using the api-server's own esbuild dependency
+RUN pnpm --filter @workspace/api-server run build:migrate
 
 ################################
 # Stage 4 – Production image
