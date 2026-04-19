@@ -1659,24 +1659,34 @@ components:
       properties:
         primerId:
           type: integer
+          nullable: true
         primerQuantityUsed:
           type: integer
+          nullable: true
         powderId:
           type: integer
+          nullable: true
         powderChargeGr:
           type: number
+          nullable: true
         bulletId:
           type: integer
+          nullable: true
         bulletQuantityUsed:
           type: integer
+          nullable: true
         coalIn:
           type: number
+          nullable: true
         oalIn:
           type: number
+          nullable: true
         l6In:
           type: number
+          nullable: true
         washingMinutes:
           type: integer
+          nullable: true
         washingDate:
           type: string
           nullable: true

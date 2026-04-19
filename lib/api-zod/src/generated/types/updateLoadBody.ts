@@ -7,16 +7,16 @@
  */
 
 export interface UpdateLoadBody {
-  primerId?: number;
-  primerQuantityUsed?: number;
-  powderId?: number;
-  powderChargeGr?: number;
-  bulletId?: number;
-  bulletQuantityUsed?: number;
-  coalIn?: number;
-  oalIn?: number;
-  l6In?: number;
-  washingMinutes?: number;
+  primerId?: number | null;
+  primerQuantityUsed?: number | null;
+  powderId?: number | null;
+  powderChargeGr?: number | null;
+  bulletId?: number | null;
+  bulletQuantityUsed?: number | null;
+  coalIn?: number | null;
+  oalIn?: number | null;
+  l6In?: number | null;
+  washingMinutes?: number | null;
   washingDate?: string | null;
   annealingMinutes?: number;
   annealingDone?: boolean;

@@ -49,7 +49,7 @@ function isStepDone(load: Load | undefined, step: string): boolean {
     case "annealing": return load.annealingDone === true;
     case "second_washing": return load.secondWashingMinutes != null && load.secondWashingMinutes > 0;
     case "priming": return load.primerId != null;
-    case "powder": return load.powderId != null || load.chargeLadderId != null;
+    case "powder": return load.powderId != null || (load.chargeLadderId != null && load.powderDate != null);
     case "bullet_seating": return load.bulletId != null && load.coalIn != null && load.oalIn != null;
     case "complete": return load.completed;
     default: return false;
@@ -218,7 +218,13 @@ export default function LoadDetail() {
       case "annealing": undoData.annealingDone = false; break;
       case "second_washing": undoData.secondWashingMinutes = null; break;
       case "priming": undoData.primerId = null; undoData.primerQuantityUsed = null; break;
-      case "powder": undoData.powderId = null; undoData.powderChargeGr = null; break;
+      case "powder":
+        if (load.chargeLadderId != null) {
+          undoData.chargeLadderId = null; undoData.powderDate = null;
+        } else {
+          undoData.powderId = null; undoData.powderChargeGr = null; undoData.powderDate = null;
+        }
+        break;
       case "bullet_seating": undoData.bulletId = null; undoData.coalIn = null; undoData.oalIn = null; break;
     }
     await updateMutation.mutateAsync({ id, data: undoData as any });
@@ -697,25 +703,32 @@ export default function LoadDetail() {
             onUndo={isAdmin && isStepDone(load, "powder") && !isStepSkipped(load, "powder") ? () => handleUndoStep("powder") : undefined}
           >
             <div className="space-y-3">
-              {/* Mode Toggle — only show if no ladder linked yet */}
-              {!load.chargeLadderId && (
-                <div className="flex gap-1 p-1 bg-muted rounded-md w-fit">
-                  <button
-                    onClick={() => setLadderMode(false)}
-                    className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors",
-                      !ladderMode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
-                  >
-                    Single Load
-                  </button>
-                  <button
-                    onClick={() => setLadderMode(true)}
-                    className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors",
-                      ladderMode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
-                  >
-                    <Layers className="w-3 h-3" /> Ladder Load
-                  </button>
-                </div>
-              )}
+              {/* Mode Toggle */}
+              <div className="flex gap-1 p-1 bg-muted rounded-md w-fit">
+                <button
+                  onClick={() => {
+                    if (load.chargeLadderId != null && effectiveLadderMode) {
+                      if (!confirm("Switch to single powder? The ladder link will be removed from this load.")) return;
+                      updateMutation.mutate({ id, data: { chargeLadderId: null, powderDate: null } as any }, {
+                        onSuccess: () => { invalidate(); setLadderMode(false); toast({ title: "Switched to single powder" }); },
+                      });
+                    } else {
+                      setLadderMode(false);
+                    }
+                  }}
+                  className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors",
+                    !effectiveLadderMode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                >
+                  Single Load
+                </button>
+                <button
+                  onClick={() => setLadderMode(true)}
+                  className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors",
+                    effectiveLadderMode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+                >
+                  <Layers className="w-3 h-3" /> Ladder Load
+                </button>
+              </div>
 
               {effectiveLadderMode ? (
                 /* LADDER MODE */
@@ -735,7 +748,6 @@ export default function LoadDetail() {
                             <th className="px-2 py-1.5 text-left text-xs text-muted-foreground w-8">#</th>
                             <th className="px-2 py-1.5 text-left text-xs text-muted-foreground">Charge (gr)</th>
                             <th className="px-2 py-1.5 text-left text-xs text-muted-foreground">Rounds</th>
-                            <th className="px-2 py-1.5 text-left text-xs text-muted-foreground">Status</th>
                             <th className="px-2 py-1.5 text-center text-xs text-muted-foreground w-8"></th>
                           </tr>
                         </thead>
@@ -758,9 +770,26 @@ export default function LoadDetail() {
                       </table>
                     </div>
 
-                    <Button size="sm" variant="outline" onClick={handleAddLevel} disabled={addLevelMutation.isPending} className="gap-1.5">
-                      <Plus className="w-3.5 h-3.5" /> Add Row
-                    </Button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button size="sm" variant="outline" onClick={handleAddLevel} disabled={addLevelMutation.isPending} className="gap-1.5">
+                        <Plus className="w-3.5 h-3.5" /> Add Row
+                      </Button>
+                      {!isStepDone(load, "powder") && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            const today = new Date().toISOString().split("T")[0];
+                            updateMutation.mutate({ id, data: { powderDate: today } as any }, {
+                              onSuccess: () => { invalidate(); toast({ title: "Powder step marked done" }); },
+                            });
+                          }}
+                          disabled={updateMutation.isPending}
+                          className="gap-1.5"
+                        >
+                          Mark Powder Done
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   /* No ladder linked yet — show init form */
@@ -1105,7 +1134,7 @@ function LevelEditorRow({
   updating,
 }: {
   index: number;
-  level: { id: number; chargeGr: number; cartridgeCount: number; status: string };
+  level: { id: number; chargeGr: number; cartridgeCount: number; status?: string };
   isBest: boolean;
   onUpdate: (id: number, chargeGr: number, cartridgeCount: number) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
@@ -1157,16 +1186,6 @@ function LevelEditorRow({
           />
           <span className="text-xs text-muted-foreground">rds</span>
         </div>
-      </td>
-      <td className="px-2 py-1">
-        <span className={cn("text-xs capitalize px-1.5 py-0.5 rounded",
-          level.status === "fired" ? "bg-amber-950/40 text-amber-400" :
-          level.status === "planned" ? "bg-muted text-muted-foreground" :
-          "bg-muted text-muted-foreground"
-        )}>
-          {isBest && <span className="text-green-400">✓ </span>}
-          {level.status}
-        </span>
       </td>
       <td className="px-1 py-1 text-center">
         {saving ? (
