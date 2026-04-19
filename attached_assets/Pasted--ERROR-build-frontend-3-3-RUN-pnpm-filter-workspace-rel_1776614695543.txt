@@ -1,0 +1,68 @@
+ => ERROR [build-frontend 3/3] RUN pnpm --filter @workspace/reloading-manager run build                                           1.2s
+ => CANCELED [build-api 4/5] RUN pnpm --filter @workspace/api-server run build                                                    1.2s
+------
+ > [build-frontend 3/3] RUN pnpm --filter @workspace/reloading-manager run build:
+0.866
+0.866 > @workspace/reloading-manager@0.0.0 build /workspace/artifacts/reloading-manager
+0.866 > vite build --config vite.config.ts
+0.866
+1.119 /workspace/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js:115
+1.119           throw new Error(
+1.119                 ^
+1.119
+1.119 Error: Cannot find module @rollup/rollup-linux-x64-musl. npm has a bug related to optional dependencies (https://github.com/npm/cli/issues/4828). Please try `npm i` again after removing both package-lock.json and node_modules directory.
+1.119     at requireWithFriendlyError (/workspace/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js:115:9)
+1.119     at Object.<anonymous> (/workspace/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js:124:76)
+1.119     at Module._compile (node:internal/modules/cjs/loader:1705:14)
+1.119     at Object..js (node:internal/modules/cjs/loader:1838:10)
+1.119     at Module.load (node:internal/modules/cjs/loader:1441:32)
+1.119     at Function._load (node:internal/modules/cjs/loader:1263:12)
+1.119     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1.119     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1.119     at cjsLoader (node:internal/modules/esm/translators:309:5)
+1.119     at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:202:7) {
+1.119   [cause]: Error: Cannot find module '@rollup/rollup-linux-x64-musl'
+1.119   Require stack:
+1.119   - /workspace/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js
+1.119       at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+1.119       at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+1.119       at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+1.119       at Function._load (node:internal/modules/cjs/loader:1192:37)
+1.119       at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+1.119       at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+1.119       at Module.require (node:internal/modules/cjs/loader:1463:12)
+1.119       at require (node:internal/modules/helpers:147:16)
+1.119       at requireWithFriendlyError (/workspace/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js:97:10)
+1.119       at Object.<anonymous> (/workspace/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js:124:76) {
+1.119     code: 'MODULE_NOT_FOUND',
+1.119     requireStack: [
+1.119       '/workspace/node_modules/.pnpm/rollup@4.59.0/node_modules/rollup/dist/native.js'
+1.119     ]
+1.119   }
+1.119 }
+1.119
+1.119 Node.js v22.22.2
+1.165 /workspace/artifacts/reloading-manager:
+1.165  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/reloading-manager@0.0.0 build: `vite build --config vite.config.ts`
+1.165 Exit status 1
+------
+[+] build 0/1
+ ⠙ Image reloading-app Building                                                                                                   15.8s
+Dockerfile:33
+
+--------------------
+
+  31 |     ENV BASE_PATH=/ PORT=3000 NODE_ENV=production
+
+  32 |
+
+  33 | >>> RUN pnpm --filter @workspace/reloading-manager run build
+
+  34 |
+
+  35 |     ################################
+
+--------------------
+
+failed to solve: process "/bin/sh -c pnpm --filter @workspace/reloading-manager run build" did not complete successfully: exit code: 1
+
