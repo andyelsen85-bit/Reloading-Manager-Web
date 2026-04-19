@@ -18,5 +18,6 @@ export interface Cartridge {
   currentStep: CartridgeCurrentStep;
   l6In?: string | null;
   notes?: string | null;
+  photoBase64?: string | null;
   createdAt: Date;
 }

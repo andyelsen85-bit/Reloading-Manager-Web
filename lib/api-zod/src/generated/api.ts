@@ -15,6 +15,41 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * @summary Get application settings
+ */
+export const GetSettingsResponse = zod.object({
+  id: zod.number(),
+  bulletLowStockThreshold: zod.number(),
+  powderLowStockThreshold: zod.number(),
+  primerLowStockThreshold: zod.number(),
+  nextLoadNumber: zod.number(),
+  logoBase64: zod.string().nullish(),
+  backgroundBase64: zod.string().nullish(),
+});
+
+/**
+ * @summary Update application settings
+ */
+export const UpdateSettingsBody = zod.object({
+  bulletLowStockThreshold: zod.number().optional(),
+  powderLowStockThreshold: zod.number().optional(),
+  primerLowStockThreshold: zod.number().optional(),
+  nextLoadNumber: zod.number().optional(),
+  logoBase64: zod.string().nullish(),
+  backgroundBase64: zod.string().nullish(),
+});
+
+export const UpdateSettingsResponse = zod.object({
+  id: zod.number(),
+  bulletLowStockThreshold: zod.number(),
+  powderLowStockThreshold: zod.number(),
+  primerLowStockThreshold: zod.number(),
+  nextLoadNumber: zod.number(),
+  logoBase64: zod.string().nullish(),
+  backgroundBase64: zod.string().nullish(),
+});
+
+/**
  * @summary List all cartridge batches
  */
 export const ListCartridgesResponseItem = zod.object({
@@ -39,6 +74,7 @@ export const ListCartridgesResponseItem = zod.object({
   ]),
   l6In: zod.string().nullish(),
   notes: zod.string().nullish(),
+  photoBase64: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListCartridgesResponse = zod.array(ListCartridgesResponseItem);
@@ -52,6 +88,7 @@ export const CreateCartridgeBody = zod.object({
   productionCharge: zod.string(),
   quantityTotal: zod.number(),
   notes: zod.string().optional(),
+  photoBase64: zod.string().optional(),
 });
 
 /**
@@ -83,6 +120,7 @@ export const GetCartridgeResponse = zod.object({
   ]),
   l6In: zod.string().nullish(),
   notes: zod.string().nullish(),
+  photoBase64: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -101,6 +139,7 @@ export const UpdateCartridgeBody = zod.object({
   currentStep: zod.string().optional(),
   l6In: zod.string().optional(),
   notes: zod.string().optional(),
+  photoBase64: zod.string().nullish(),
 });
 
 export const UpdateCartridgeResponse = zod.object({
@@ -125,6 +164,7 @@ export const UpdateCartridgeResponse = zod.object({
   ]),
   l6In: zod.string().nullish(),
   notes: zod.string().nullish(),
+  photoBase64: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -146,6 +186,7 @@ export const ListBulletsResponseItem = zod.object({
   diameterIn: zod.number(),
   quantityAvailable: zod.number(),
   notes: zod.string().nullish(),
+  photoBase64: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListBulletsResponse = zod.array(ListBulletsResponseItem);
@@ -160,6 +201,7 @@ export const CreateBulletBody = zod.object({
   diameterIn: zod.number(),
   quantityAvailable: zod.number(),
   notes: zod.string().optional(),
+  photoBase64: zod.string().optional(),
 });
 
 /**
@@ -176,6 +218,7 @@ export const UpdateBulletBody = zod.object({
   diameterIn: zod.number().optional(),
   quantityAvailable: zod.number().optional(),
   notes: zod.string().optional(),
+  photoBase64: zod.string().nullish(),
 });
 
 export const UpdateBulletResponse = zod.object({
@@ -186,6 +229,7 @@ export const UpdateBulletResponse = zod.object({
   diameterIn: zod.number(),
   quantityAvailable: zod.number(),
   notes: zod.string().nullish(),
+  photoBase64: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -311,7 +355,8 @@ export const DeletePrimerParams = zod.object({
  */
 export const ListLoadsResponseItem = zod.object({
   id: zod.number(),
-  userLoadId: zod.string(),
+  loadNumber: zod.number().nullish(),
+  userLoadId: zod.string().nullish(),
   cartridgeId: zod.number(),
   cartridgeProductionCharge: zod.string(),
   reloadingCycle: zod.number(),
@@ -329,8 +374,12 @@ export const ListLoadsResponseItem = zod.object({
   oalIn: zod.number().nullish(),
   l6In: zod.number().nullish(),
   washingMinutes: zod.number().nullish(),
+  annealingMinutes: zod.number().nullish(),
   secondWashingMinutes: zod.number().nullish(),
   calibrationType: zod.string().nullish(),
+  skippedSteps: zod.string().nullish(),
+  h2oWeightGr: zod.number().nullish(),
+  photoBase64: zod.string().nullish(),
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
@@ -343,7 +392,6 @@ export const ListLoadsResponse = zod.array(ListLoadsResponseItem);
  */
 export const CreateLoadBody = zod.object({
   cartridgeId: zod.number(),
-  userLoadId: zod.string(),
   cartridgeQuantityUsed: zod.number(),
   notes: zod.string().optional(),
 });
@@ -357,7 +405,8 @@ export const GetLoadParams = zod.object({
 
 export const GetLoadResponse = zod.object({
   id: zod.number(),
-  userLoadId: zod.string(),
+  loadNumber: zod.number().nullish(),
+  userLoadId: zod.string().nullish(),
   cartridgeId: zod.number(),
   cartridgeProductionCharge: zod.string(),
   reloadingCycle: zod.number(),
@@ -375,8 +424,12 @@ export const GetLoadResponse = zod.object({
   oalIn: zod.number().nullish(),
   l6In: zod.number().nullish(),
   washingMinutes: zod.number().nullish(),
+  annealingMinutes: zod.number().nullish(),
   secondWashingMinutes: zod.number().nullish(),
   calibrationType: zod.string().nullish(),
+  skippedSteps: zod.string().nullish(),
+  h2oWeightGr: zod.number().nullish(),
+  photoBase64: zod.string().nullish(),
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
@@ -401,14 +454,18 @@ export const UpdateLoadBody = zod.object({
   oalIn: zod.number().optional(),
   l6In: zod.number().optional(),
   washingMinutes: zod.number().optional(),
+  annealingMinutes: zod.number().optional(),
   secondWashingMinutes: zod.number().optional(),
   calibrationType: zod.string().optional(),
+  skippedSteps: zod.string().optional(),
+  photoBase64: zod.string().nullish(),
   notes: zod.string().optional(),
 });
 
 export const UpdateLoadResponse = zod.object({
   id: zod.number(),
-  userLoadId: zod.string(),
+  loadNumber: zod.number().nullish(),
+  userLoadId: zod.string().nullish(),
   cartridgeId: zod.number(),
   cartridgeProductionCharge: zod.string(),
   reloadingCycle: zod.number(),
@@ -426,8 +483,12 @@ export const UpdateLoadResponse = zod.object({
   oalIn: zod.number().nullish(),
   l6In: zod.number().nullish(),
   washingMinutes: zod.number().nullish(),
+  annealingMinutes: zod.number().nullish(),
   secondWashingMinutes: zod.number().nullish(),
   calibrationType: zod.string().nullish(),
+  skippedSteps: zod.string().nullish(),
+  h2oWeightGr: zod.number().nullish(),
+  photoBase64: zod.string().nullish(),
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
@@ -450,7 +511,8 @@ export const CompleteLoadParams = zod.object({
 
 export const CompleteLoadResponse = zod.object({
   id: zod.number(),
-  userLoadId: zod.string(),
+  loadNumber: zod.number().nullish(),
+  userLoadId: zod.string().nullish(),
   cartridgeId: zod.number(),
   cartridgeProductionCharge: zod.string(),
   reloadingCycle: zod.number(),
@@ -468,8 +530,12 @@ export const CompleteLoadResponse = zod.object({
   oalIn: zod.number().nullish(),
   l6In: zod.number().nullish(),
   washingMinutes: zod.number().nullish(),
+  annealingMinutes: zod.number().nullish(),
   secondWashingMinutes: zod.number().nullish(),
   calibrationType: zod.string().nullish(),
+  skippedSteps: zod.string().nullish(),
+  h2oWeightGr: zod.number().nullish(),
+  photoBase64: zod.string().nullish(),
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
@@ -483,9 +549,14 @@ export const FireLoadParams = zod.object({
   id: zod.coerce.number(),
 });
 
+export const FireLoadBody = zod.object({
+  h2oWeightGr: zod.number().optional(),
+});
+
 export const FireLoadResponse = zod.object({
   id: zod.number(),
-  userLoadId: zod.string(),
+  loadNumber: zod.number().nullish(),
+  userLoadId: zod.string().nullish(),
   cartridgeId: zod.number(),
   cartridgeProductionCharge: zod.string(),
   reloadingCycle: zod.number(),
@@ -503,8 +574,12 @@ export const FireLoadResponse = zod.object({
   oalIn: zod.number().nullish(),
   l6In: zod.number().nullish(),
   washingMinutes: zod.number().nullish(),
+  annealingMinutes: zod.number().nullish(),
   secondWashingMinutes: zod.number().nullish(),
   calibrationType: zod.string().nullish(),
+  skippedSteps: zod.string().nullish(),
+  h2oWeightGr: zod.number().nullish(),
+  photoBase64: zod.string().nullish(),
   completed: zod.boolean(),
   fired: zod.boolean(),
   notes: zod.string().nullish(),
@@ -520,8 +595,8 @@ export const GetDashboardOverviewResponse = zod.object({
   powderTypes: zod.number(),
   primerTypes: zod.number(),
   loadRecords: zod.number(),
-  completedLoads: zod.number(),
   activeLoads: zod.number(),
+  completedLoads: zod.number(),
   firedLoads: zod.number(),
   lowStockBullets: zod.array(
     zod.object({
@@ -532,6 +607,7 @@ export const GetDashboardOverviewResponse = zod.object({
       diameterIn: zod.number(),
       quantityAvailable: zod.number(),
       notes: zod.string().nullish(),
+      photoBase64: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -552,6 +628,40 @@ export const GetDashboardOverviewResponse = zod.object({
       manufacturer: zod.string(),
       type: zod.string(),
       quantityAvailable: zod.number(),
+      notes: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  recentLoads: zod.array(
+    zod.object({
+      id: zod.number(),
+      loadNumber: zod.number().nullish(),
+      userLoadId: zod.string().nullish(),
+      cartridgeId: zod.number(),
+      cartridgeProductionCharge: zod.string(),
+      reloadingCycle: zod.number(),
+      date: zod.coerce.date(),
+      caliber: zod.string(),
+      cartridgeQuantityUsed: zod.number(),
+      primerId: zod.number().nullish(),
+      primerQuantityUsed: zod.number().nullish(),
+      powderId: zod.number().nullish(),
+      powderChargeGr: zod.number().nullish(),
+      powderTotalUsedGr: zod.number().nullish(),
+      bulletId: zod.number().nullish(),
+      bulletQuantityUsed: zod.number().nullish(),
+      coalIn: zod.number().nullish(),
+      oalIn: zod.number().nullish(),
+      l6In: zod.number().nullish(),
+      washingMinutes: zod.number().nullish(),
+      annealingMinutes: zod.number().nullish(),
+      secondWashingMinutes: zod.number().nullish(),
+      calibrationType: zod.string().nullish(),
+      skippedSteps: zod.string().nullish(),
+      h2oWeightGr: zod.number().nullish(),
+      photoBase64: zod.string().nullish(),
+      completed: zod.boolean(),
+      fired: zod.boolean(),
       notes: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
@@ -598,6 +708,7 @@ export const ExportDataResponse = zod.object({
       ]),
       l6In: zod.string().nullish(),
       notes: zod.string().nullish(),
+      photoBase64: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -610,6 +721,7 @@ export const ExportDataResponse = zod.object({
       diameterIn: zod.number(),
       quantityAvailable: zod.number(),
       notes: zod.string().nullish(),
+      photoBase64: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -637,7 +749,8 @@ export const ExportDataResponse = zod.object({
   loads: zod.array(
     zod.object({
       id: zod.number(),
-      userLoadId: zod.string(),
+      loadNumber: zod.number().nullish(),
+      userLoadId: zod.string().nullish(),
       cartridgeId: zod.number(),
       cartridgeProductionCharge: zod.string(),
       reloadingCycle: zod.number(),
@@ -655,8 +768,12 @@ export const ExportDataResponse = zod.object({
       oalIn: zod.number().nullish(),
       l6In: zod.number().nullish(),
       washingMinutes: zod.number().nullish(),
+      annealingMinutes: zod.number().nullish(),
       secondWashingMinutes: zod.number().nullish(),
       calibrationType: zod.string().nullish(),
+      skippedSteps: zod.string().nullish(),
+      h2oWeightGr: zod.number().nullish(),
+      photoBase64: zod.string().nullish(),
       completed: zod.boolean(),
       fired: zod.boolean(),
       notes: zod.string().nullish(),

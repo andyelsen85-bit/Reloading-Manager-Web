@@ -1,26 +1,31 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { cartridgesTable, bulletsTable, powdersTable, primersTable, loadsTable } from "@workspace/db";
-import { lt, sql } from "drizzle-orm";
+import { cartridgesTable, bulletsTable, powdersTable, primersTable, loadsTable, settingsTable } from "@workspace/db";
+import { desc } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/dashboard/overview", async (req, res) => {
-  const [cartridges, bullets, powders, primers, loads] = await Promise.all([
+router.get("/dashboard/overview", async (_req, res) => {
+  const [cartridges, bullets, powders, primers, loads, settingsRows] = await Promise.all([
     db.select().from(cartridgesTable),
     db.select().from(bulletsTable),
     db.select().from(powdersTable),
     db.select().from(primersTable),
-    db.select().from(loadsTable),
+    db.select().from(loadsTable).orderBy(desc(loadsTable.id)),
+    db.select().from(settingsTable),
   ]);
+
+  const settings = settingsRows[0] ?? { bulletLowStockThreshold: 100, powderLowStockThreshold: 500, primerLowStockThreshold: 100 };
 
   const completedLoads = loads.filter((l) => l.completed).length;
   const firedLoads = loads.filter((l) => l.fired).length;
   const activeLoads = loads.filter((l) => !l.completed).length;
 
-  const lowStockBullets = bullets.filter((b) => b.quantityAvailable < 100);
-  const lowStockPowders = powders.filter((p) => p.grainsAvailable < 500);
-  const lowStockPrimers = primers.filter((p) => p.quantityAvailable < 100);
+  const lowStockBullets = bullets.filter((b) => b.quantityAvailable < settings.bulletLowStockThreshold);
+  const lowStockPowders = powders.filter((p) => p.grainsAvailable < settings.powderLowStockThreshold);
+  const lowStockPrimers = primers.filter((p) => p.quantityAvailable < settings.primerLowStockThreshold);
+
+  const recentLoads = loads.slice(0, 5);
 
   res.json({
     cartridgeBatches: cartridges.length,
@@ -34,6 +39,7 @@ router.get("/dashboard/overview", async (req, res) => {
     lowStockBullets,
     lowStockPowders,
     lowStockPrimers,
+    recentLoads,
   });
 });
 

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useListCartridges, useCreateCartridge, useUpdateCartridge, useDeleteCartridge, getListCartridgesQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Camera, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,10 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import StepBadge from "@/components/StepBadge";
 import { useToast } from "@/hooks/use-toast";
 
-const STEPS = ["New", "Fired", "Washing", "Calibration", "Trim", "Second Washing", "Priming", "Powder", "Bullet Seating", "Completed"];
-
-type CartridgeForm = { manufacturer: string; caliber: string; productionCharge: string; quantityTotal: string; currentStep: string; l6In: string; notes: string };
-const empty: CartridgeForm = { manufacturer: "", caliber: "", productionCharge: "", quantityTotal: "", currentStep: "New", l6In: "", notes: "" };
+type CartridgeForm = { manufacturer: string; caliber: string; productionCharge: string; quantityTotal: string; currentStep: string; l6In: string; notes: string; photoBase64: string | null };
+const empty: CartridgeForm = { manufacturer: "", caliber: "", productionCharge: "", quantityTotal: "", currentStep: "New", l6In: "", notes: "", photoBase64: null };
 
 export default function Cartridges() {
   const qc = useQueryClient();
@@ -43,14 +41,14 @@ export default function Cartridges() {
     if (!form.manufacturer || !form.caliber || !form.productionCharge || !form.quantityTotal) {
       toast({ title: "Missing fields", variant: "destructive" }); return;
     }
-    await createMutation.mutateAsync({ data: { manufacturer: form.manufacturer, caliber: form.caliber, productionCharge: form.productionCharge, quantityTotal: Number(form.quantityTotal), notes: form.notes || undefined } });
+    await createMutation.mutateAsync({ data: { manufacturer: form.manufacturer, caliber: form.caliber, productionCharge: form.productionCharge, quantityTotal: Number(form.quantityTotal), notes: form.notes || undefined, photoBase64: form.photoBase64 ?? undefined } });
     invalidate(); setAddOpen(false); setForm(empty);
     toast({ title: "Cartridge batch added" });
   };
 
   const handleEdit = async () => {
     if (!editItem) return;
-    await updateMutation.mutateAsync({ id: editItem.id, data: { manufacturer: form.manufacturer, caliber: form.caliber, productionCharge: form.productionCharge, quantityTotal: Number(form.quantityTotal), currentStep: form.currentStep, l6In: form.l6In || undefined, notes: form.notes || undefined } });
+    await updateMutation.mutateAsync({ id: editItem.id, data: { manufacturer: form.manufacturer, caliber: form.caliber, productionCharge: form.productionCharge, quantityTotal: Number(form.quantityTotal), currentStep: form.currentStep, l6In: form.l6In || undefined, notes: form.notes || undefined, photoBase64: form.photoBase64 } });
     invalidate(); setEditItem(null); setForm(empty);
     toast({ title: "Cartridge updated" });
   };
@@ -64,7 +62,7 @@ export default function Cartridges() {
 
   const openEdit = (c: (typeof cartridges)[0]) => {
     setEditItem(c);
-    setForm({ manufacturer: c.manufacturer, caliber: c.caliber, productionCharge: c.productionCharge, quantityTotal: String(c.quantityTotal), currentStep: c.currentStep, l6In: c.l6In ?? "", notes: c.notes ?? "" });
+    setForm({ manufacturer: c.manufacturer, caliber: c.caliber, productionCharge: c.productionCharge, quantityTotal: String(c.quantityTotal), currentStep: c.currentStep, l6In: c.l6In ?? "", notes: c.notes ?? "", photoBase64: c.photoBase64 ?? null });
   };
 
   return (
@@ -93,6 +91,7 @@ export default function Cartridges() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Photo</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">ID</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Manufacturer</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Caliber</th>
@@ -113,6 +112,15 @@ export default function Cartridges() {
                   transition={{ delay: i * 0.03 }}
                   className="border-b border-border/50 hover:bg-muted/20 transition-colors"
                 >
+                  <td className="px-3 py-2">
+                    {c.photoBase64 ? (
+                      <img src={c.photoBase64} alt={c.caliber} className="w-9 h-9 object-cover rounded border border-border" />
+                    ) : (
+                      <div className="w-9 h-9 rounded border border-border bg-muted flex items-center justify-center">
+                        <Camera className="w-3.5 h-3.5 text-muted-foreground" />
+                      </div>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 font-mono text-muted-foreground">{c.id}</td>
                   <td className="px-3 py-2.5 text-foreground">{c.manufacturer}</td>
                   <td className="px-3 py-2.5 font-semibold text-foreground">{c.caliber}</td>
@@ -134,7 +142,6 @@ export default function Cartridges() {
         </div>
       )}
 
-      {/* Add Dialog */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Cartridge Batch</DialogTitle></DialogHeader>
@@ -146,7 +153,6 @@ export default function Cartridges() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
       <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Cartridge Batch</DialogTitle></DialogHeader>
@@ -158,7 +164,6 @@ export default function Cartridges() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
       <AlertDialog open={deleteId != null} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -177,6 +182,16 @@ export default function Cartridges() {
 
 function CartridgeFormFields({ form, setForm, showStep }: { form: CartridgeForm; setForm: (f: CartridgeForm) => void; showStep: boolean }) {
   const set = (key: keyof CartridgeForm) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
+  const photoRef = useRef<HTMLInputElement>(null);
+
+  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setForm({ ...form, photoBase64: reader.result as string });
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="grid gap-3 py-2">
       <div className="grid grid-cols-2 gap-3">
@@ -200,6 +215,26 @@ function CartridgeFormFields({ form, setForm, showStep }: { form: CartridgeForm;
         </div>
       )}
       <div className="space-y-1"><Label>Notes</Label><Input value={form.notes} onChange={set("notes")} /></div>
+      <div className="space-y-1.5">
+        <Label>Photo (optional)</Label>
+        {form.photoBase64 ? (
+          <div className="flex items-center gap-3">
+            <img src={form.photoBase64} alt="Cartridge" className="w-16 h-16 object-cover rounded border border-border" />
+            <Button variant="ghost" size="sm" className="gap-1 text-destructive hover:text-destructive" onClick={() => setForm({ ...form, photoBase64: null })}>
+              <X className="w-3.5 h-3.5" /> Remove
+            </Button>
+          </div>
+        ) : (
+          <div
+            className="border border-dashed border-border rounded p-3 flex items-center gap-2 cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => photoRef.current?.click()}
+          >
+            <Camera className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Upload photo</span>
+          </div>
+        )}
+        <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+      </div>
     </div>
   );
 }

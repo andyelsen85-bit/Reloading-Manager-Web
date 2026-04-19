@@ -14,5 +14,6 @@ export interface Bullet {
   diameterIn: number;
   quantityAvailable: number;
   notes?: string | null;
+  photoBase64?: string | null;
   createdAt: Date;
 }

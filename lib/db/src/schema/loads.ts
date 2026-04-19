@@ -1,10 +1,11 @@
-import { pgTable, serial, text, integer, timestamp, doublePrecision, boolean, date } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, doublePrecision, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const loadsTable = pgTable("loads", {
   id: serial("id").primaryKey(),
-  userLoadId: text("user_load_id").notNull(),
+  loadNumber: integer("load_number"),
+  userLoadId: text("user_load_id"),
   cartridgeId: integer("cartridge_id").notNull(),
   cartridgeProductionCharge: text("cartridge_production_charge").notNull(),
   reloadingCycle: integer("reloading_cycle").notNull().default(1),
@@ -22,8 +23,12 @@ export const loadsTable = pgTable("loads", {
   oalIn: doublePrecision("oal_in"),
   l6In: doublePrecision("l6_in"),
   washingMinutes: integer("washing_minutes"),
+  annealingMinutes: integer("annealing_minutes"),
   secondWashingMinutes: integer("second_washing_minutes"),
   calibrationType: text("calibration_type"),
+  skippedSteps: text("skipped_steps"),
+  h2oWeightGr: doublePrecision("h2o_weight_gr"),
+  photoBase64: text("photo_base64"),
   completed: boolean("completed").notNull().default(false),
   fired: boolean("fired").notNull().default(false),
   notes: text("notes"),

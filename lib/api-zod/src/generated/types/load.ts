@@ -8,7 +8,8 @@
 
 export interface Load {
   id: number;
-  userLoadId: string;
+  loadNumber?: number | null;
+  userLoadId?: string | null;
   cartridgeId: number;
   cartridgeProductionCharge: string;
   reloadingCycle: number;
@@ -26,8 +27,12 @@ export interface Load {
   oalIn?: number | null;
   l6In?: number | null;
   washingMinutes?: number | null;
+  annealingMinutes?: number | null;
   secondWashingMinutes?: number | null;
   calibrationType?: string | null;
+  skippedSteps?: string | null;
+  h2oWeightGr?: number | null;
+  photoBase64?: string | null;
   completed: boolean;
   fired: boolean;
   notes?: string | null;

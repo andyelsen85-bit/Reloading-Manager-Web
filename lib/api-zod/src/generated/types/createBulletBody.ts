@@ -13,4 +13,5 @@ export interface CreateBulletBody {
   diameterIn: number;
   quantityAvailable: number;
   notes?: string;
+  photoBase64?: string;
 }

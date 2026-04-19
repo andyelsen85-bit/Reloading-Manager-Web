@@ -6,6 +6,7 @@ import powdersRouter from "./powders";
 import primersRouter from "./primers";
 import loadsRouter from "./loads";
 import dashboardRouter from "./dashboard";
+import settingsRouter from "./settings";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(powdersRouter);
 router.use(primersRouter);
 router.use(loadsRouter);
 router.use(dashboardRouter);
+router.use(settingsRouter);
 
 export default router;

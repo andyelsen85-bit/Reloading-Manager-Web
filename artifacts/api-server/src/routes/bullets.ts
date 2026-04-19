@@ -39,6 +39,7 @@ router.patch("/bullets/:id", async (req, res) => {
   if (body.diameterIn !== undefined) updates.diameterIn = body.diameterIn;
   if (body.quantityAvailable !== undefined) updates.quantityAvailable = body.quantityAvailable;
   if (body.notes !== undefined) updates.notes = body.notes;
+  if (body.photoBase64 !== undefined) updates.photoBase64 = body.photoBase64;
   const [row] = await db.update(bulletsTable).set(updates).where(eq(bulletsTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   res.json(row);

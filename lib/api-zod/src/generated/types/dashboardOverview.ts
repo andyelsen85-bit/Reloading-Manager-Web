@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Bullet } from "./bullet";
+import type { Load } from "./load";
 import type { Powder } from "./powder";
 import type { Primer } from "./primer";
 
@@ -15,10 +16,11 @@ export interface DashboardOverview {
   powderTypes: number;
   primerTypes: number;
   loadRecords: number;
-  completedLoads: number;
   activeLoads: number;
+  completedLoads: number;
   firedLoads: number;
   lowStockBullets: Bullet[];
   lowStockPowders: Powder[];
   lowStockPrimers: Primer[];
+  recentLoads: Load[];
 }

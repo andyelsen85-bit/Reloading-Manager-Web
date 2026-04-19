@@ -47,6 +47,7 @@ router.patch("/cartridges/:id", async (req, res) => {
   if (body.currentStep !== undefined) updates.currentStep = body.currentStep;
   if (body.l6In !== undefined) updates.l6In = body.l6In;
   if (body.notes !== undefined) updates.notes = body.notes;
+  if (body.photoBase64 !== undefined) updates.photoBase64 = body.photoBase64;
   const [row] = await db.update(cartridgesTable).set(updates).where(eq(cartridgesTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   res.json(row);

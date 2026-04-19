@@ -12,4 +12,5 @@ export interface CreateCartridgeBody {
   productionCharge: string;
   quantityTotal: number;
   notes?: string;
+  photoBase64?: string;
 }

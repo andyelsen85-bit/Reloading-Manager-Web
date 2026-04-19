@@ -10,9 +10,11 @@ import {
   History,
   Menu,
   X,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useGetSettings } from "@workspace/api-client-react";
 
 const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -22,21 +24,35 @@ const nav = [
   { href: "/primers", label: "Primers", icon: Zap },
   { href: "/loads", label: "Loads", icon: ClipboardList },
   { href: "/history", label: "History", icon: History },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: settings } = useGetSettings({});
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div
+      className="flex min-h-screen bg-background"
+      style={settings?.backgroundBase64 ? {
+        backgroundImage: `url(${settings.backgroundBase64})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundAttachment: "fixed",
+      } : undefined}
+    >
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col w-56 bg-sidebar border-r border-sidebar-border shrink-0">
         <div className="px-5 py-5 border-b border-sidebar-border">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
-              <Crosshair className="w-3.5 h-3.5 text-primary-foreground" />
-            </div>
+            {settings?.logoBase64 ? (
+              <img src={settings.logoBase64} alt="Logo" className="w-7 h-7 rounded object-contain" />
+            ) : (
+              <div className="w-6 h-6 rounded bg-primary flex items-center justify-center">
+                <Crosshair className="w-3.5 h-3.5 text-primary-foreground" />
+              </div>
+            )}
             <span className="text-sm font-semibold tracking-wide text-sidebar-foreground">
               Reloading Manager
             </span>

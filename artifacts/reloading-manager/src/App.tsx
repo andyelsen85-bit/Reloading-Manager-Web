@@ -11,6 +11,7 @@ import Primers from "@/pages/Primers";
 import Loads from "@/pages/Loads";
 import LoadDetail from "@/pages/LoadDetail";
 import History from "@/pages/History";
+import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -31,6 +32,7 @@ function Router() {
         <Route path="/loads" component={Loads} />
         <Route path="/loads/:id" component={LoadDetail} />
         <Route path="/history" component={History} />
+        <Route path="/settings" component={Settings} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

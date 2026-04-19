@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -13,6 +13,7 @@ export const cartridgesTable = pgTable("cartridges", {
   currentStep: text("current_step").notNull().default("New"),
   l6In: text("l6_in"),
   notes: text("notes"),
+  photoBase64: text("photo_base64"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -6,8 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateLoadBody {
-  cartridgeId: number;
-  cartridgeQuantityUsed: number;
-  notes?: string;
+export interface FireLoadBody {
+  h2oWeightGr?: number;
 }

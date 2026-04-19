@@ -22,6 +22,8 @@ tags:
     description: Load records and workflow steps
   - name: dashboard
     description: Overview and reporting
+  - name: settings
+    description: Application settings
 
 paths:
   /healthz:
@@ -36,6 +38,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Settings ─────────────────────────────────────────────────
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get application settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update application settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsBody"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
 
   # ── Cartridges ──────────────────────────────────────────────
   /cartridges:
@@ -456,6 +489,12 @@ paths:
           required: true
           schema:
             type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FireLoadBody"
       responses:
         "200":
           description: Fired load
@@ -515,6 +554,45 @@ components:
           type: string
       required: [status]
 
+    Settings:
+      type: object
+      properties:
+        id:
+          type: integer
+        bulletLowStockThreshold:
+          type: integer
+        powderLowStockThreshold:
+          type: number
+        primerLowStockThreshold:
+          type: integer
+        nextLoadNumber:
+          type: integer
+        logoBase64:
+          type: string
+          nullable: true
+        backgroundBase64:
+          type: string
+          nullable: true
+      required: [id, bulletLowStockThreshold, powderLowStockThreshold, primerLowStockThreshold, nextLoadNumber]
+
+    UpdateSettingsBody:
+      type: object
+      properties:
+        bulletLowStockThreshold:
+          type: integer
+        powderLowStockThreshold:
+          type: number
+        primerLowStockThreshold:
+          type: integer
+        nextLoadNumber:
+          type: integer
+        logoBase64:
+          type: string
+          nullable: true
+        backgroundBase64:
+          type: string
+          nullable: true
+
     Cartridge:
       type: object
       properties:
@@ -541,6 +619,9 @@ components:
         notes:
           type: string
           nullable: true
+        photoBase64:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -558,6 +639,8 @@ components:
         quantityTotal:
           type: integer
         notes:
+          type: string
+        photoBase64:
           type: string
       required: [manufacturer, caliber, productionCharge, quantityTotal]
 
@@ -578,6 +661,9 @@ components:
           type: string
         notes:
           type: string
+        photoBase64:
+          type: string
+          nullable: true
 
     Bullet:
       type: object
@@ -595,6 +681,9 @@ components:
         quantityAvailable:
           type: integer
         notes:
+          type: string
+          nullable: true
+        photoBase64:
           type: string
           nullable: true
         createdAt:
@@ -617,6 +706,8 @@ components:
           type: integer
         notes:
           type: string
+        photoBase64:
+          type: string
       required: [manufacturer, model, weightGr, diameterIn, quantityAvailable]
 
     UpdateBulletBody:
@@ -634,6 +725,9 @@ components:
           type: integer
         notes:
           type: string
+        photoBase64:
+          type: string
+          nullable: true
 
     Powder:
       type: object
@@ -734,8 +828,12 @@ components:
       properties:
         id:
           type: integer
+        loadNumber:
+          type: integer
+          nullable: true
         userLoadId:
           type: string
+          nullable: true
         cartridgeId:
           type: integer
         cartridgeProductionCharge:
@@ -782,10 +880,22 @@ components:
         washingMinutes:
           type: integer
           nullable: true
+        annealingMinutes:
+          type: integer
+          nullable: true
         secondWashingMinutes:
           type: integer
           nullable: true
         calibrationType:
+          type: string
+          nullable: true
+        skippedSteps:
+          type: string
+          nullable: true
+        h2oWeightGr:
+          type: number
+          nullable: true
+        photoBase64:
           type: string
           nullable: true
         completed:
@@ -798,20 +908,18 @@ components:
         createdAt:
           type: string
           format: date-time
-      required: [id, userLoadId, cartridgeId, cartridgeProductionCharge, reloadingCycle, date, caliber, cartridgeQuantityUsed, completed, fired, createdAt]
+      required: [id, cartridgeId, cartridgeProductionCharge, reloadingCycle, date, caliber, cartridgeQuantityUsed, completed, fired, createdAt]
 
     CreateLoadBody:
       type: object
       properties:
         cartridgeId:
           type: integer
-        userLoadId:
-          type: string
         cartridgeQuantityUsed:
           type: integer
         notes:
           type: string
-      required: [cartridgeId, userLoadId, cartridgeQuantityUsed]
+      required: [cartridgeId, cartridgeQuantityUsed]
 
     UpdateLoadBody:
       type: object
@@ -836,12 +944,25 @@ components:
           type: number
         washingMinutes:
           type: integer
+        annealingMinutes:
+          type: integer
         secondWashingMinutes:
           type: integer
         calibrationType:
           type: string
+        skippedSteps:
+          type: string
+        photoBase64:
+          type: string
+          nullable: true
         notes:
           type: string
+
+    FireLoadBody:
+      type: object
+      properties:
+        h2oWeightGr:
+          type: number
 
     DashboardOverview:
       type: object
@@ -856,9 +977,9 @@ components:
           type: integer
         loadRecords:
           type: integer
-        completedLoads:
-          type: integer
         activeLoads:
+          type: integer
+        completedLoads:
           type: integer
         firedLoads:
           type: integer
@@ -874,7 +995,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Primer"
-      required: [cartridgeBatches, bulletTypes, powderTypes, primerTypes, loadRecords, completedLoads, activeLoads, firedLoads, lowStockBullets, lowStockPowders, lowStockPrimers]
+        recentLoads:
+          type: array
+          items:
+            $ref: "#/components/schemas/Load"
+      required: [cartridgeBatches, bulletTypes, powderTypes, primerTypes, loadRecords, activeLoads, completedLoads, firedLoads, lowStockBullets, lowStockPowders, lowStockPrimers, recentLoads]
 
     HistoryEntry:
       type: object

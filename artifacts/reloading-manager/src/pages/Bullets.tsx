@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useListBullets, useCreateBullet, useUpdateBullet, useDeleteBullet, getListBulletsQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Search, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, AlertTriangle, Camera, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
-type BulletForm = { manufacturer: string; model: string; weightGr: string; diameterIn: string; quantityAvailable: string; notes: string };
-const empty: BulletForm = { manufacturer: "", model: "", weightGr: "", diameterIn: "", quantityAvailable: "", notes: "" };
+type BulletForm = { manufacturer: string; model: string; weightGr: string; diameterIn: string; quantityAvailable: string; notes: string; photoBase64: string | null };
+const empty: BulletForm = { manufacturer: "", model: "", weightGr: "", diameterIn: "", quantityAvailable: "", notes: "", photoBase64: null };
 
 export default function Bullets() {
   const qc = useQueryClient();
@@ -39,14 +39,14 @@ export default function Bullets() {
     if (!form.manufacturer || !form.model || !form.weightGr || !form.diameterIn || !form.quantityAvailable) {
       toast({ title: "Missing fields", variant: "destructive" }); return;
     }
-    await createMutation.mutateAsync({ data: { manufacturer: form.manufacturer, model: form.model, weightGr: Number(form.weightGr), diameterIn: Number(form.diameterIn), quantityAvailable: Number(form.quantityAvailable), notes: form.notes || undefined } });
+    await createMutation.mutateAsync({ data: { manufacturer: form.manufacturer, model: form.model, weightGr: Number(form.weightGr), diameterIn: Number(form.diameterIn), quantityAvailable: Number(form.quantityAvailable), notes: form.notes || undefined, photoBase64: form.photoBase64 ?? undefined } });
     invalidate(); setAddOpen(false); setForm(empty);
     toast({ title: "Bullet added" });
   };
 
   const handleEdit = async () => {
     if (!editItem) return;
-    await updateMutation.mutateAsync({ id: editItem.id, data: { manufacturer: form.manufacturer, model: form.model, weightGr: Number(form.weightGr), diameterIn: Number(form.diameterIn), quantityAvailable: Number(form.quantityAvailable), notes: form.notes || undefined } });
+    await updateMutation.mutateAsync({ id: editItem.id, data: { manufacturer: form.manufacturer, model: form.model, weightGr: Number(form.weightGr), diameterIn: Number(form.diameterIn), quantityAvailable: Number(form.quantityAvailable), notes: form.notes || undefined, photoBase64: form.photoBase64 } });
     invalidate(); setEditItem(null); setForm(empty);
     toast({ title: "Bullet updated" });
   };
@@ -60,7 +60,7 @@ export default function Bullets() {
 
   const openEdit = (b: (typeof bullets)[0]) => {
     setEditItem(b);
-    setForm({ manufacturer: b.manufacturer, model: b.model, weightGr: String(b.weightGr), diameterIn: String(b.diameterIn), quantityAvailable: String(b.quantityAvailable), notes: b.notes ?? "" });
+    setForm({ manufacturer: b.manufacturer, model: b.model, weightGr: String(b.weightGr), diameterIn: String(b.diameterIn), quantityAvailable: String(b.quantityAvailable), notes: b.notes ?? "", photoBase64: b.photoBase64 ?? null });
   };
 
   return (
@@ -89,7 +89,7 @@ export default function Bullets() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                {["ID","Manufacturer","Model","Weight (gr)","Diameter (in)","Qty Available","Notes",""].map((h) => (
+                {["Photo","ID","Manufacturer","Model","Weight (gr)","Diameter (in)","Qty Available","Notes",""].map((h) => (
                   <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -103,6 +103,15 @@ export default function Bullets() {
                   transition={{ delay: i * 0.03 }}
                   className="border-b border-border/50 hover:bg-muted/20 transition-colors"
                 >
+                  <td className="px-3 py-2">
+                    {b.photoBase64 ? (
+                      <img src={b.photoBase64} alt={b.model} className="w-9 h-9 object-cover rounded border border-border" />
+                    ) : (
+                      <div className="w-9 h-9 rounded border border-border bg-muted flex items-center justify-center">
+                        <Camera className="w-3.5 h-3.5 text-muted-foreground" />
+                      </div>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 font-mono text-muted-foreground">{b.id}</td>
                   <td className="px-3 py-2.5 text-foreground">{b.manufacturer}</td>
                   <td className="px-3 py-2.5 font-semibold">{b.model}</td>
@@ -165,6 +174,16 @@ export default function Bullets() {
 
 function BulletFormFields({ form, setForm }: { form: BulletForm; setForm: (f: BulletForm) => void }) {
   const set = (key: keyof BulletForm) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
+  const photoRef = useRef<HTMLInputElement>(null);
+
+  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setForm({ ...form, photoBase64: reader.result as string });
+    reader.readAsDataURL(file);
+  };
+
   return (
     <div className="grid gap-3 py-2">
       <div className="grid grid-cols-2 gap-3">
@@ -177,6 +196,26 @@ function BulletFormFields({ form, setForm }: { form: BulletForm; setForm: (f: Bu
         <div className="space-y-1"><Label>Qty Available</Label><Input type="number" value={form.quantityAvailable} onChange={set("quantityAvailable")} /></div>
       </div>
       <div className="space-y-1"><Label>Notes</Label><Input value={form.notes} onChange={set("notes")} /></div>
+      <div className="space-y-1.5">
+        <Label>Photo (optional)</Label>
+        {form.photoBase64 ? (
+          <div className="flex items-center gap-3">
+            <img src={form.photoBase64} alt="Bullet" className="w-16 h-16 object-cover rounded border border-border" />
+            <Button variant="ghost" size="sm" className="gap-1 text-destructive hover:text-destructive" onClick={() => setForm({ ...form, photoBase64: null })}>
+              <X className="w-3.5 h-3.5" /> Remove
+            </Button>
+          </div>
+        ) : (
+          <div
+            className="border border-dashed border-border rounded p-3 flex items-center gap-2 cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={() => photoRef.current?.click()}
+          >
+            <Camera className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Upload photo</span>
+          </div>
+        )}
+        <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+      </div>
     </div>
   );
 }

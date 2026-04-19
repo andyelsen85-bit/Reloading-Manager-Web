@@ -9,6 +9,25 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface Settings {
+  id: number;
+  bulletLowStockThreshold: number;
+  powderLowStockThreshold: number;
+  primerLowStockThreshold: number;
+  nextLoadNumber: number;
+  logoBase64?: string | null;
+  backgroundBase64?: string | null;
+}
+
+export interface UpdateSettingsBody {
+  bulletLowStockThreshold?: number;
+  powderLowStockThreshold?: number;
+  primerLowStockThreshold?: number;
+  nextLoadNumber?: number;
+  logoBase64?: string | null;
+  backgroundBase64?: string | null;
+}
+
 export type CartridgeCurrentStep =
   (typeof CartridgeCurrentStep)[keyof typeof CartridgeCurrentStep];
 
@@ -36,6 +55,7 @@ export interface Cartridge {
   currentStep: CartridgeCurrentStep;
   l6In?: string | null;
   notes?: string | null;
+  photoBase64?: string | null;
   createdAt: string;
 }
 
@@ -45,6 +65,7 @@ export interface CreateCartridgeBody {
   productionCharge: string;
   quantityTotal: number;
   notes?: string;
+  photoBase64?: string;
 }
 
 export interface UpdateCartridgeBody {
@@ -55,6 +76,7 @@ export interface UpdateCartridgeBody {
   currentStep?: string;
   l6In?: string;
   notes?: string;
+  photoBase64?: string | null;
 }
 
 export interface Bullet {
@@ -65,6 +87,7 @@ export interface Bullet {
   diameterIn: number;
   quantityAvailable: number;
   notes?: string | null;
+  photoBase64?: string | null;
   createdAt: string;
 }
 
@@ -75,6 +98,7 @@ export interface CreateBulletBody {
   diameterIn: number;
   quantityAvailable: number;
   notes?: string;
+  photoBase64?: string;
 }
 
 export interface UpdateBulletBody {
@@ -84,6 +108,7 @@ export interface UpdateBulletBody {
   diameterIn?: number;
   quantityAvailable?: number;
   notes?: string;
+  photoBase64?: string | null;
 }
 
 export interface Powder {
@@ -137,7 +162,8 @@ export interface UpdatePrimerBody {
 
 export interface Load {
   id: number;
-  userLoadId: string;
+  loadNumber?: number | null;
+  userLoadId?: string | null;
   cartridgeId: number;
   cartridgeProductionCharge: string;
   reloadingCycle: number;
@@ -155,8 +181,12 @@ export interface Load {
   oalIn?: number | null;
   l6In?: number | null;
   washingMinutes?: number | null;
+  annealingMinutes?: number | null;
   secondWashingMinutes?: number | null;
   calibrationType?: string | null;
+  skippedSteps?: string | null;
+  h2oWeightGr?: number | null;
+  photoBase64?: string | null;
   completed: boolean;
   fired: boolean;
   notes?: string | null;
@@ -165,7 +195,6 @@ export interface Load {
 
 export interface CreateLoadBody {
   cartridgeId: number;
-  userLoadId: string;
   cartridgeQuantityUsed: number;
   notes?: string;
 }
@@ -181,9 +210,16 @@ export interface UpdateLoadBody {
   oalIn?: number;
   l6In?: number;
   washingMinutes?: number;
+  annealingMinutes?: number;
   secondWashingMinutes?: number;
   calibrationType?: string;
+  skippedSteps?: string;
+  photoBase64?: string | null;
   notes?: string;
+}
+
+export interface FireLoadBody {
+  h2oWeightGr?: number;
 }
 
 export interface DashboardOverview {
@@ -192,12 +228,13 @@ export interface DashboardOverview {
   powderTypes: number;
   primerTypes: number;
   loadRecords: number;
-  completedLoads: number;
   activeLoads: number;
+  completedLoads: number;
   firedLoads: number;
   lowStockBullets: Bullet[];
   lowStockPowders: Powder[];
   lowStockPrimers: Primer[];
+  recentLoads: Load[];
 }
 
 export interface HistoryEntry {

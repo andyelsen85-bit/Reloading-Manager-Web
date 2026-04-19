@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { loadsTable, cartridgesTable, bulletsTable, powdersTable, primersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { loadsTable, cartridgesTable, bulletsTable, powdersTable, primersTable, settingsTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
 import {
   CreateLoadBody,
   UpdateLoadBody,
@@ -10,12 +10,22 @@ import {
   DeleteLoadParams,
   CompleteLoadParams,
   FireLoadParams,
+  FireLoadBody,
 } from "@workspace/api-zod";
+
+async function getOrCreateSettings() {
+  const rows = await db.select().from(settingsTable);
+  if (rows.length === 0) {
+    const [row] = await db.insert(settingsTable).values({}).returning();
+    return row;
+  }
+  return rows[0];
+}
 
 const router = Router();
 
-router.get("/loads", async (req, res) => {
-  const rows = await db.select().from(loadsTable).orderBy(loadsTable.id);
+router.get("/loads", async (_req, res) => {
+  const rows = await db.select().from(loadsTable).orderBy(desc(loadsTable.id));
   res.json(rows);
 });
 
@@ -24,9 +34,13 @@ router.post("/loads", async (req, res) => {
   const [cartridge] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, body.cartridgeId));
   if (!cartridge) return res.status(404).json({ error: "Cartridge not found" });
 
+  const settings = await getOrCreateSettings();
+  const loadNumber = settings.nextLoadNumber;
+  await db.update(settingsTable).set({ nextLoadNumber: loadNumber + 1 }).where(eq(settingsTable.id, settings.id));
+
   const today = new Date().toISOString().split("T")[0];
   const [row] = await db.insert(loadsTable).values({
-    userLoadId: body.userLoadId,
+    loadNumber,
     cartridgeId: body.cartridgeId,
     cartridgeProductionCharge: cartridge.productionCharge,
     reloadingCycle: cartridge.timesFired + 1,
@@ -65,8 +79,11 @@ router.patch("/loads/:id", async (req, res) => {
   if (body.oalIn !== undefined) updates.oalIn = body.oalIn;
   if (body.l6In !== undefined) updates.l6In = body.l6In;
   if (body.washingMinutes !== undefined) updates.washingMinutes = body.washingMinutes;
+  if (body.annealingMinutes !== undefined) updates.annealingMinutes = body.annealingMinutes;
   if (body.secondWashingMinutes !== undefined) updates.secondWashingMinutes = body.secondWashingMinutes;
   if (body.calibrationType !== undefined) updates.calibrationType = body.calibrationType;
+  if (body.skippedSteps !== undefined) updates.skippedSteps = body.skippedSteps;
+  if (body.photoBase64 !== undefined) updates.photoBase64 = body.photoBase64;
   if (body.notes !== undefined) updates.notes = body.notes;
   const [row] = await db.update(loadsTable).set(updates).where(eq(loadsTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
@@ -84,35 +101,43 @@ router.post("/loads/:id/complete", async (req, res) => {
   const [load] = await db.select().from(loadsTable).where(eq(loadsTable.id, id));
   if (!load) return res.status(404).json({ error: "Not found" });
   if (load.completed) return res.status(400).json({ error: "Already completed" });
-  if (!load.primerId || !load.powderId || !load.bulletId || load.coalIn == null || load.oalIn == null) {
-    return res.status(400).json({ error: "Missing required steps: primer, powder, bullet, COAL, OAL" });
+
+  const skipped: string[] = load.skippedSteps ? JSON.parse(load.skippedSteps) : [];
+  const primerDone = load.primerId != null || skipped.includes("priming");
+  const powderDone = load.powderId != null || skipped.includes("powder");
+  const bulletDone = (load.bulletId != null && load.coalIn != null && load.oalIn != null) || skipped.includes("bullet_seating");
+
+  if (!primerDone || !powderDone || !bulletDone) {
+    return res.status(400).json({ error: "Missing required steps: primer, powder, bullet seating (or skip them)" });
   }
 
-  // Deduct primer inventory
-  const [primer] = await db.select().from(primersTable).where(eq(primersTable.id, load.primerId));
-  if (primer) {
-    await db.update(primersTable).set({
-      quantityAvailable: Math.max(0, primer.quantityAvailable - (load.primerQuantityUsed ?? load.cartridgeQuantityUsed))
-    }).where(eq(primersTable.id, primer.id));
+  if (load.primerId && !skipped.includes("priming")) {
+    const [primer] = await db.select().from(primersTable).where(eq(primersTable.id, load.primerId));
+    if (primer) {
+      await db.update(primersTable).set({
+        quantityAvailable: Math.max(0, primer.quantityAvailable - (load.primerQuantityUsed ?? load.cartridgeQuantityUsed))
+      }).where(eq(primersTable.id, primer.id));
+    }
   }
 
-  // Deduct powder inventory
-  const [powder] = await db.select().from(powdersTable).where(eq(powdersTable.id, load.powderId));
-  if (powder) {
-    await db.update(powdersTable).set({
-      grainsAvailable: Math.max(0, powder.grainsAvailable - (load.powderTotalUsedGr ?? 0))
-    }).where(eq(powdersTable.id, powder.id));
+  if (load.powderId && !skipped.includes("powder")) {
+    const [powder] = await db.select().from(powdersTable).where(eq(powdersTable.id, load.powderId));
+    if (powder) {
+      await db.update(powdersTable).set({
+        grainsAvailable: Math.max(0, powder.grainsAvailable - (load.powderTotalUsedGr ?? 0))
+      }).where(eq(powdersTable.id, powder.id));
+    }
   }
 
-  // Deduct bullet inventory
-  const [bullet] = await db.select().from(bulletsTable).where(eq(bulletsTable.id, load.bulletId));
-  if (bullet) {
-    await db.update(bulletsTable).set({
-      quantityAvailable: Math.max(0, bullet.quantityAvailable - (load.bulletQuantityUsed ?? load.cartridgeQuantityUsed))
-    }).where(eq(bulletsTable.id, bullet.id));
+  if (load.bulletId && !skipped.includes("bullet_seating")) {
+    const [bullet] = await db.select().from(bulletsTable).where(eq(bulletsTable.id, load.bulletId));
+    if (bullet) {
+      await db.update(bulletsTable).set({
+        quantityAvailable: Math.max(0, bullet.quantityAvailable - (load.bulletQuantityUsed ?? load.cartridgeQuantityUsed))
+      }).where(eq(bulletsTable.id, bullet.id));
+    }
   }
 
-  // Update cartridge: quantityLoaded, step
   const [cartridge] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, load.cartridgeId));
   if (cartridge) {
     await db.update(cartridgesTable).set({
@@ -132,7 +157,9 @@ router.post("/loads/:id/fire", async (req, res) => {
   if (!load.completed) return res.status(400).json({ error: "Load must be completed before firing" });
   if (load.fired) return res.status(400).json({ error: "Already marked as fired" });
 
-  // Increment cartridge timesFired
+  const bodyResult = FireLoadBody.safeParse(req.body);
+  const h2oWeightGr = bodyResult.success ? (bodyResult.data.h2oWeightGr ?? null) : null;
+
   const [cartridge] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, load.cartridgeId));
   if (cartridge) {
     await db.update(cartridgesTable).set({
@@ -141,7 +168,7 @@ router.post("/loads/:id/fire", async (req, res) => {
     }).where(eq(cartridgesTable.id, cartridge.id));
   }
 
-  const [updated] = await db.update(loadsTable).set({ fired: true }).where(eq(loadsTable.id, id)).returning();
+  const [updated] = await db.update(loadsTable).set({ fired: true, h2oWeightGr }).where(eq(loadsTable.id, id)).returning();
   res.json(updated);
 });
 

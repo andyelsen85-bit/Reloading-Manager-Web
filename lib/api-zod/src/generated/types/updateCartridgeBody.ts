@@ -14,4 +14,5 @@ export interface UpdateCartridgeBody {
   currentStep?: string;
   l6In?: string;
   notes?: string;
+  photoBase64?: string | null;
 }

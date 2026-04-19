@@ -3,7 +3,7 @@ import { useListLoads, useCreateLoad, useDeleteLoad, getListLoadsQueryKey, useLi
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, ChevronRight } from "lucide-react";
+import { Plus, Trash2, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,16 +26,19 @@ export default function Loads() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
-  const [form, setForm] = useState({ cartridgeId: "", userLoadId: "", cartridgeQuantityUsed: "", notes: "" });
+  const [form, setForm] = useState({ cartridgeId: "", cartridgeQuantityUsed: "", notes: "" });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListLoadsQueryKey() });
 
+  const formatLoadNum = (n: number | null | undefined) =>
+    n == null ? "—" : "#" + String(n).padStart(5, "0");
+
   const handleAdd = async () => {
-    if (!form.cartridgeId || !form.userLoadId || !form.cartridgeQuantityUsed) {
+    if (!form.cartridgeId || !form.cartridgeQuantityUsed) {
       toast({ title: "Missing fields", variant: "destructive" }); return;
     }
-    await createMutation.mutateAsync({ data: { cartridgeId: Number(form.cartridgeId), userLoadId: form.userLoadId, cartridgeQuantityUsed: Number(form.cartridgeQuantityUsed), notes: form.notes || undefined } });
-    invalidate(); setAddOpen(false); setForm({ cartridgeId: "", userLoadId: "", cartridgeQuantityUsed: "", notes: "" });
+    await createMutation.mutateAsync({ data: { cartridgeId: Number(form.cartridgeId), cartridgeQuantityUsed: Number(form.cartridgeQuantityUsed), notes: form.notes || undefined } });
+    invalidate(); setAddOpen(false); setForm({ cartridgeId: "", cartridgeQuantityUsed: "", notes: "" });
     toast({ title: "Load created" });
   };
 
@@ -69,7 +72,7 @@ export default function Loads() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                {["Inv#","Load ID","Caliber","Qty","Cycle","Date","Step","Status",""].map((h) => (
+                {["Inv#","Load #","Caliber","Qty","Cycle","Date","Step","Status",""].map((h) => (
                   <th key={h} className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
@@ -91,7 +94,7 @@ export default function Loads() {
                     className={rowClass}
                   >
                     <td className="px-3 py-2.5 font-mono text-muted-foreground">#{l.id}</td>
-                    <td className="px-3 py-2.5 font-semibold">{l.userLoadId}</td>
+                    <td className="px-3 py-2.5 font-semibold font-mono">{formatLoadNum(l.loadNumber)}</td>
                     <td className="px-3 py-2.5">{l.caliber}</td>
                     <td className="px-3 py-2.5 font-mono">{l.cartridgeQuantityUsed}</td>
                     <td className="px-3 py-2.5 font-mono">{l.reloadingCycle}</td>
@@ -135,11 +138,9 @@ export default function Loads() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label>User Load ID</Label><Input value={form.userLoadId} onChange={(e) => setForm({ ...form, userLoadId: e.target.value })} placeholder="e.g. 308-A1" /></div>
-              <div className="space-y-1"><Label>Quantity</Label><Input type="number" value={form.cartridgeQuantityUsed} onChange={(e) => setForm({ ...form, cartridgeQuantityUsed: e.target.value })} /></div>
-            </div>
-            <div className="space-y-1"><Label>Notes</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Quantity</Label><Input type="number" value={form.cartridgeQuantityUsed} onChange={(e) => setForm({ ...form, cartridgeQuantityUsed: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Notes (optional)</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+            <p className="text-xs text-muted-foreground">Load number is assigned automatically from settings.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>

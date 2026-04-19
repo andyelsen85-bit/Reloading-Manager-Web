@@ -17,7 +17,10 @@ export interface UpdateLoadBody {
   oalIn?: number;
   l6In?: number;
   washingMinutes?: number;
+  annealingMinutes?: number;
   secondWashingMinutes?: number;
   calibrationType?: string;
+  skippedSteps?: string;
+  photoBase64?: string | null;
   notes?: string;
 }
