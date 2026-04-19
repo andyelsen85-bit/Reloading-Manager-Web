@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { loadsTable, cartridgesTable, bulletsTable, powdersTable, primersTable, settingsTable, usersTable, chargeLevelsTable } from "@workspace/db";
-import { eq, desc, isNull, isNotNull, max } from "drizzle-orm";
+import { eq, desc, isNull, isNotNull, max, sql } from "drizzle-orm";
 import {
   CreateLoadBody,
   UpdateLoadBody,
@@ -88,13 +88,14 @@ router.post("/loads", async (req, res) => {
     const [{ maxCycle }] = await db.select({ maxCycle: max(loadsTable.reloadingCycle) }).from(loadsTable).where(eq(loadsTable.loadNumber, loadNumber));
     reloadingCycle = (maxCycle ?? 0) + 1;
   } else {
-    // New load: claim the next number atomically to prevent concurrent duplicates
-    await db.transaction(async (tx) => {
-      const [settings] = await tx.select().from(settingsTable);
-      if (!settings) throw new Error("Settings not found");
-      loadNumber = settings.nextLoadNumber;
-      await tx.update(settingsTable).set({ nextLoadNumber: loadNumber + 1 }).where(eq(settingsTable.id, settings.id));
-    });
+    // Atomically increment the counter and claim the old value in one SQL statement.
+    // UPDATE ... RETURNING is atomic — no two concurrent requests can ever get the same number.
+    const [claimed] = await db
+      .update(settingsTable)
+      .set({ nextLoadNumber: sql`${settingsTable.nextLoadNumber} + 1` })
+      .returning({ loadNumber: sql<number>`${settingsTable.nextLoadNumber} - 1` });
+    if (!claimed) throw new Error("Settings row not found");
+    loadNumber = claimed.loadNumber;
   }
 
   const today = new Date().toISOString().split("T")[0];
