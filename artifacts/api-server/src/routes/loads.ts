@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { loadsTable, cartridgesTable, bulletsTable, powdersTable, primersTable, settingsTable, usersTable, chargeLevelsTable } from "@workspace/db";
-import { eq, desc, isNull, isNotNull, and } from "drizzle-orm";
+import { eq, desc, isNull, isNotNull } from "drizzle-orm";
 import {
   CreateLoadBody,
   UpdateLoadBody,
@@ -75,20 +75,6 @@ router.post("/loads", async (req, res) => {
   const body = CreateLoadBody.parse(req.body);
   const [cartridge] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, body.cartridgeId));
   if (!cartridge) return res.status(404).json({ error: "Cartridge not found" });
-
-  // Prevent creating a new load if an active (non-fired, non-deleted) load already exists for this cartridge
-  const existing = await db.select({ id: loadsTable.id, loadNumber: loadsTable.loadNumber })
-    .from(loadsTable)
-    .where(and(
-      eq(loadsTable.cartridgeId, body.cartridgeId),
-      eq(loadsTable.fired, false),
-      isNull(loadsTable.deletedAt)
-    ));
-  if (existing.length > 0) {
-    return res.status(409).json({
-      error: `An active workflow already exists for this cartridge (Load #${String(existing[0].loadNumber ?? existing[0].id).padStart(5, "0")}). Complete and fire it before starting a new cycle.`
-    });
-  }
 
   let loadNumber: number;
   if (body.parentLoadId != null) {
