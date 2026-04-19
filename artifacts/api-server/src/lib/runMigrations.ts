@@ -283,6 +283,82 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "fired_date" text;
     `,
   },
+  {
+    id: "0006_extended_reference_data",
+    sql: `
+      -- Extended calibers
+      INSERT INTO "reference_data" ("category", "value", "sort_order") VALUES
+        ('caliber', '.22 LR', 1), ('caliber', '.17 HMR', 2), ('caliber', '.22 WMR', 3),
+        ('caliber', '9mm Luger', 5), ('caliber', '.45 ACP', 6), ('caliber', '.40 S&W', 7),
+        ('caliber', '.38 Special', 8), ('caliber', '.357 Magnum', 9), ('caliber', '.357 SIG', 11),
+        ('caliber', '.380 ACP', 12), ('caliber', '.44 Magnum', 13), ('caliber', '.44 Special', 14),
+        ('caliber', '.10mm Auto', 15), ('caliber', '.45 Colt', 16),
+        ('caliber', '.223 Rem', 20), ('caliber', '.308 Win', 21), ('caliber', '.30-06 Springfield', 22),
+        ('caliber', '.243 Win', 23), ('caliber', '.270 Win', 24), ('caliber', '.30-30 Win', 25),
+        ('caliber', '.45-70 Govt', 26), ('caliber', '.300 Blackout', 27),
+        ('caliber', '6.5 Creedmoor', 30), ('caliber', '6mm Creedmoor', 31),
+        ('caliber', '6.5 PRC', 32), ('caliber', '6.8 Western', 33),
+        ('caliber', '.300 Win Mag', 34), ('caliber', '.300 PRC', 35),
+        ('caliber', '.338 Lapua Mag', 36), ('caliber', '7mm PRC', 37),
+        ('caliber', '7mm Rem Mag', 38), ('caliber', '.260 Rem', 39),
+        ('caliber', '6.5x55 Swedish', 40), ('caliber', '8x57 IS', 41),
+        ('caliber', '7x57 Mauser', 42), ('caliber', '9.3x62', 43),
+        ('caliber', '6x47 Lapua', 44), ('caliber', '6.5x47 Lapua', 45),
+        ('caliber', '.284 Win', 46), ('caliber', '.300 Norma Mag', 47),
+        ('caliber', '7.62x39', 48), ('caliber', '5.56x45 NATO', 49),
+        ('caliber', '.375 H&H Mag', 50), ('caliber', '.416 Rigby', 51),
+        ('caliber', '.458 Win Mag', 52), ('caliber', '.500 S&W Mag', 53)
+      ON CONFLICT DO NOTHING;
+
+      -- Extended cartridge/brass manufacturers
+      INSERT INTO "reference_data" ("category", "value", "sort_order") VALUES
+        ('cartridge_manufacturer', 'Lapua', 10), ('cartridge_manufacturer', 'Norma', 20),
+        ('cartridge_manufacturer', 'Federal', 30), ('cartridge_manufacturer', 'Winchester', 40),
+        ('cartridge_manufacturer', 'Remington', 50), ('cartridge_manufacturer', 'Hornady', 60),
+        ('cartridge_manufacturer', 'Starline', 70), ('cartridge_manufacturer', 'Peterson', 80),
+        ('cartridge_manufacturer', 'Nosler', 90), ('cartridge_manufacturer', 'ADI', 100),
+        ('cartridge_manufacturer', 'PPU', 110), ('cartridge_manufacturer', 'RUAG/RWS', 120),
+        ('cartridge_manufacturer', 'Fiocchi', 130), ('cartridge_manufacturer', 'Eley', 140),
+        ('cartridge_manufacturer', 'Graf & Sons', 150), ('cartridge_manufacturer', 'Alpha Munitions', 160),
+        ('cartridge_manufacturer', 'Bertram', 170), ('cartridge_manufacturer', 'Sellier & Bellot', 180)
+      ON CONFLICT DO NOTHING;
+
+      -- Extended bullet manufacturers
+      INSERT INTO "reference_data" ("category", "value", "sort_order") VALUES
+        ('bullet_manufacturer', 'Sierra', 10), ('bullet_manufacturer', 'Hornady', 20),
+        ('bullet_manufacturer', 'Berger', 30), ('bullet_manufacturer', 'Nosler', 40),
+        ('bullet_manufacturer', 'Barnes', 50), ('bullet_manufacturer', 'Speer', 60),
+        ('bullet_manufacturer', 'Lapua', 70), ('bullet_manufacturer', 'Swift', 80),
+        ('bullet_manufacturer', 'Federal', 90), ('bullet_manufacturer', 'Cutting Edge', 100),
+        ('bullet_manufacturer', 'Hammer Bullets', 110), ('bullet_manufacturer', 'Norma', 120),
+        ('bullet_manufacturer', 'Woodleigh', 130), ('bullet_manufacturer', 'Remington', 140),
+        ('bullet_manufacturer', 'Winchester', 150), ('bullet_manufacturer', 'Leupold', 160),
+        ('bullet_manufacturer', 'GS Custom', 170), ('bullet_manufacturer', 'Peregrine', 180)
+      ON CONFLICT DO NOTHING;
+
+      -- Extended powder manufacturers
+      INSERT INTO "reference_data" ("category", "value", "sort_order") VALUES
+        ('powder_manufacturer', 'Hodgdon', 10), ('powder_manufacturer', 'IMR', 20),
+        ('powder_manufacturer', 'Vihtavuori', 30), ('powder_manufacturer', 'Alliant', 40),
+        ('powder_manufacturer', 'Accurate', 50), ('powder_manufacturer', 'Ramshot', 60),
+        ('powder_manufacturer', 'ADI / Thales', 70), ('powder_manufacturer', 'Shooters World', 80),
+        ('powder_manufacturer', 'Norma', 90), ('powder_manufacturer', 'Nobel Sport', 100),
+        ('powder_manufacturer', 'Lovex / Explosia', 110), ('powder_manufacturer', 'Tubal / Baschieri', 120),
+        ('powder_manufacturer', 'Western Powders', 130), ('powder_manufacturer', 'Somchem', 140),
+        ('powder_manufacturer', 'Reload Swiss', 150)
+      ON CONFLICT DO NOTHING;
+
+      -- Extended primer manufacturers
+      INSERT INTO "reference_data" ("category", "value", "sort_order") VALUES
+        ('primer_manufacturer', 'CCI', 10), ('primer_manufacturer', 'Federal', 20),
+        ('primer_manufacturer', 'Winchester', 30), ('primer_manufacturer', 'Remington', 40),
+        ('primer_manufacturer', 'Lapua', 50), ('primer_manufacturer', 'RWS', 60),
+        ('primer_manufacturer', 'Fiocchi', 70), ('primer_manufacturer', 'Cheddite', 80),
+        ('primer_manufacturer', 'Murom', 90), ('primer_manufacturer', 'Nobel Sport', 100),
+        ('primer_manufacturer', 'Sellier & Bellot', 110), ('primer_manufacturer', 'Norma', 120)
+      ON CONFLICT DO NOTHING;
+    `,
+  },
 ];
 
 export async function runMigrations(pool: Pool): Promise<void> {

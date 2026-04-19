@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { loadsTable, cartridgesTable, bulletsTable, powdersTable, primersTable, settingsTable, usersTable } from "@workspace/db";
+import { loadsTable, cartridgesTable, bulletsTable, powdersTable, primersTable, settingsTable, usersTable, chargeLevelsTable } from "@workspace/db";
 import { eq, desc, isNull, isNotNull, and } from "drizzle-orm";
 import {
   CreateLoadBody,
@@ -166,8 +166,30 @@ router.patch("/loads/:id", async (req, res) => {
   if (body.photoBase64 !== undefined) updates.photoBase64 = body.photoBase64;
   if (body.notes !== undefined) updates.notes = body.notes;
   if (Object.keys(updates).length === 0) return res.status(400).json({ error: "No fields to update" });
+
+  const [existingLoad] = await db.select().from(loadsTable).where(eq(loadsTable.id, id));
   const [row] = await db.update(loadsTable).set(updates).where(eq(loadsTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
+
+  // Deduct powder from inventory when powder step is marked done for ladder loads
+  if (body.powderDate && !existingLoad?.powderDate && row.chargeLadderId) {
+    const levels = await db.select().from(chargeLevelsTable).where(eq(chargeLevelsTable.ladderId, row.chargeLadderId));
+    const deductionByPowder = new Map<number, number>();
+    for (const lvl of levels) {
+      if (lvl.powderId && lvl.chargeGr > 0 && lvl.cartridgeCount > 0) {
+        const prev = deductionByPowder.get(lvl.powderId) ?? 0;
+        deductionByPowder.set(lvl.powderId, prev + lvl.chargeGr * lvl.cartridgeCount);
+      }
+    }
+    for (const [pId, totalGr] of deductionByPowder.entries()) {
+      const [powder] = await db.select().from(powdersTable).where(eq(powdersTable.id, pId));
+      if (powder) {
+        const newGr = Math.max(0, powder.grainsAvailable - totalGr);
+        await db.update(powdersTable).set({ grainsAvailable: newGr }).where(eq(powdersTable.id, pId));
+      }
+    }
+  }
+
   res.json(row);
 });
 

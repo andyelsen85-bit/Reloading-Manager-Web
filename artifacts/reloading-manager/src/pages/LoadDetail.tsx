@@ -15,6 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { DateInput } from "@/components/DateInput";
+import { toEUDate, todayISO } from "@/lib/dateUtils";
 
 const WORKFLOW_STEPS = [
   { key: "washing", label: "Washing", num: 1 },
@@ -102,7 +104,7 @@ export default function LoadDetail() {
 
   const [fireDialogOpen, setFireDialogOpen] = useState(false);
   const [h2oWeightGr, setH2oWeightGr] = useState("");
-  const [firedDate, setFiredDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [firedDate, setFiredDate] = useState(() => todayISO());
   const [selectedBestLevelId, setSelectedBestLevelId] = useState("");
   const [startingNewCycle, setStartingNewCycle] = useState(false);
 
@@ -174,12 +176,14 @@ export default function LoadDetail() {
     toast({ title: "Level added" });
   };
 
-  const handleUpdateLevel = async (levelId: number, chargeGr: number, cartridgeCount: number) => {
+  const handleUpdateLevel = async (levelId: number, chargeGr: number, cartridgeCount: number, powderId?: number | null) => {
     if (!load.chargeLadderId) return;
+    const data: Record<string, unknown> = { chargeGr, cartridgeCount };
+    if (powderId !== undefined) data.powderId = powderId;
     await updateLevelMutation.mutateAsync({
       id: load.chargeLadderId,
       levelId,
-      data: { chargeGr, cartridgeCount },
+      data: data as any,
     });
     qc.invalidateQueries({ queryKey: getGetChargeLadderQueryKey(load.chargeLadderId) });
   };
@@ -262,27 +266,27 @@ export default function LoadDetail() {
 
   const handleSaveWashing = async () => {
     if (!washingMinutes) { toast({ title: "Enter washing minutes", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { washingMinutes: Number(washingMinutes), washingDate: washingDate || new Date().toISOString().split("T")[0] } });
+    await updateMutation.mutateAsync({ id, data: { washingMinutes: Number(washingMinutes), washingDate: washingDate || todayISO() } });
     invalidate(); setActiveStep(null);
     toast({ title: "Washing recorded" });
   };
 
   const handleSaveCalibration = async () => {
     if (!calibrationType) { toast({ title: "Select calibration type", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { calibrationType, calibrationDate: calibrationDate || new Date().toISOString().split("T")[0] } });
+    await updateMutation.mutateAsync({ id, data: { calibrationType, calibrationDate: calibrationDate || todayISO() } });
     invalidate(); setActiveStep(null);
     toast({ title: "Calibration recorded" });
   };
 
   const handleSaveTrim = async () => {
     if (!l6In) { toast({ title: "Enter L6 measurement", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { l6In: Number(l6In), trimDate: trimDate || new Date().toISOString().split("T")[0] } });
+    await updateMutation.mutateAsync({ id, data: { l6In: Number(l6In), trimDate: trimDate || todayISO() } });
     invalidate(); setActiveStep(null);
     toast({ title: "Trim recorded" });
   };
 
   const handleMarkAnnealingDone = async () => {
-    await updateMutation.mutateAsync({ id, data: { annealingDone: true, annealingDate: annealingDate || new Date().toISOString().split("T")[0] } });
+    await updateMutation.mutateAsync({ id, data: { annealingDone: true, annealingDate: annealingDate || todayISO() } });
     invalidate(); setActiveStep(null);
     toast({ title: "Annealing marked done" });
   };
@@ -295,28 +299,28 @@ export default function LoadDetail() {
 
   const handleSaveSecondWashing = async () => {
     if (!secondWashingMinutes) { toast({ title: "Enter minutes", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { secondWashingMinutes: Number(secondWashingMinutes), secondWashingDate: secondWashingDate || new Date().toISOString().split("T")[0] } });
+    await updateMutation.mutateAsync({ id, data: { secondWashingMinutes: Number(secondWashingMinutes), secondWashingDate: secondWashingDate || todayISO() } });
     invalidate(); setActiveStep(null);
     toast({ title: "Second washing recorded" });
   };
 
   const handleSavePriming = async () => {
     if (!primerId) { toast({ title: "Select a primer", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { primerId: Number(primerId), primerQuantityUsed: load.cartridgeQuantityUsed, primingDate: primingDate || new Date().toISOString().split("T")[0] } });
+    await updateMutation.mutateAsync({ id, data: { primerId: Number(primerId), primerQuantityUsed: load.cartridgeQuantityUsed, primingDate: primingDate || todayISO() } });
     invalidate(); setActiveStep(null);
     toast({ title: "Priming recorded" });
   };
 
   const handleSavePowder = async () => {
     if (!powderId || !powderChargeGr) { toast({ title: "Select powder and charge", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { powderId: Number(powderId), powderChargeGr: Number(powderChargeGr), powderDate: powderDate || new Date().toISOString().split("T")[0] } });
+    await updateMutation.mutateAsync({ id, data: { powderId: Number(powderId), powderChargeGr: Number(powderChargeGr), powderDate: powderDate || todayISO() } });
     invalidate(); setActiveStep(null);
     toast({ title: "Powder recorded" });
   };
 
   const handleSaveBulletSeating = async () => {
     if (!bulletId || !coalIn || !oalIn) { toast({ title: "Fill all fields", variant: "destructive" }); return; }
-    await updateMutation.mutateAsync({ id, data: { bulletId: Number(bulletId), bulletQuantityUsed: load.cartridgeQuantityUsed, coalIn: Number(coalIn), oalIn: Number(oalIn), bulletSeatingDate: bulletSeatingDate || new Date().toISOString().split("T")[0] } });
+    await updateMutation.mutateAsync({ id, data: { bulletId: Number(bulletId), bulletQuantityUsed: load.cartridgeQuantityUsed, coalIn: Number(coalIn), oalIn: Number(oalIn), bulletSeatingDate: bulletSeatingDate || todayISO() } });
     invalidate(); setActiveStep(null);
     toast({ title: "Bullet seating recorded" });
   };
@@ -549,7 +553,7 @@ export default function LoadDetail() {
         {/* Steps */}
         <div className="space-y-3">
           <StepCard label="1. Washing" done={isStepDone(load, "washing")} skipped={isStepSkipped(load, "washing")}
-            summary={!isStepSkipped(load, "washing") && load.washingMinutes != null ? `${load.washingMinutes} min${load.washingDate ? ` · ${load.washingDate}` : ""}` : null}
+            summary={!isStepSkipped(load, "washing") && load.washingMinutes != null ? `${load.washingMinutes} min${load.washingDate ? ` · ${toEUDate(load.washingDate)}` : ""}` : null}
             open={activeStep === "washing"} onToggle={() => setActiveStep(activeStep === "washing" ? null : "washing")}
             onSkip={() => handleSkipStep("washing")} onUnskip={() => handleUnskipStep("washing")}
             onUndo={isAdmin && isStepDone(load, "washing") && !isStepSkipped(load, "washing") ? () => handleUndoStep("washing") : undefined}
@@ -559,7 +563,7 @@ export default function LoadDetail() {
                 <div><Label>Duration (minutes)</Label>
                   <Input type="number" placeholder="e.g. 30" defaultValue={load.washingMinutes ?? ""} onChange={(e) => setWashingMinutes(e.target.value)} /></div>
                 <div><Label>Date</Label>
-                  <Input type="date" value={washingDate || load.washingDate || ""} onChange={(e) => setWashingDate(e.target.value)} /></div>
+                  <DateInput value={washingDate || load.washingDate} onChange={setWashingDate} /></div>
               </div>
               <Button size="sm" onClick={handleSaveWashing} disabled={updateMutation.isPending}>Save</Button>
             </div>
@@ -567,7 +571,7 @@ export default function LoadDetail() {
 
           <StepCard label="2. Calibration" done={isStepDone(load, "calibration")} skipped={isStepSkipped(load, "calibration")}
             blocked={isStepBlocked("calibration")}
-            summary={!isStepSkipped(load, "calibration") ? `${load.calibrationType ?? ""}${load.calibrationDate ? ` · ${load.calibrationDate}` : ""}` || null : null}
+            summary={!isStepSkipped(load, "calibration") ? `${load.calibrationType ?? ""}${load.calibrationDate ? ` · ${toEUDate(load.calibrationDate)}` : ""}` || null : null}
             open={activeStep === "calibration"} onToggle={() => setActiveStep(activeStep === "calibration" ? null : "calibration")}
             onSkip={() => handleSkipStep("calibration")} onUnskip={() => handleUnskipStep("calibration")}
             onUndo={isAdmin && isStepDone(load, "calibration") && !isStepSkipped(load, "calibration") ? () => handleUndoStep("calibration") : undefined}
@@ -584,7 +588,7 @@ export default function LoadDetail() {
                     </SelectContent>
                   </Select></div>
                 <div><Label>Date</Label>
-                  <Input type="date" value={calibrationDate || load.calibrationDate || ""} onChange={(e) => setCalibrationDate(e.target.value)} /></div>
+                  <DateInput value={calibrationDate || load.calibrationDate} onChange={setCalibrationDate} /></div>
               </div>
               <Button size="sm" onClick={handleSaveCalibration} disabled={updateMutation.isPending}>Save</Button>
             </div>
@@ -592,7 +596,7 @@ export default function LoadDetail() {
 
           <StepCard label="3. Trim" done={isStepDone(load, "trim")} skipped={isStepSkipped(load, "trim")}
             blocked={isStepBlocked("trim")}
-            summary={!isStepSkipped(load, "trim") && load.l6In != null ? `L6: ${load.l6In} in${load.trimDate ? ` · ${load.trimDate}` : ""}` : null}
+            summary={!isStepSkipped(load, "trim") && load.l6In != null ? `L6: ${load.l6In} in${load.trimDate ? ` · ${toEUDate(load.trimDate)}` : ""}` : null}
             open={activeStep === "trim"} onToggle={() => setActiveStep(activeStep === "trim" ? null : "trim")}
             onSkip={() => handleSkipStep("trim")} onUnskip={() => handleUnskipStep("trim")}
             onUndo={isAdmin && isStepDone(load, "trim") && !isStepSkipped(load, "trim") ? () => handleUndoStep("trim") : undefined}
@@ -602,7 +606,7 @@ export default function LoadDetail() {
                 <div><Label>L6 Measurement (inches)</Label>
                   <Input type="number" step="0.001" placeholder="e.g. 2.105" defaultValue={load.l6In ?? ""} onChange={(e) => setL6In(e.target.value)} /></div>
                 <div><Label>Date</Label>
-                  <Input type="date" value={trimDate || load.trimDate || ""} onChange={(e) => setTrimDate(e.target.value)} /></div>
+                  <DateInput value={trimDate || load.trimDate} onChange={setTrimDate} /></div>
               </div>
               <Button size="sm" onClick={handleSaveTrim} disabled={updateMutation.isPending}>Save</Button>
             </div>
@@ -610,7 +614,7 @@ export default function LoadDetail() {
 
           <StepCard label="4. Annealing" done={isStepDone(load, "annealing")} skipped={isStepSkipped(load, "annealing")}
             blocked={isStepBlocked("annealing")}
-            summary={!isStepSkipped(load, "annealing") && load.annealingDone ? `Done${load.annealingDate ? ` · ${load.annealingDate}` : ""}` : null}
+            summary={!isStepSkipped(load, "annealing") && load.annealingDone ? `Done${load.annealingDate ? ` · ${toEUDate(load.annealingDate)}` : ""}` : null}
             open={activeStep === "annealing"} onToggle={() => setActiveStep(activeStep === "annealing" ? null : "annealing")}
             onSkip={() => handleSkipStep("annealing")} onUnskip={() => handleUnskipStep("annealing")}
           >
@@ -632,17 +636,17 @@ export default function LoadDetail() {
               {!load.annealingDone && (
                 <div className="grid grid-cols-2 gap-2 items-end">
                   <div><Label>Date</Label>
-                    <Input type="date" value={annealingDate} onChange={(e) => setAnnealingDate(e.target.value)} /></div>
+                    <DateInput value={annealingDate} onChange={setAnnealingDate} /></div>
                   <Button size="sm" onClick={handleMarkAnnealingDone} disabled={updateMutation.isPending}>Mark Done</Button>
                 </div>
               )}
-              {load.annealingDate && <p className="text-xs text-muted-foreground">Date: {load.annealingDate}</p>}
+              {load.annealingDate && <p className="text-xs text-muted-foreground">Date: {toEUDate(load.annealingDate)}</p>}
             </div>
           </StepCard>
 
           <StepCard label="5. Second Washing" done={isStepDone(load, "second_washing")} skipped={isStepSkipped(load, "second_washing")}
             blocked={isStepBlocked("second_washing")}
-            summary={!isStepSkipped(load, "second_washing") && load.secondWashingMinutes != null ? `${load.secondWashingMinutes} min${load.secondWashingDate ? ` · ${load.secondWashingDate}` : ""}` : null}
+            summary={!isStepSkipped(load, "second_washing") && load.secondWashingMinutes != null ? `${load.secondWashingMinutes} min${load.secondWashingDate ? ` · ${toEUDate(load.secondWashingDate)}` : ""}` : null}
             open={activeStep === "second_washing"} onToggle={() => setActiveStep(activeStep === "second_washing" ? null : "second_washing")}
             onSkip={() => handleSkipStep("second_washing")} onUnskip={() => handleUnskipStep("second_washing")}
             onUndo={isAdmin && isStepDone(load, "second_washing") && !isStepSkipped(load, "second_washing") ? () => handleUndoStep("second_washing") : undefined}
@@ -652,7 +656,7 @@ export default function LoadDetail() {
                 <div><Label>Duration (minutes)</Label>
                   <Input type="number" placeholder="e.g. 20" defaultValue={load.secondWashingMinutes ?? ""} onChange={(e) => setSecondWashingMinutes(e.target.value)} /></div>
                 <div><Label>Date</Label>
-                  <Input type="date" value={secondWashingDate || load.secondWashingDate || ""} onChange={(e) => setSecondWashingDate(e.target.value)} /></div>
+                  <DateInput value={secondWashingDate || load.secondWashingDate} onChange={setSecondWashingDate} /></div>
               </div>
               <Button size="sm" onClick={handleSaveSecondWashing} disabled={updateMutation.isPending}>Save</Button>
             </div>
@@ -660,7 +664,7 @@ export default function LoadDetail() {
 
           <StepCard label="6. Priming" done={isStepDone(load, "priming")} skipped={isStepSkipped(load, "priming")}
             blocked={isStepBlocked("priming")}
-            summary={!isStepSkipped(load, "priming") && load.primerId != null ? `Primer #${load.primerId} · ${load.primerQuantityUsed} pcs${load.primingDate ? ` · ${load.primingDate}` : ""}` : null}
+            summary={!isStepSkipped(load, "priming") && load.primerId != null ? `Primer #${load.primerId} · ${load.primerQuantityUsed} pcs${load.primingDate ? ` · ${toEUDate(load.primingDate)}` : ""}` : null}
             open={activeStep === "priming"} onToggle={() => setActiveStep(activeStep === "priming" ? null : "priming")}
             onSkip={() => handleSkipStep("priming")} onUnskip={() => handleUnskipStep("priming")}
             onUndo={isAdmin && isStepDone(load, "priming") && !isStepSkipped(load, "priming") ? () => handleUndoStep("priming") : undefined}
@@ -679,7 +683,7 @@ export default function LoadDetail() {
                     </SelectContent>
                   </Select></div>
                 <div><Label>Date</Label>
-                  <Input type="date" value={primingDate || load.primingDate || ""} onChange={(e) => setPrimingDate(e.target.value)} /></div>
+                  <DateInput value={primingDate || load.primingDate} onChange={setPrimingDate} /></div>
               </div>
               <p className="text-xs text-muted-foreground">Quantity used: {load.cartridgeQuantityUsed} (matches round count)</p>
               <Button size="sm" onClick={handleSavePriming} disabled={updateMutation.isPending}>Save</Button>
@@ -730,6 +734,12 @@ export default function LoadDetail() {
                 </button>
               </div>
 
+              {/* Date field — common to both modes */}
+              <div className="w-48">
+                <Label>Date</Label>
+                <DateInput value={powderDate || load.powderDate} onChange={setPowderDate} />
+              </div>
+
               {effectiveLadderMode ? (
                 /* LADDER MODE */
                 load.chargeLadderId ? (
@@ -748,6 +758,7 @@ export default function LoadDetail() {
                             <th className="px-2 py-1.5 text-left text-xs text-muted-foreground w-8">#</th>
                             <th className="px-2 py-1.5 text-left text-xs text-muted-foreground">Charge (gr)</th>
                             <th className="px-2 py-1.5 text-left text-xs text-muted-foreground">Rounds</th>
+                            <th className="px-2 py-1.5 text-left text-xs text-muted-foreground">Powder</th>
                             <th className="px-2 py-1.5 text-center text-xs text-muted-foreground w-8"></th>
                           </tr>
                         </thead>
@@ -757,6 +768,7 @@ export default function LoadDetail() {
                               key={lvl.id}
                               index={i}
                               level={lvl}
+                              powders={powders}
                               isBest={ladderDetail?.ladder?.bestLevelId === lvl.id}
                               onUpdate={handleUpdateLevel}
                               onDelete={handleDeleteLevel}
@@ -778,15 +790,15 @@ export default function LoadDetail() {
                         <Button
                           size="sm"
                           onClick={() => {
-                            const today = new Date().toISOString().split("T")[0];
-                            updateMutation.mutate({ id, data: { powderDate: today } as any }, {
-                              onSuccess: () => { invalidate(); toast({ title: "Powder step marked done" }); },
+                            const date = powderDate || todayISO();
+                            updateMutation.mutate({ id, data: { powderDate: date } as any }, {
+                              onSuccess: () => { invalidate(); toast({ title: "Powder step saved" }); },
                             });
                           }}
                           disabled={updateMutation.isPending}
                           className="gap-1.5"
                         >
-                          Mark Powder Done
+                          Save
                         </Button>
                       )}
                     </div>
@@ -809,20 +821,17 @@ export default function LoadDetail() {
               ) : (
                 /* SINGLE MODE */
                 <div className="space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div><Label>Select Powder</Label>
-                      <Select defaultValue={load.powderId != null ? String(load.powderId) : ""} onValueChange={setPowderId}>
-                        <SelectTrigger><SelectValue placeholder="Select powder..." /></SelectTrigger>
-                        <SelectContent>
-                          {powders.map((p) => (
-                            <SelectItem key={p.id} value={String(p.id)}>
-                              #{p.id} — {p.manufacturer} {p.name} ({p.grainsAvailable.toFixed(1)} gr avail.)
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select></div>
-                    <div><Label>Date</Label>
-                      <Input type="date" value={powderDate || load.powderDate || ""} onChange={(e) => setPowderDate(e.target.value)} /></div>
+                  <div><Label>Select Powder</Label>
+                    <Select defaultValue={load.powderId != null ? String(load.powderId) : ""} onValueChange={setPowderId}>
+                      <SelectTrigger><SelectValue placeholder="Select powder..." /></SelectTrigger>
+                      <SelectContent>
+                        {powders.map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            #{p.id} — {p.manufacturer} {p.name} ({p.grainsAvailable.toFixed(1)} gr avail.)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <Label>Charge per round (grains)</Label>
                   <Input type="number" step="0.1" placeholder="e.g. 43.5" defaultValue={load.powderChargeGr ?? ""} onChange={(e) => setPowderChargeGr(e.target.value)} />
@@ -837,7 +846,7 @@ export default function LoadDetail() {
 
           <StepCard label="8. Bullet Seating" done={isStepDone(load, "bullet_seating")} skipped={isStepSkipped(load, "bullet_seating")}
             blocked={isStepBlocked("bullet_seating")}
-            summary={!isStepSkipped(load, "bullet_seating") && load.bulletId != null ? `Bullet #${load.bulletId} · COAL ${load.coalIn}" · OAL ${load.oalIn}"${load.bulletSeatingDate ? ` · ${load.bulletSeatingDate}` : ""}` : null}
+            summary={!isStepSkipped(load, "bullet_seating") && load.bulletId != null ? `Bullet #${load.bulletId} · COAL ${load.coalIn}" · OAL ${load.oalIn}"${load.bulletSeatingDate ? ` · ${toEUDate(load.bulletSeatingDate)}` : ""}` : null}
             open={activeStep === "bullet_seating"} onToggle={() => setActiveStep(activeStep === "bullet_seating" ? null : "bullet_seating")}
             onSkip={() => handleSkipStep("bullet_seating")} onUnskip={() => handleUnskipStep("bullet_seating")}
             onUndo={isAdmin && isStepDone(load, "bullet_seating") && !isStepSkipped(load, "bullet_seating") ? () => handleUndoStep("bullet_seating") : undefined}
@@ -856,7 +865,7 @@ export default function LoadDetail() {
                     </SelectContent>
                   </Select></div>
                 <div><Label>Date</Label>
-                  <Input type="date" value={bulletSeatingDate || load.bulletSeatingDate || ""} onChange={(e) => setBulletSeatingDate(e.target.value)} /></div>
+                  <DateInput value={bulletSeatingDate || load.bulletSeatingDate} onChange={setBulletSeatingDate} /></div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -975,11 +984,7 @@ export default function LoadDetail() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Fired Date</Label>
-                <Input
-                  type="date"
-                  value={firedDate}
-                  onChange={(e) => setFiredDate(e.target.value)}
-                />
+                <DateInput value={firedDate} onChange={setFiredDate} />
               </div>
               <div className="space-y-1.5">
                 <Label>H₂O Weight (grains) — optional</Label>
@@ -1128,28 +1133,44 @@ function StepCard({
 function LevelEditorRow({
   index,
   level,
+  powders,
   isBest,
   onUpdate,
   onDelete,
   updating,
 }: {
   index: number;
-  level: { id: number; chargeGr: number; cartridgeCount: number; status?: string };
+  level: { id: number; chargeGr: number; cartridgeCount: number; powderId?: number | null; status?: string };
+  powders: { id: number; manufacturer: string; name: string; grainsAvailable: number }[];
   isBest: boolean;
-  onUpdate: (id: number, chargeGr: number, cartridgeCount: number) => Promise<void>;
+  onUpdate: (id: number, chargeGr: number, cartridgeCount: number, powderId?: number | null) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   updating: boolean;
 }) {
   const [chargeGr, setChargeGr] = useState(String(level.chargeGr === 0 ? "" : level.chargeGr));
   const [cartridgeCount, setCartridgeCount] = useState(String(level.cartridgeCount));
+  const [selectedPowderId, setSelectedPowderId] = useState<string>(level.powderId != null ? String(level.powderId) : "");
   const [saving, setSaving] = useState(false);
+
+  const commit = async (overrides?: { chargeGr?: number; cartridgeCount?: number; powderId?: number | null }) => {
+    const newCharge = (overrides?.chargeGr ?? Number(chargeGr)) || 0;
+    const newCount = (overrides?.cartridgeCount ?? Number(cartridgeCount)) || 1;
+    const newPowder = overrides?.powderId !== undefined ? overrides.powderId : (selectedPowderId ? Number(selectedPowderId) : null);
+    setSaving(true);
+    try { await onUpdate(level.id, newCharge, newCount, newPowder); } finally { setSaving(false); }
+  };
 
   const handleBlur = async () => {
     const newCharge = Number(chargeGr) || 0;
     const newCount = Number(cartridgeCount) || 1;
     if (newCharge === level.chargeGr && newCount === level.cartridgeCount) return;
-    setSaving(true);
-    try { await onUpdate(level.id, newCharge, newCount); } finally { setSaving(false); }
+    await commit();
+  };
+
+  const handlePowderChange = async (val: string) => {
+    setSelectedPowderId(val);
+    const newPowder = val ? Number(val) : null;
+    await commit({ powderId: newPowder });
   };
 
   return (
@@ -1186,6 +1207,21 @@ function LevelEditorRow({
           />
           <span className="text-xs text-muted-foreground">rds</span>
         </div>
+      </td>
+      <td className="px-2 py-1 min-w-[140px]">
+        <Select value={selectedPowderId} onValueChange={handlePowderChange} disabled={saving || updating}>
+          <SelectTrigger className="h-7 text-xs">
+            <SelectValue placeholder="Select…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">— none —</SelectItem>
+            {powders.map((p) => (
+              <SelectItem key={p.id} value={String(p.id)}>
+                {p.manufacturer} {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </td>
       <td className="px-1 py-1 text-center">
         {saving ? (
