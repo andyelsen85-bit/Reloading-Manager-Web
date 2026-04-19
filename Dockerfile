@@ -16,7 +16,10 @@ COPY lib/db/package.json               ./lib/db/
 COPY artifacts/api-server/package.json         ./artifacts/api-server/
 COPY artifacts/reloading-manager/package.json  ./artifacts/reloading-manager/
 
-RUN pnpm install --frozen-lockfile
+# --no-frozen-lockfile lets pnpm install the correct platform-specific native
+# binaries (e.g. rollup, esbuild) for the build environment, since the
+# lockfile was generated on a different machine (Replit/glibc).
+RUN pnpm install --no-frozen-lockfile
 
 ################################
 # Stage 2 – Build the React frontend
