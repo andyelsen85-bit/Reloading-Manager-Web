@@ -66,7 +66,7 @@ export default function Loads() {
   const [restockOpts, setRestockOpts] = useState({ primers: false, powder: false, bullets: false, primerQty: 0, powderGr: 0, bulletQty: 0, note: "" });
   const [form, setForm] = useState({ cartridgeId: "", cartridgeQuantityUsed: "", notes: "" });
   const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
-  const [showCompletedFor, setShowCompletedFor] = useState<Set<number>>(new Set());
+  const [showFiredFor, setShowFiredFor] = useState<Set<number>>(new Set());
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: getListLoadsQueryKey() });
@@ -114,8 +114,8 @@ export default function Loads() {
   const toggleCollapse = (id: number) =>
     setCollapsedGroups((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
-  const toggleShowCompleted = (id: number) =>
-    setShowCompletedFor((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  const toggleShowFired = (id: number) =>
+    setShowFiredFor((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
   const grouped = cartridges
     .map((c) => ({ cartridge: c, loads: loads.filter((l) => l.cartridgeId === c.id) }))
@@ -141,11 +141,11 @@ export default function Loads() {
         <div className="space-y-3">
           {grouped.map((g) => {
             const isCollapsed = collapsedGroups.has(g.cartridge.id);
-            const activeLoads = g.loads.filter((l) => !l.completed);
-            const completedLoads = g.loads.filter((l) => l.completed);
-            const showCompleted = showCompletedFor.has(g.cartridge.id);
-            const visibleLoads = showCompleted ? g.loads : activeLoads;
-            const hasActive = activeLoads.length > 0;
+            const firedLoads = g.loads.filter((l) => l.fired);
+            const nonFiredLoads = g.loads.filter((l) => !l.fired);
+            const showFired = showFiredFor.has(g.cartridge.id);
+            const visibleLoads = showFired ? g.loads : nonFiredLoads;
+            const hasActive = nonFiredLoads.some((l) => !l.completed);
             return (
               <div key={g.cartridge.id} className="rounded-lg border border-border overflow-hidden">
                 <button
@@ -163,12 +163,17 @@ export default function Loads() {
                   <div className="ml-auto flex items-center gap-2">
                     {hasActive && (
                       <span className="text-xs font-medium px-2 py-0.5 rounded bg-blue-900/40 text-blue-300">
-                        {activeLoads.length} active
+                        {nonFiredLoads.filter((l) => !l.completed).length} active
                       </span>
                     )}
-                    {completedLoads.length > 0 && (
+                    {nonFiredLoads.filter((l) => l.completed).length > 0 && (
                       <span className="text-xs font-medium px-2 py-0.5 rounded bg-green-900/30 text-green-400">
-                        {completedLoads.length} done
+                        {nonFiredLoads.filter((l) => l.completed).length} done
+                      </span>
+                    )}
+                    {firedLoads.length > 0 && (
+                      <span className="text-xs font-medium px-2 py-0.5 rounded bg-amber-900/30 text-amber-400">
+                        {firedLoads.length} fired
                       </span>
                     )}
                     <span className="text-xs text-muted-foreground">{g.loads.length} total</span>
@@ -224,13 +229,13 @@ export default function Loads() {
                         })}
                       </tbody>
                     </table>
-                    {completedLoads.length > 0 && (
+                    {firedLoads.length > 0 && (
                       <div className="px-4 py-2 border-t border-border/30 bg-muted/5">
                         <button
                           className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
-                          onClick={() => toggleShowCompleted(g.cartridge.id)}
+                          onClick={() => toggleShowFired(g.cartridge.id)}
                         >
-                          {showCompleted ? "Hide completed loads" : `Show ${completedLoads.length} completed load${completedLoads.length > 1 ? "s" : ""}`}
+                          {showFired ? "Hide fired loads" : `Show ${firedLoads.length} fired load${firedLoads.length > 1 ? "s" : ""}`}
                         </button>
                       </div>
                     )}
