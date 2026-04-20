@@ -5,10 +5,10 @@ https://www.paypal.com/donate/?hosted_button_id=N7YDAW3QX45GQ
 
 
 TestURL:
-https://reloading-manager-web--andyelsen85.replit.app/
+https://reloadingtest.hostzone.lu
 
-Username: guest
-Password: guestreloading
+Username: demo
+Password: demoapp
 
 <img width="1305" height="917" alt="image" src="https://github.com/user-attachments/assets/6d07275a-8578-4bb4-88dc-5685ab53955b" />
 
