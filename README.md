@@ -1,4 +1,4 @@
-TestURL ist die folgende:
+TestURL:
 https://reloading-manager-web--andyelsen85.replit.app/
 
 
