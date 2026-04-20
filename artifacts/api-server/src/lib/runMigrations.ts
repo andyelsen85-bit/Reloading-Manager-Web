@@ -359,6 +359,20 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       ON CONFLICT DO NOTHING;
     `,
   },
+  {
+    id: "0007_audit_log",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "audit_log" (
+        "id" serial PRIMARY KEY,
+        "user_id" integer,
+        "username" text NOT NULL,
+        "action" text NOT NULL,
+        "ip_address" text,
+        "user_agent" text,
+        "created_at" timestamp NOT NULL DEFAULT NOW()
+      );
+    `,
+  },
 ];
 
 export async function runMigrations(pool: Pool): Promise<void> {
