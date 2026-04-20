@@ -1,5 +1,8 @@
 If you like the app, I would be very happy about a small donation.
+
 https://www.paypal.com/donate/?hosted_button_id=N7YDAW3QX45GQ
+<img width="128" height="128" alt="image" src="https://github.com/user-attachments/assets/1ebcf0d2-f502-4dd5-95f6-7b56ec19b739" />
+
 
 TestURL:
 https://reloading-manager-web--andyelsen85.replit.app/
