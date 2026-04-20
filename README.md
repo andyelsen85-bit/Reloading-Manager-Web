@@ -10,8 +10,9 @@ https://reloading-manager-web--andyelsen85.replit.app/
 Username: guest
 Password: guestreloading
 
+<img width="1305" height="917" alt="image" src="https://github.com/user-attachments/assets/6d07275a-8578-4bb4-88dc-5685ab53955b" />
 
-<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/24f86ddb-6f6d-482b-a34f-b965844b602b" />
+
 
 
 
