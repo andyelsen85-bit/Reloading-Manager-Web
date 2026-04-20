@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useGetSettings, useUpdateSettings, getGetSettingsQueryKey, useListUsers, useCreateUser, useUpdateUser, useDeleteUser, useResetUserPassword, getListUsersQueryKey, useListReferenceData, getListReferenceDataQueryKey, useCreateReferenceItem, useDeleteReferenceItem, useUpdateReferenceItem } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Save, Upload, X, Image, Hash, Mail, Users, List, Send, History, Download, HardDriveDownload, RotateCcw, Pencil, Trash2, Plus, Eye, EyeOff, ToggleLeft, ToggleRight, BadgeCheck } from "lucide-react";
+import { Save, Upload, X, Image, Hash, Mail, Users, List, Send, History, Download, HardDriveDownload, RotateCcw, Pencil, Trash2, Plus, Eye, EyeOff, ToggleLeft, ToggleRight, BadgeCheck, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -300,6 +300,15 @@ export default function Settings() {
     initialData: [],
   });
 
+  const { data: auditLog = [], refetch: refetchAudit } = useQuery<any[]>({
+    queryKey: ["audit-log"],
+    queryFn: async () => {
+      const res = await fetch("/api/auth/audit-log", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
   const defaultPrefs = { loadCreated: true, loadCompleted: true, loadFired: true, lowStock: true };
   const { data: notifPrefs, refetch: refetchPrefs } = useQuery<typeof defaultPrefs>({
     queryKey: ["notification-prefs"],
@@ -423,12 +432,13 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="general">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="general" className="gap-1.5 text-xs"><Hash className="w-3.5 h-3.5" /> General</TabsTrigger>
           <TabsTrigger value="mail" className="gap-1.5 text-xs"><Mail className="w-3.5 h-3.5" /> Mail</TabsTrigger>
           <TabsTrigger value="backup" className="gap-1.5 text-xs"><HardDriveDownload className="w-3.5 h-3.5" /> Backup</TabsTrigger>
           <TabsTrigger value="users" className="gap-1.5 text-xs"><Users className="w-3.5 h-3.5" /> Users</TabsTrigger>
           <TabsTrigger value="lists" className="gap-1.5 text-xs"><List className="w-3.5 h-3.5" /> Lists</TabsTrigger>
+          <TabsTrigger value="audit" className="gap-1.5 text-xs"><ShieldCheck className="w-3.5 h-3.5" /> Audit</TabsTrigger>
         </TabsList>
 
         {/* General Tab */}
@@ -622,6 +632,63 @@ export default function Settings() {
               <p className="text-xs text-muted-foreground">Manage calibers and manufacturer lists used in forms throughout the app</p>
             </CardHeader>
             <CardContent><ReferenceListEditor /></CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Audit Tab */}
+        <TabsContent value="audit" className="mt-4">
+          <Card className="border-card-border">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-semibold flex items-center gap-2"><ShieldCheck className="w-4 h-4" /> Login Audit Log</CardTitle>
+                <p className="text-xs text-muted-foreground mt-0.5">Last 200 login and logout events across all users</p>
+              </div>
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={() => refetchAudit()}>
+                <Download className="w-3 h-3" /> Refresh
+              </Button>
+            </CardHeader>
+            <CardContent className="p-0">
+              {auditLog.length === 0 ? (
+                <p className="text-xs text-muted-foreground px-6 pb-4">No login events recorded yet.</p>
+              ) : (
+                <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm">
+                      <tr className="border-b border-border">
+                        <th className="text-left px-4 py-2 font-medium text-muted-foreground">Date & Time</th>
+                        <th className="text-left px-4 py-2 font-medium text-muted-foreground">User</th>
+                        <th className="text-left px-4 py-2 font-medium text-muted-foreground">Event</th>
+                        <th className="text-left px-4 py-2 font-medium text-muted-foreground">IP Address</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {auditLog.map((row: any) => (
+                        <tr key={row.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-2 font-mono text-muted-foreground whitespace-nowrap">
+                            {new Date(row.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                            {" "}
+                            {new Date(row.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                          </td>
+                          <td className="px-4 py-2 font-medium">{row.username}</td>
+                          <td className="px-4 py-2">
+                            {row.action === "login_success" && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 font-medium">Login</span>
+                            )}
+                            {row.action === "login_failure" && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-medium">Failed login</span>
+                            )}
+                            {row.action === "logout" && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Logout</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 font-mono text-muted-foreground">{row.ipAddress ?? "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>

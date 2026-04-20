@@ -171,7 +171,7 @@ function PowderFormFields({ form, setForm }: { form: PowderForm; setForm: (f: Po
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label>Type</Label>
-          <RefCombobox category="powder_type" value={form.type} onValueChange={(v) => setForm({ ...form, type: v })} placeholder="e.g. Rifle, Pistol" />
+          <RefCombobox category="powder_type" value={form.type} onValueChange={(v) => setForm({ ...form, type: v })} placeholder="e.g. Stick, Ball, Flake" />
         </div>
         <div className="space-y-1"><Label>Grains Available</Label><Input type="number" step="0.1" value={form.grainsAvailable} onChange={set("grainsAvailable")} /></div>
       </div>

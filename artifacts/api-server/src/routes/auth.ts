@@ -1,10 +1,24 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { usersTable, auditLogTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requireAdmin } from "../middlewares/auth";
+
+function getIp(req: any): string {
+  return (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.socket?.remoteAddress ?? "unknown";
+}
+
+async function writeAudit(userId: number | null, username: string, action: string, req: any) {
+  await db.insert(auditLogTable).values({
+    userId,
+    username,
+    action,
+    ipAddress: getIp(req),
+    userAgent: (req.headers["user-agent"] as string | undefined) ?? null,
+  });
+}
 
 const SETUP_SENTINEL = "$NEEDS_SETUP$";
 
@@ -47,20 +61,32 @@ router.post("/auth/login", async (req, res) => {
   if (!body.success) return res.status(400).json({ error: "Invalid input" });
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.username, body.data.username));
-  if (!user || !user.active) return res.status(401).json({ error: "Invalid credentials" });
+  if (!user || !user.active) {
+    await writeAudit(null, body.data.username, "login_failure", req).catch(() => {});
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
 
   if (user.passwordHash === SETUP_SENTINEL) {
     return res.status(403).json({ error: "Account setup required. Please create a password first." });
   }
 
   const valid = await bcrypt.compare(body.data.password, user.passwordHash);
-  if (!valid) return res.status(401).json({ error: "Invalid credentials" });
+  if (!valid) {
+    await writeAudit(user.id, user.username, "login_failure", req).catch(() => {});
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
 
   (req.session as any).userId = user.id;
+  await writeAudit(user.id, user.username, "login_success", req).catch(() => {});
   res.json({ id: user.id, username: user.username, email: user.email, role: user.role, notificationsEnabled: user.notificationsEnabled });
 });
 
-router.post("/auth/logout", (req, res) => {
+router.post("/auth/logout", async (req, res) => {
+  const userId = (req.session as any).userId;
+  if (userId) {
+    const [user] = await db.select({ username: usersTable.username }).from(usersTable).where(eq(usersTable.id, userId));
+    if (user) await writeAudit(userId, user.username, "logout", req).catch(() => {});
+  }
   req.session.destroy(() => {});
   res.status(204).send();
 });
@@ -137,6 +163,11 @@ router.post("/auth/change-password", requireAuth as any, async (req, res) => {
   const [user] = await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, userId)).returning({ id: usersTable.id });
   if (!user) return res.status(404).json({ error: "Not found" });
   res.status(204).send();
+});
+
+router.get("/auth/audit-log", requireAuth as any, requireAdmin as any, async (_req, res) => {
+  const rows = await db.select().from(auditLogTable).orderBy(desc(auditLogTable.createdAt)).limit(200);
+  res.json(rows);
 });
 
 export default router;
