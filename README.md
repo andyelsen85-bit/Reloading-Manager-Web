@@ -4,6 +4,8 @@ https://reloading-manager-web--andyelsen85.replit.app/
 
 <img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/24f86ddb-6f6d-482b-a34f-b965844b602b" />
 
+https://www.paypal.com/donate/?hosted_button_id=N7YDAW3QX45GQ
+
 # Reloading Manager
 
 A full-stack web application for sport shooters to manage the complete lifecycle of handloaded ammunition — from raw brass to fired rounds and back again. Tracks component inventory, guides you through an 8-step reloading workflow, supports charge ladder development, and sends email notifications for key events.
