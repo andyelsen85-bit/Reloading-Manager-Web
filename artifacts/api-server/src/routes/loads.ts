@@ -260,7 +260,7 @@ router.post("/loads/:id/complete", async (req, res) => {
 
   const skipped: string[] = load.skippedSteps ? JSON.parse(load.skippedSteps) : [];
   const primerDone = load.primerId != null || skipped.includes("priming");
-  const powderDone = load.powderId != null || skipped.includes("powder");
+  const powderDone = load.powderId != null || load.chargeLadderId != null || skipped.includes("powder");
   const bulletDone = (load.bulletId != null && load.coalIn != null && load.oalIn != null) || skipped.includes("bullet_seating");
 
   if (!primerDone || !powderDone || !bulletDone) {
