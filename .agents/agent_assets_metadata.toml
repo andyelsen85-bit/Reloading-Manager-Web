@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "7Pemk8C7Unql4A-8pGPCv"
+uri = "file://README.md"
+type = "text"
+title = "README.md — Reloading Manager Documentation"
