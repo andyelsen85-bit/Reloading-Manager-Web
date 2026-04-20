@@ -88,7 +88,7 @@ A full-stack web application for sport shooters to manage the complete lifecycle
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/reloading-manager.git
+git clone [https://github.com/your-username/reloading-manager.git](https://github.com/andyelsen85-bit/Reloading-Manager-Web.git)
 cd reloading-manager
 ```
 
