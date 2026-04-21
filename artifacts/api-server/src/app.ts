@@ -52,6 +52,13 @@ app.use(session({
 
 app.use("/api", router);
 
+app.use("/api", (err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  logger.error({ err }, "API request failed");
+  res.status(err?.statusCode ?? err?.status ?? 500).json({
+    error: err?.message ?? "Internal Server Error",
+  });
+});
+
 if (process.env.NODE_ENV === "production") {
   const staticDir = path.join(import.meta.dirname, "public");
   app.use(express.static(staticDir));
