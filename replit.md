@@ -46,7 +46,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - **Strict step-order enforcement**: Steps blocked until all previous steps are done; skipped steps count as done
 - **Login Enter key**: Login form submits on Enter keypress
 - **Reference Lists**: Pre-populated calibers (46) and manufacturer lists (bullets, powders, primers, cartridges) — editable in Settings → Lists tab
-- **Settings**: 5-tab UI (General / Mail / Backup / Users / Lists) — thresholds, load numbering, branding, SMTP, test mail, notification prefs, mail history, backup/restore, user management, reference data
+- **Settings**: 6-tab UI (General / Mail / Backup / Users / Lists / Audit) — thresholds, load numbering, branding, SMTP, test mail, notification prefs, mail history, backup/restore, user management, reference data, login audit trail
 - **JSON export**: Full data export from dashboard
 - **Photo upload**: Loads, Bullets, Cartridges support photo upload (base64 in DB)
 - **Dymo print**: Print Label on LoadDetail generates a Dymo label via browser print
@@ -60,10 +60,10 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `ChargeLadders.tsx` — load development session list
 - `ChargeLadderDetail.tsx` — charge level management, result recording, best selection
 - `History.tsx` — reload history with deleted loads count column
-- `Settings.tsx` — 5-tab layout: General / Mail (SMTP, test, notification prefs, history) / Backup (download + restore) / Users / Lists
+- `Settings.tsx` — 6-tab layout: General / Mail (SMTP, test, notification prefs, history) / Backup (download + restore) / Users / Lists / Audit
 
 ### API Routes (api-server)
-- `/api/auth/login`, `/api/auth/logout`, `/api/auth/me` — session auth
+- `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`, `/api/auth/audit-log` — session auth and admin audit trail
 - `/api/users` — CRUD + `/api/users/:id/reset-password`
 - `/api/reference/:category` — CRUD for calibers/manufacturers reference lists
 - `/api/charge-ladders` — CRUD + `/api/charge-ladders/:id/levels` + `/api/charge-ladders/:id/best`
@@ -84,7 +84,8 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 ### Migrations Applied
 - `0000_initial.sql` — baseline schema
 - `0001_features.sql` — loadNumber, annealing, skippedSteps, h2oWeight, photoBase64, settings table
-- `0002_users_lookup_chargeladder.sql` — users, reference_data, charge_ladders, charge_levels, soft-delete on loads, SMTP on settings
+- Actual migrations are inline in `artifacts/api-server/src/lib/runMigrations.ts` and tracked by `__app_migrations`; Drizzle SQL files under `lib/db/drizzle` are legacy/dead for runtime.
+- `0008_bullet_schema_repair` — ensures Docker/upgraded databases have `bullets.diameter_in` and `bullets.photo_base64`, and relaxes the legacy `bullets.caliber` column if present.
 
 ### Theme
 Dark gunmetal/steel theme (HSL 220 16% 10% bg, amber 38 90% 52% primary)

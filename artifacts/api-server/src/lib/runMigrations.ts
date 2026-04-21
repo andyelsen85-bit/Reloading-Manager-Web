@@ -49,10 +49,11 @@ const MIGRATIONS: { id: string; sql: string }[] = [
         "id" serial PRIMARY KEY,
         "manufacturer" text NOT NULL,
         "model" text NOT NULL,
-        "caliber" text NOT NULL,
         "weight_gr" double precision NOT NULL,
+        "diameter_in" double precision NOT NULL,
         "quantity_available" integer NOT NULL DEFAULT 0,
         "notes" text,
+        "photo_base64" text,
         "created_at" timestamp NOT NULL DEFAULT NOW()
       );
 
@@ -371,6 +372,24 @@ const MIGRATIONS: { id: string; sql: string }[] = [
         "user_agent" text,
         "created_at" timestamp NOT NULL DEFAULT NOW()
       );
+    `,
+  },
+  {
+    id: "0008_bullet_schema_repair",
+    sql: `
+      ALTER TABLE "bullets" ADD COLUMN IF NOT EXISTS "diameter_in" double precision NOT NULL DEFAULT 0;
+      ALTER TABLE "bullets" ADD COLUMN IF NOT EXISTS "photo_base64" text;
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_name = 'bullets'
+            AND column_name = 'caliber'
+        ) THEN
+          ALTER TABLE "bullets" ALTER COLUMN "caliber" DROP NOT NULL;
+        END IF;
+      END $$;
     `,
   },
 ];
