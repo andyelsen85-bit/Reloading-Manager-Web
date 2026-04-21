@@ -86,6 +86,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `0001_features.sql` — loadNumber, annealing, skippedSteps, h2oWeight, photoBase64, settings table
 - Actual migrations are inline in `artifacts/api-server/src/lib/runMigrations.ts` and tracked by `__app_migrations`; Drizzle SQL files under `lib/db/drizzle` are legacy/dead for runtime.
 - `0008_bullet_schema_repair` — ensures Docker/upgraded databases have `bullets.diameter_in` and `bullets.photo_base64`, and relaxes the legacy `bullets.caliber` column if present.
+- `0009_backup_schema_repair` — repairs legacy Docker databases so broad reads used by backup/export/dashboard have every current schema column.
 
 ### Theme
 Dark gunmetal/steel theme (HSL 220 16% 10% bg, amber 38 90% 52% primary)

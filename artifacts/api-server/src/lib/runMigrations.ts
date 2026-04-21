@@ -392,6 +392,83 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       END $$;
     `,
   },
+  {
+    id: "0009_backup_schema_repair",
+    sql: `
+      ALTER TABLE "cartridges" ADD COLUMN IF NOT EXISTS "quantity_loaded" integer NOT NULL DEFAULT 0;
+      ALTER TABLE "cartridges" ADD COLUMN IF NOT EXISTS "current_step" text NOT NULL DEFAULT 'New';
+      ALTER TABLE "cartridges" ADD COLUMN IF NOT EXISTS "l6_in" text;
+      ALTER TABLE "cartridges" ADD COLUMN IF NOT EXISTS "photo_base64" text;
+      ALTER TABLE "cartridges" ADD COLUMN IF NOT EXISTS "primer_type" text;
+      ALTER TABLE "cartridges" ADD COLUMN IF NOT EXISTS "avg_empty_weight_gr" double precision;
+      ALTER TABLE "cartridges" ADD COLUMN IF NOT EXISTS "avg_internal_volume_gr" double precision;
+      ALTER TABLE "cartridges" ADD COLUMN IF NOT EXISTS "avg_shoulder_diameter_in" double precision;
+      ALTER TABLE "cartridges" ADD COLUMN IF NOT EXISTS "avg_base_diameter_in" double precision;
+      ALTER TABLE "cartridges" ADD COLUMN IF NOT EXISTS "avg_neck_wall_thickness_in" double precision;
+      ALTER TABLE "cartridges" ADD COLUMN IF NOT EXISTS "amp_aztec_code" text;
+      ALTER TABLE "cartridges" ADD COLUMN IF NOT EXISTS "amp_pilot_number" text;
+
+      ALTER TABLE "bullets" ADD COLUMN IF NOT EXISTS "diameter_in" double precision NOT NULL DEFAULT 0;
+      ALTER TABLE "bullets" ADD COLUMN IF NOT EXISTS "photo_base64" text;
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_name = 'bullets'
+            AND column_name = 'caliber'
+        ) THEN
+          ALTER TABLE "bullets" ALTER COLUMN "caliber" DROP NOT NULL;
+        END IF;
+      END $$;
+
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "load_number" integer;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "skipped_steps" text;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "h2o_weight_gr" double precision;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "photo_base64" text;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "annealing_minutes" integer;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "annealing_done" boolean NOT NULL DEFAULT false;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "washing_date" text;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "annealing_date" text;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "second_washing_date" text;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "calibration_date" text;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "trim_date" text;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "priming_date" text;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "powder_date" text;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "bullet_seating_date" text;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "fired_date" text;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "charge_ladder_id" integer;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "deleted_at" timestamp;
+      ALTER TABLE "loads" ADD COLUMN IF NOT EXISTS "deleted_note" text;
+      ALTER TABLE "loads" ALTER COLUMN "user_load_id" DROP NOT NULL;
+
+      ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "logo_base64" text;
+      ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "background_base64" text;
+      ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "smtp_host" text;
+      ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "smtp_port" integer DEFAULT 587;
+      ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "smtp_user" text;
+      ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "smtp_pass" text;
+      ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "smtp_from" text;
+      ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "smtp_enabled" boolean DEFAULT false;
+      INSERT INTO "settings" (
+        "bullet_low_stock_threshold",
+        "powder_low_stock_threshold",
+        "primer_low_stock_threshold",
+        "next_load_number"
+      )
+      SELECT 100, 500, 100, 1
+      WHERE NOT EXISTS (SELECT 1 FROM "settings");
+
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "notifications_enabled" boolean NOT NULL DEFAULT true;
+      ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "notification_prefs" text DEFAULT '{}';
+
+      ALTER TABLE "charge_levels" ADD COLUMN IF NOT EXISTS "powder_id" integer;
+      ALTER TABLE "charge_levels" ADD COLUMN IF NOT EXISTS "oal_in" double precision;
+      ALTER TABLE "charge_levels" ADD COLUMN IF NOT EXISTS "coal_in" double precision;
+      ALTER TABLE "charge_levels" ADD COLUMN IF NOT EXISTS "group_size_mm" double precision;
+      ALTER TABLE "charge_levels" ADD COLUMN IF NOT EXISTS "velocity_fps" double precision;
+    `,
+  },
 ];
 
 export async function runMigrations(pool: Pool): Promise<void> {
