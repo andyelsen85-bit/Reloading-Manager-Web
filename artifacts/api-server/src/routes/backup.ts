@@ -10,40 +10,54 @@ import {
   referenceDataTable,
   chargeLaddersTable,
   chargeLevelsTable,
+  ammoInventoryTable,
 } from "@workspace/db";
+import { sql } from "drizzle-orm";
 
 const router = Router();
 
 router.get("/backup", async (_req, res) => {
-  const [cartridges, bullets, powders, primers, loads, settings, referenceData, chargeLadders, chargeLevels] = await Promise.all([
-    db.select().from(cartridgesTable),
-    db.select().from(bulletsTable),
-    db.select().from(powdersTable),
-    db.select().from(primersTable),
-    db.select().from(loadsTable),
-    db.select().from(settingsTable),
-    db.select().from(referenceDataTable),
-    db.select().from(chargeLaddersTable),
-    db.select().from(chargeLevelsTable),
-  ]);
+  try {
+    const [
+      cartridges, bullets, powders, primers, loads,
+      settings, referenceData, chargeLadders, chargeLevels, ammoInventory,
+    ] = await Promise.all([
+      db.select().from(cartridgesTable),
+      db.select().from(bulletsTable),
+      db.select().from(powdersTable),
+      db.select().from(primersTable),
+      db.select().from(loadsTable),
+      db.select().from(settingsTable),
+      db.select().from(referenceDataTable),
+      db.select().from(chargeLaddersTable),
+      db.select().from(chargeLevelsTable),
+      db.select().from(ammoInventoryTable),
+    ]);
 
-  const backup = {
-    version: 1,
-    exportedAt: new Date().toISOString(),
-    cartridges,
-    bullets,
-    powders,
-    primers,
-    loads,
-    settings,
-    referenceData,
-    chargeLadders,
-    chargeLevels,
-  };
+    const backup = {
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      cartridges,
+      bullets,
+      powders,
+      primers,
+      loads,
+      settings,
+      referenceData,
+      chargeLadders,
+      chargeLevels,
+      ammoInventory,
+    };
 
-  res.setHeader("Content-Type", "application/json");
-  res.setHeader("Content-Disposition", `attachment; filename="reloading-backup-${new Date().toISOString().slice(0, 10)}.json"`);
-  res.json(backup);
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="reloading-backup-${new Date().toISOString().slice(0, 10)}.json"`
+    );
+    res.json(backup);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? "Backup failed" });
+  }
 });
 
 router.post("/restore", async (req, res) => {
@@ -55,29 +69,93 @@ router.post("/restore", async (req, res) => {
 
   try {
     await db.transaction(async (tx) => {
-      if (Array.isArray(data.loads) && data.loads.length > 0) {
-        await tx.delete(loadsTable);
-        await tx.insert(loadsTable).values(data.loads as any[]);
+      // ── 1. Truncate all tables in FK-safe order and reset sequences ──────────
+      // charge_levels references charge_ladders (CASCADE), loads references cartridges etc.
+      // TRUNCATE handles FK order; RESTART IDENTITY resets serials.
+      await tx.execute(sql`
+        TRUNCATE TABLE
+          ammo_inventory,
+          charge_levels,
+          loads,
+          charge_ladders,
+          cartridges,
+          bullets,
+          powders,
+          primers,
+          reference_data,
+          settings
+        RESTART IDENTITY CASCADE
+      `);
+
+      // ── 2. Re-insert in dependency order ────────────────────────────────────
+
+      // Standalone / leaf tables first
+      if (Array.isArray(data.settings) && data.settings.length > 0) {
+        await tx.insert(settingsTable).values(data.settings as any[]);
+      } else {
+        // Always ensure a settings row exists
+        await tx.execute(sql`INSERT INTO settings DEFAULT VALUES ON CONFLICT DO NOTHING`);
       }
+
+      if (Array.isArray(data.referenceData) && data.referenceData.length > 0) {
+        await tx.insert(referenceDataTable).values(data.referenceData as any[]);
+      }
+
       if (Array.isArray(data.cartridges) && data.cartridges.length > 0) {
-        await tx.delete(cartridgesTable);
         await tx.insert(cartridgesTable).values(data.cartridges as any[]);
       }
+
       if (Array.isArray(data.bullets) && data.bullets.length > 0) {
-        await tx.delete(bulletsTable);
         await tx.insert(bulletsTable).values(data.bullets as any[]);
       }
+
       if (Array.isArray(data.powders) && data.powders.length > 0) {
-        await tx.delete(powdersTable);
         await tx.insert(powdersTable).values(data.powders as any[]);
       }
+
       if (Array.isArray(data.primers) && data.primers.length > 0) {
-        await tx.delete(primersTable);
         await tx.insert(primersTable).values(data.primers as any[]);
       }
-      if (Array.isArray(data.settings) && data.settings.length > 0) {
-        await tx.delete(settingsTable);
-        await tx.insert(settingsTable).values(data.settings as any[]);
+
+      // charge_ladders depends on cartridges, bullets, primers
+      if (Array.isArray(data.chargeLadders) && data.chargeLadders.length > 0) {
+        await tx.insert(chargeLaddersTable).values(data.chargeLadders as any[]);
+      }
+
+      // charge_levels depends on charge_ladders (CASCADE)
+      if (Array.isArray(data.chargeLevels) && data.chargeLevels.length > 0) {
+        await tx.insert(chargeLevelsTable).values(data.chargeLevels as any[]);
+      }
+
+      // loads depends on cartridges, primers, powders, bullets, charge_ladders
+      if (Array.isArray(data.loads) && data.loads.length > 0) {
+        await tx.insert(loadsTable).values(data.loads as any[]);
+      }
+
+      // ammo_inventory — standalone (added in v2; v1 backups simply skip this)
+      if (Array.isArray(data.ammoInventory) && data.ammoInventory.length > 0) {
+        await tx.insert(ammoInventoryTable).values(data.ammoInventory as any[]);
+      }
+
+      // ── 3. Advance all sequences past the max restored ID ───────────────────
+      // TRUNCATE RESTART IDENTITY resets to 1, but inserted rows have explicit IDs.
+      // We must advance each sequence to MAX(id) to avoid conflicts on future inserts.
+      const seqTables: [string, string][] = [
+        ["cartridges_id_seq",    "cartridges"],
+        ["bullets_id_seq",       "bullets"],
+        ["powders_id_seq",       "powders"],
+        ["primers_id_seq",       "primers"],
+        ["loads_id_seq",         "loads"],
+        ["settings_id_seq",      "settings"],
+        ["reference_data_id_seq","reference_data"],
+        ["charge_ladders_id_seq","charge_ladders"],
+        ["charge_levels_id_seq", "charge_levels"],
+        ["ammo_inventory_id_seq","ammo_inventory"],
+      ];
+      for (const [seq, tbl] of seqTables) {
+        await tx.execute(
+          sql.raw(`SELECT setval('${seq}', COALESCE((SELECT MAX(id) FROM "${tbl}"), 1))`)
+        );
       }
     });
 
