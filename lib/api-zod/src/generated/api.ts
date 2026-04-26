@@ -483,6 +483,7 @@ export const ListPowdersResponseItem = zod.object({
   type: zod.string(),
   grainsAvailable: zod.number(),
   notes: zod.string().nullish(),
+  photoBase64: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListPowdersResponse = zod.array(ListPowdersResponseItem);
@@ -496,6 +497,7 @@ export const CreatePowderBody = zod.object({
   type: zod.string(),
   grainsAvailable: zod.number(),
   notes: zod.string().optional(),
+  photoBase64: zod.string().optional(),
 });
 
 /**
@@ -511,6 +513,7 @@ export const UpdatePowderBody = zod.object({
   type: zod.string().optional(),
   grainsAvailable: zod.number().optional(),
   notes: zod.string().optional(),
+  photoBase64: zod.string().nullish(),
 });
 
 export const UpdatePowderResponse = zod.object({
@@ -520,6 +523,7 @@ export const UpdatePowderResponse = zod.object({
   type: zod.string(),
   grainsAvailable: zod.number(),
   notes: zod.string().nullish(),
+  photoBase64: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -539,6 +543,7 @@ export const ListPrimersResponseItem = zod.object({
   type: zod.string(),
   quantityAvailable: zod.number(),
   notes: zod.string().nullish(),
+  photoBase64: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListPrimersResponse = zod.array(ListPrimersResponseItem);
@@ -551,6 +556,7 @@ export const CreatePrimerBody = zod.object({
   type: zod.string(),
   quantityAvailable: zod.number(),
   notes: zod.string().optional(),
+  photoBase64: zod.string().optional(),
 });
 
 /**
@@ -565,6 +571,7 @@ export const UpdatePrimerBody = zod.object({
   type: zod.string().optional(),
   quantityAvailable: zod.number().optional(),
   notes: zod.string().optional(),
+  photoBase64: zod.string().nullish(),
 });
 
 export const UpdatePrimerResponse = zod.object({
@@ -573,6 +580,7 @@ export const UpdatePrimerResponse = zod.object({
   type: zod.string(),
   quantityAvailable: zod.number(),
   notes: zod.string().nullish(),
+  photoBase64: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 

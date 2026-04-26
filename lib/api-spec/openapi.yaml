@@ -1439,6 +1439,9 @@ components:
         notes:
           type: string
           nullable: true
+        photoBase64:
+          type: string
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1457,6 +1460,8 @@ components:
           type: number
         notes:
           type: string
+        photoBase64:
+          type: string
       required: [manufacturer, name, type, grainsAvailable]
 
     UpdatePowderBody:
@@ -1472,6 +1477,9 @@ components:
           type: number
         notes:
           type: string
+        photoBase64:
+          type: string
+          nullable: true
 
     Primer:
       type: object
@@ -1485,6 +1493,9 @@ components:
         quantityAvailable:
           type: integer
         notes:
+          type: string
+          nullable: true
+        photoBase64:
           type: string
           nullable: true
         createdAt:
@@ -1503,6 +1514,8 @@ components:
           type: integer
         notes:
           type: string
+        photoBase64:
+          type: string
       required: [manufacturer, type, quantityAvailable]
 
     UpdatePrimerBody:
@@ -1516,6 +1529,9 @@ components:
           type: integer
         notes:
           type: string
+        photoBase64:
+          type: string
+          nullable: true
 
     Load:
       type: object

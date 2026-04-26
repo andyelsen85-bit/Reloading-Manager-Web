@@ -11,4 +11,5 @@ export interface CreatePrimerBody {
   type: string;
   quantityAvailable: number;
   notes?: string;
+  photoBase64?: string;
 }

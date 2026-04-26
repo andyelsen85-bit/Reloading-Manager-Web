@@ -8,6 +8,7 @@ export const primersTable = pgTable("primers", {
   type: text("type").notNull(),
   quantityAvailable: integer("quantity_available").notNull(),
   notes: text("notes"),
+  photoBase64: text("photo_base64"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -24,6 +24,7 @@ router.post("/powders", async (req, res) => {
     type: body.type,
     grainsAvailable: body.grainsAvailable,
     notes: body.notes ?? null,
+    photoBase64: body.photoBase64 ?? null,
   }).returning();
   res.status(201).json(row);
 });
@@ -37,6 +38,7 @@ router.patch("/powders/:id", async (req, res) => {
   if (body.type !== undefined) updates.type = body.type;
   if (body.grainsAvailable !== undefined) updates.grainsAvailable = body.grainsAvailable;
   if (body.notes !== undefined) updates.notes = body.notes;
+  if (body.photoBase64 !== undefined) updates.photoBase64 = body.photoBase64;
   const [row] = await db.update(powdersTable).set(updates).where(eq(powdersTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   res.json(row);

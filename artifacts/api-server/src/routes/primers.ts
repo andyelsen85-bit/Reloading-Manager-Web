@@ -23,6 +23,7 @@ router.post("/primers", async (req, res) => {
     type: body.type,
     quantityAvailable: body.quantityAvailable,
     notes: body.notes ?? null,
+    photoBase64: body.photoBase64 ?? null,
   }).returning();
   res.status(201).json(row);
 });
@@ -35,6 +36,7 @@ router.patch("/primers/:id", async (req, res) => {
   if (body.type !== undefined) updates.type = body.type;
   if (body.quantityAvailable !== undefined) updates.quantityAvailable = body.quantityAvailable;
   if (body.notes !== undefined) updates.notes = body.notes;
+  if (body.photoBase64 !== undefined) updates.photoBase64 = body.photoBase64;
   const [row] = await db.update(primersTable).set(updates).where(eq(primersTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   res.json(row);

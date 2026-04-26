@@ -12,5 +12,6 @@ export interface Primer {
   type: string;
   quantityAvailable: number;
   notes?: string | null;
+  photoBase64?: string | null;
   createdAt: Date;
 }

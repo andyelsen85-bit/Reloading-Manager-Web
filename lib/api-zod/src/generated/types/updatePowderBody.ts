@@ -12,4 +12,5 @@ export interface UpdatePowderBody {
   type?: string;
   grainsAvailable?: number;
   notes?: string;
+  photoBase64?: string | null;
 }

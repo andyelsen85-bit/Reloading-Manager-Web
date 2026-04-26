@@ -43,6 +43,13 @@
       "when": 1776700000000,
       "tag": "0005_audit_log",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777200000000,
+      "tag": "0006_powder_primer_photos",
+      "breakpoints": true
     }
   ]
 }

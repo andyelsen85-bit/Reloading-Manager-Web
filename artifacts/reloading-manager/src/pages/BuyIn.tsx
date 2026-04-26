@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Pencil, Trash2, Search, Camera, X, Crosshair, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,32 @@ import { RefCombobox } from "@/components/RefCombobox";
 import { useToast } from "@/hooks/use-toast";
 
 const API = import.meta.env.BASE_URL.replace(/\/$/, "") + "/api";
+
+function PhotoCell({ src, alt }: { src: string | null | undefined; alt: string }) {
+  const [hovered, setHovered] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const handleMouseEnter = (e: React.MouseEvent) => { setPos({ x: e.clientX, y: e.clientY }); setHovered(true); };
+  const handleMouseMove = (e: React.MouseEvent) => { setPos({ x: e.clientX, y: e.clientY }); };
+  if (!src) {
+    return (
+      <div className="w-9 h-9 rounded border border-border bg-muted flex items-center justify-center">
+        <Camera className="w-3.5 h-3.5 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <div className="relative inline-block" onMouseEnter={handleMouseEnter} onMouseLeave={() => setHovered(false)} onMouseMove={handleMouseMove}>
+      <img src={src} alt={alt} className="w-9 h-9 object-cover rounded border border-border cursor-zoom-in" />
+      <AnimatePresence>
+        {hovered && (
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.15 }} className="fixed z-50 pointer-events-none" style={{ left: pos.x + 16, top: pos.y + 16 }}>
+            <img src={src} alt={alt} className="max-w-[280px] max-h-[280px] object-contain rounded-lg border border-border shadow-2xl bg-background" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 type AmmoItem = {
   id: number;
@@ -206,13 +232,7 @@ export default function BuyIn() {
                     className="border-b border-border/50 hover:bg-muted/20 transition-colors"
                   >
                     <td className="px-3 py-2">
-                      {a.photoBase64 ? (
-                        <img src={a.photoBase64} alt={a.model} className="w-9 h-9 object-cover rounded border border-border" />
-                      ) : (
-                        <div className="w-9 h-9 rounded border border-border bg-muted flex items-center justify-center">
-                          <Camera className="w-3.5 h-3.5 text-muted-foreground" />
-                        </div>
-                      )}
+                      <PhotoCell src={a.photoBase64} alt={a.model} />
                     </td>
                     <td className="px-3 py-2.5 font-semibold text-foreground">{a.caliber}</td>
                     <td className="px-3 py-2.5">{a.manufacturer}</td>

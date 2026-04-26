@@ -12,4 +12,5 @@ export interface CreatePowderBody {
   type: string;
   grainsAvailable: number;
   notes?: string;
+  photoBase64?: string;
 }

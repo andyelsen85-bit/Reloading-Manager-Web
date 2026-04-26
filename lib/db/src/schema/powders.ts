@@ -9,6 +9,7 @@ export const powdersTable = pgTable("powders", {
   type: text("type").notNull(),
   grainsAvailable: doublePrecision("grains_available").notNull(),
   notes: text("notes"),
+  photoBase64: text("photo_base64"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
