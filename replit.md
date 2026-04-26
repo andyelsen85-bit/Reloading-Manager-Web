@@ -40,7 +40,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - **User Management**: Multi-user system with roles (admin/user), activation toggle, password reset
 - **Email notifications**: SMTP config in Settings → Mail tab; notifications sent on load created/completed/fired; per-user granular prefs (loadCreated, loadCompleted, loadFired, lowStock)
 - **Test email + mail history**: Send test email from Settings → Mail; view last 100 sent emails with status
-- **Backup/Restore**: Full JSON backup download and restore (admin); covers all tables
+- **Backup/Restore**: Full JSON backup (v4) download and restore (admin); covers all 16 app tables (excludes users and audit_log for security)
 - **Admin undo**: Admins can undo any workflow step AND undo the "Completed" and "Fired" statuses on LoadDetail
 - **Searchable combobox dropdowns**: All inventory forms use command+popover searchable dropdowns (RefCombobox.tsx) instead of datalists
 - **Strict step-order enforcement**: Steps blocked until all previous steps are done; skipped steps count as done
@@ -73,7 +73,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `/api/charge-ladders` — CRUD + `/api/charge-ladders/:id/levels` + `/api/charge-ladders/:id/best`
 - `/api/cartridges`, `/api/bullets`, `/api/powders`, `/api/primers` — CRUD with photoBase64
 - `/api/weapons` — CRUD + `/api/weapons/:id/photos` (add/delete individual photos)
-- `/api/weapon-licenses` — CRUD; supports `weaponIds[]` to link weapons; version 3 backup includes all weapon/license tables
+- `/api/weapon-licenses` — CRUD; supports `weaponIds[]` to link weapons; backup v4 includes all weapon/license tables
 - `/api/weapon-licenses/:id/photos` — add/delete license photos
 - `/api/loads` — CRUD + complete + fire; DELETE sends restock body; create adjusts cartridge.quantityLoaded
 - `/api/settings` — GET / PATCH (single-row, supports SMTP fields)
@@ -92,6 +92,14 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `weapon_licenses` — id, name, licenseNumber, licenseType, issueDate, expiryDate, notes, createdAt
 - `weapon_license_photos` — id, licenseId, photoBase64, caption, sortOrder, createdAt
 - `weapon_license_weapons` — id, licenseId, weaponId (join table linking licenses to weapons)
+- `email_log` — id, toAddress, subject, body, status, error, sentAt (mail history; included in backup v4)
+
+### Backup System
+- **Backup route**: `GET /api/backup` (admin only) — returns versioned JSON with all 16 app tables
+- **Restore route**: `POST /api/restore` (admin only) — transaction truncates all tables (CASCADE, RESTART IDENTITY), re-inserts in FK order, advances sequences
+- **Current version**: v4 (added emailLog)
+- **Excluded intentionally**: `users`, `audit_log` (security — not overwritten by restore)
+- **Backward compatibility**: each table insert uses `Array.isArray` guard so older backups (v1/v2/v3) restore cleanly without the newer tables
 
 ### Migrations Applied
 - `0000_initial.sql` — baseline schema

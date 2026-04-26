@@ -16,6 +16,7 @@ import {
   weaponLicensesTable,
   weaponLicensePhotosTable,
   weaponLicenseWeaponsTable,
+  emailLogTable,
 } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
@@ -27,6 +28,7 @@ router.get("/backup", async (_req, res) => {
       cartridges, bullets, powders, primers, loads,
       settings, referenceData, chargeLadders, chargeLevels, ammoInventory,
       weapons, weaponPhotos, weaponLicenses, weaponLicensePhotos, weaponLicenseWeapons,
+      emailLog,
     ] = await Promise.all([
       db.select().from(cartridgesTable),
       db.select().from(bulletsTable),
@@ -43,10 +45,11 @@ router.get("/backup", async (_req, res) => {
       db.select().from(weaponLicensesTable),
       db.select().from(weaponLicensePhotosTable),
       db.select().from(weaponLicenseWeaponsTable),
+      db.select().from(emailLogTable),
     ]);
 
     const backup = {
-      version: 3,
+      version: 4,
       exportedAt: new Date().toISOString(),
       cartridges,
       bullets,
@@ -63,6 +66,7 @@ router.get("/backup", async (_req, res) => {
       weaponLicenses,
       weaponLicensePhotos,
       weaponLicenseWeapons,
+      emailLog,
     };
 
     res.setHeader("Content-Type", "application/json");
@@ -104,7 +108,8 @@ router.post("/restore", async (req, res) => {
           powders,
           primers,
           reference_data,
-          settings
+          settings,
+          email_log
         RESTART IDENTITY CASCADE
       `);
 
@@ -175,6 +180,11 @@ router.post("/restore", async (req, res) => {
         await tx.insert(weaponLicenseWeaponsTable).values(data.weaponLicenseWeapons as any[]);
       }
 
+      // email_log — standalone (added in v4; older backups skip)
+      if (Array.isArray(data.emailLog) && data.emailLog.length > 0) {
+        await tx.insert(emailLogTable).values(data.emailLog as any[]);
+      }
+
       // ── 3. Advance all sequences past the max restored ID ───────────────────
       // TRUNCATE RESTART IDENTITY resets to 1, but inserted rows have explicit IDs.
       // We must advance each sequence to MAX(id) to avoid conflicts on future inserts.
@@ -194,6 +204,7 @@ router.post("/restore", async (req, res) => {
         ["weapon_licenses_id_seq",         "weapon_licenses"],
         ["weapon_license_photos_id_seq",   "weapon_license_photos"],
         ["weapon_license_weapons_id_seq",  "weapon_license_weapons"],
+        ["email_log_id_seq",               "email_log"],
       ];
       for (const [seq, tbl] of seqTables) {
         await tx.execute(
