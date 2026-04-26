@@ -132,6 +132,7 @@ router.delete("/weapons/:id/photos/:photoId", async (req, res) => {
 const LicenseBody = z.object({
   name: z.string().min(1),
   licenseNumber: z.string().optional().nullable(),
+  licenseType: z.string().optional().nullable(),
   issueDate: z.string().optional().nullable(),
   expiryDate: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -174,6 +175,7 @@ router.post("/weapon-licenses", async (req, res) => {
   const [lic] = await db.insert(weaponLicensesTable).values({
     name: body.name,
     licenseNumber: body.licenseNumber ?? null,
+    licenseType: body.licenseType ?? null,
     issueDate: body.issueDate ?? null,
     expiryDate: body.expiryDate ?? null,
     notes: body.notes ?? null,
@@ -194,6 +196,7 @@ router.patch("/weapon-licenses/:id", async (req, res) => {
   const updates: Record<string, unknown> = {};
   if (body.name !== undefined) updates.name = body.name;
   if (body.licenseNumber !== undefined) updates.licenseNumber = body.licenseNumber;
+  if (body.licenseType !== undefined) updates.licenseType = body.licenseType;
   if (body.issueDate !== undefined) updates.issueDate = body.issueDate;
   if (body.expiryDate !== undefined) updates.expiryDate = body.expiryDate;
   if (body.notes !== undefined) updates.notes = body.notes;

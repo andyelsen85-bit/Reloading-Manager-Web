@@ -38,6 +38,7 @@ export const weaponLicensesTable = pgTable("weapon_licenses", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   licenseNumber: text("license_number"),
+  licenseType: text("license_type"),
   issueDate: text("issue_date"),
   expiryDate: text("expiry_date"),
   notes: text("notes"),

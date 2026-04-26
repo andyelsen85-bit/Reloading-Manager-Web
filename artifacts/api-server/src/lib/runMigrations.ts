@@ -560,6 +560,12 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: "0014_license_type",
+    sql: `
+      ALTER TABLE "weapon_licenses" ADD COLUMN IF NOT EXISTS "license_type" text;
+    `,
+  },
 ];
 
 export async function runMigrations(pool: Pool): Promise<void> {

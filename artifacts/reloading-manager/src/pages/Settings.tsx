@@ -54,6 +54,7 @@ const REFERENCE_CATEGORIES = [
   { key: "primer_manufacturer", label: "Primer Manufacturers" },
   { key: "powder_type", label: "Powder Types" },
   { key: "primer_type", label: "Primer Types" },
+  { key: "license_type", label: "License Types" },
 ];
 
 function ReferenceListEditor() {

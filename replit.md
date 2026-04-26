@@ -50,7 +50,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - **JSON export**: Full data export from dashboard
 - **Photo upload**: Loads, Bullets, Cartridges, Powders, Primers support photo upload (base64 in DB)
 - **Weapons Inventory**: Full weapon registry with multi-photo gallery, type/action classification, serial number, purchase details (date/price/from), sale tracking (sold toggle, sell date/price/buyer), hover photo previews, type-color badges, owned/sold filter
-- **Weapons Licenses**: License/permit registry on the Weapons page — name, license number, issue/expiry dates, notes, multi-photo gallery, linked weapon associations; expiry status badges (Valid / Expiring Soon <60 days / Expired)
+- **Licenses & Permits**: Standalone page (between Weapons and Users in sidebar) — name, license number, license type (National/European/International, configurable in Settings → Lists), issue/expiry dates, notes, multi-photo gallery, linked weapon associations; expiry status badges (Valid / Expiring Soon <60 days / Expired); search and filter by type
 - **Dymo print**: Print Label on LoadDetail generates a Dymo label via browser print
 
 ### Frontend Pages
@@ -62,7 +62,8 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `ChargeLadders.tsx` — load development session list
 - `ChargeLadderDetail.tsx` — charge level management, result recording, best selection
 - `History.tsx` — reload history with deleted loads count column
-- `Weapons.tsx` — weapon inventory with multi-photo gallery, type/status filters, sale tracking; Licenses & Permits section below with license cards, expiry status badges, weapon associations, photo gallery
+- `Weapons.tsx` — weapon inventory with multi-photo gallery, type/status filters, sale tracking
+- `Licenses.tsx` — standalone license/permit registry; card grid with expiry status, license type badge, weapon associations, photo gallery; search + type filter; Add/Edit/Delete with photo upload
 - `Settings.tsx` — 6-tab layout: General / Mail (SMTP, test, notification prefs, history) / Backup (download + restore) / Users / Lists / Audit
 
 ### API Routes (api-server)
@@ -88,7 +89,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `charge_levels` — id, ladderId, chargeGr, cartridgeCount, sortOrder, status, oalIn, coalIn, groupSizeMm, velocityFps
 - `weapons` — id, name, manufacturer, model, type, caliber, serialNumber, actionType, barrelLengthIn, weightKg, color, countryOfOrigin, buyDate, buyPrice, buyFrom, sold, sellDate, sellPrice, soldTo, soldNotes, notes
 - `weapon_photos` — id, weaponId, photoBase64, caption, sortOrder
-- `weapon_licenses` — id, name, licenseNumber, issueDate, expiryDate, notes, createdAt
+- `weapon_licenses` — id, name, licenseNumber, licenseType, issueDate, expiryDate, notes, createdAt
 - `weapon_license_photos` — id, licenseId, photoBase64, caption, sortOrder, createdAt
 - `weapon_license_weapons` — id, licenseId, weaponId (join table linking licenses to weapons)
 
@@ -100,6 +101,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `0009_backup_schema_repair` — repairs legacy Docker databases so broad reads used by backup/export/dashboard have every current schema column.
 - `0012_weapons` / `0012_weapons_real` — creates `weapons` and `weapon_photos` tables.
 - `0013_weapon_licenses` — creates `weapon_licenses`, `weapon_license_photos`, `weapon_license_weapons` tables.
+- `0014_license_type` — adds `license_type` column to `weapon_licenses`.
 
 ### Theme
 Dark gunmetal/steel theme (HSL 220 16% 10% bg, amber 38 90% 52% primary)
