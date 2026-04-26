@@ -1,25 +1,26 @@
-If you like the app, I would be very happy about a small donation.
+If you like the app, a small donation is always appreciated.
 
 https://www.paypal.com/donate/?hosted_button_id=N7YDAW3QX45GQ
-<img width="128" height="128" alt="image" src="https://github.com/user-attachments/assets/1ebcf0d2-f502-4dd5-95f6-7b56ec19b739" />
 
+<img width="128" height="128" alt="Donate" src="https://github.com/user-attachments/assets/1ebcf0d2-f502-4dd5-95f6-7b56ec19b739" />
 
-TestURL:
+---
+
+**Live Demo:**
 https://reloadingtest.hostzone.lu
+Username: `demo` / Password: `demoapp`
 
-Username: demo
-Password: demoapp
+---
 
-<img width="1305" height="917" alt="image" src="https://github.com/user-attachments/assets/6d07275a-8578-4bb4-88dc-5685ab53955b" />
+![Login Screen](screenshots/login.jpg)
 
+<img width="1305" height="917" alt="Dashboard" src="https://github.com/user-attachments/assets/6d07275a-8578-4bb4-88dc-5685ab53955b" />
 
-
-
-
+---
 
 # Reloading Manager
 
-A full-stack web application for sport shooters to manage the complete lifecycle of handloaded ammunition — from raw brass to fired rounds and back again. Tracks component inventory, guides you through an 8-step reloading workflow, supports charge ladder development, and sends email notifications for key events.
+A full-stack web application for sport shooters to manage the complete lifecycle of handloaded ammunition and their entire firearms collection — from raw components to fired rounds, charge ladder development, factory ammo tracking, and weapons inventory with full purchase and sale history.
 
 ---
 
@@ -33,19 +34,24 @@ A full-stack web application for sport shooters to manage the complete lifecycle
 - [User Management](#user-management)
 - [Application Guide](#application-guide)
   - [Dashboard](#dashboard)
+  - [Cartridges — Brass Inventory](#cartridges--brass-inventory)
+  - [Bullets](#bullets)
+  - [Powders](#powders)
+  - [Primers](#primers)
   - [Load Records](#load-records)
   - [The Reloading Workflow](#the-reloading-workflow)
-  - [Cartridges](#cartridges)
-  - [Bullets](#bullets)
-  - [Primers](#primers)
-  - [Powders](#powders)
-  - [Charge Ladders](#charge-ladders)
+  - [Charge Ladders — Load Development](#charge-ladders--load-development)
+  - [Buy-In — Factory Ammo Inventory](#buy-in--factory-ammo-inventory)
+  - [Weapons Inventory](#weapons-inventory)
   - [History](#history)
 - [Settings](#settings)
   - [General](#general)
   - [Mail / SMTP](#mail--smtp)
   - [Backup & Restore](#backup--restore)
+  - [Users (Admin)](#users-admin)
   - [Reference Lists](#reference-lists)
+  - [Audit Log](#audit-log)
+- [Photo Support](#photo-support)
 - [Batch ID Format](#batch-id-format)
 - [Building from Source](#building-from-source)
 
@@ -53,18 +59,35 @@ A full-stack web application for sport shooters to manage the complete lifecycle
 
 ## Features Overview
 
-- **Inventory management** for cartridge batches, bullets, primers, and powders
-- **Guided 8-step workflow** per load with step-by-step tracking and timestamps
-- **Cycle tracking** — the same brass batch can be reloaded multiple times, each getting its own cycle record under the same batch number
-- **Charge ladder support** for systematic load development across multiple powder charges
-- **Soft delete with restock** — deleting a load prompts you to return primers, powder, and bullets back to inventory
-- **Show/hide fired and deleted loads** per batch group in the load list
-- **Email notifications** for key events (new load, completion, firing, low stock)
-- **Backup and restore** via JSON export/import
-- **User management** with admin and regular-user roles
-- **Configurable reference lists** (calibers, manufacturers, powder types, primer types)
+### Reloading & Ammunition
+
+- **Brass inventory** — track cartridge batches by manufacturer, caliber, and production charge with per-batch reload history
+- **Component inventory** — bullets, powders (in grams), and primers each with quantity tracking, low-stock warnings, and photo support
+- **Multi-step load workflow** — guide each reload batch through 8 stages from washing to bullet seating
+- **Cycle tracking** — the same brass batch can be reloaded multiple times; each cycle gets its own record under the same batch number
+- **Charge ladder load development** — test multiple powder charges in a single range session, record group size and velocity per level, mark the best result
+- **Smart inventory deduction** — primers, powder, and bullets are automatically deducted from stock when a load is marked as completed
+- **Soft delete with restock** — deleting a load prompts you to return components back to inventory with an optional reason note
+- **Factory ammo tracking (Buy-In)** — log factory ammunition purchases with caliber, model, brand, round count, price, and a photo; record fired counts separately from your own loads
+
+### Weapons
+
+- **Full firearms inventory** — register every weapon you own with detailed specifications
+- **Multiple photos per weapon** — upload as many photos as needed; click any thumbnail for a full-screen lightbox
+- **Classification** — type (Pistol, Revolver, Rifle, Shotgun, Silencer, Air Gun, Crossbow) and action type (Semi-Auto, Bolt, Lever, Pump, etc.)
+- **Purchase tracking** — buy date, price, and seller
+- **Sale tracking** — mark a weapon as sold with sell date, sell price, buyer name, and sale notes
+- **Hover photo previews** — hover any thumbnail in the list to see a floating enlarged preview
+
+### Platform
+
+- **Email notifications** — alerts for new loads, completions, firing events, and low-stock warnings
+- **Multi-user support** — admin and regular-user roles with per-user notification preferences
+- **Backup and restore** — full JSON export and import covering every table
+- **Custom branding** — uploadable logo and background image stored in the database
+- **Configurable reference lists** — manage all dropdown options (calibers, manufacturers, powder types, primer types) from Settings
+- **Audit log** — every admin action is recorded with timestamp and user
 - **European date format** (dd/mm/yyyy) throughout
-- **Custom branding** — uploadable logo and background image
 
 ---
 
@@ -76,9 +99,11 @@ A full-stack web application for sport shooters to manage the complete lifecycle
 | Backend | Express 5, TypeScript |
 | Frontend | React 19, Vite 7, Tailwind CSS 4 |
 | Database | PostgreSQL 16 |
-| ORM | Drizzle ORM (auto-migrations on startup) |
+| ORM | Drizzle ORM + custom inline migration runner |
 | Auth | express-session + connect-pg-simple + bcryptjs |
-| Package manager | pnpm 10 (workspace) |
+| UI components | shadcn/ui + Radix UI primitives |
+| Animations | Framer Motion |
+| Package manager | pnpm 10 (workspace monorepo) |
 
 ---
 
@@ -93,7 +118,7 @@ A full-stack web application for sport shooters to manage the complete lifecycle
 
 ```bash
 git clone https://github.com/andyelsen85-bit/Reloading-Manager-Web.git
-cd reloading-manager
+cd Reloading-Manager-Web
 ```
 
 ### 2. Create a `.env` file
@@ -119,20 +144,21 @@ On first startup the container automatically runs all database migrations before
 ### 4. Stopping and updating
 
 ```bash
-# Stop
+# Stop the application
 docker compose down
 
-# Update to latest version
+# Update to the latest version and restart
 git pull
 docker compose up -d --build
 ```
 
 ### 5. Persistent data
 
-All PostgreSQL data is stored in the named Docker volume `postgres_data`. It survives container restarts and image rebuilds. To fully wipe it:
+All PostgreSQL data is stored in the named Docker volume `postgres_data`. It survives container restarts and image rebuilds.
 
 ```bash
-docker compose down -v   # WARNING: destroys all data
+# WARNING: this destroys all your data permanently
+docker compose down -v
 ```
 
 ---
@@ -143,41 +169,41 @@ docker compose down -v   # WARNING: destroys all data
 |---|---|---|---|
 | `POSTGRES_PASSWORD` | Yes | `changeme` | Password for the PostgreSQL `reloading` user |
 | `SESSION_SECRET` | Yes | `change-this-secret-in-production` | Secret used to sign session cookies |
-| `PORT` | No | `3000` | Host port mapped to the application |
+| `PORT` | No | `3000` | Host port the application listens on |
 | `DATABASE_URL` | Auto | set by compose | Full PostgreSQL connection string (set automatically by docker-compose) |
 | `NODE_ENV` | Auto | `production` | Set automatically by docker-compose |
 
-SMTP settings are **not** environment variables — they are configured inside the application under **Settings → Mail**.
+SMTP credentials are **not** environment variables — they are configured inside the app under **Settings → Mail**.
 
 ---
 
 ## First Login & Admin Setup
 
-On first launch the application detects that no admin password has been set and redirects to a **Setup** screen.
+On first launch, the application detects that no admin password has been set and shows a **Setup** screen.
 
-1. Open **http://localhost:3000** in your browser
-2. You are redirected to the setup page automatically
+1. Open `http://localhost:3000` in your browser
+2. You are automatically redirected to the setup page
 3. Enter a password for the built-in `admin` account and confirm it
 4. Click **Set Password** — you are logged in immediately as admin
 
-After this, the setup page is no longer accessible.
+The setup page is permanently locked out after this first use.
 
 ---
 
 ## User Management
 
-User management is available to admin users only under **Settings → Users**.
+User management is available to admin users only, accessible directly from **the sidebar** (Users link).
 
 ### Roles
 
 | Role | Capabilities |
 |---|---|
-| **Admin** | Full access: all inventory, all loads, user management, settings, backup/restore, undo fired/completed states |
-| **User** | Read and write access to loads and inventory; cannot manage users or settings, cannot undo final states |
+| **Admin** | Full access: all inventory, all loads, weapons, user management, settings, backup/restore, undo completed/fired states |
+| **User** | Read and write access to loads and all inventory; cannot manage users or settings; cannot undo final load states |
 
 ### Creating a user
 
-1. Go to **Settings → Users**
+1. Click **Users** in the sidebar
 2. Click **Add User**
 3. Enter a username, email address, password, and select a role
 4. Click **Create** — the user can log in immediately
@@ -186,22 +212,17 @@ User management is available to admin users only under **Settings → Users**.
 
 From the user list you can:
 
-- **Reset password** — enter and confirm a new password for any user
-- **Deactivate / Reactivate** — blocks login without deleting the account or its data
+- **Reset password** — set a new password for any user
+- **Deactivate / Reactivate** — blocks login without deleting the account or any of its data
 - **Delete** — permanently removes the user account
 
-### Notification preferences
+### Personal account settings
 
-Each user can configure which email notifications they receive. Go to **Settings → Notifications** and toggle the four event types:
+Each logged-in user can click their name at the bottom of the sidebar to:
 
-| Event | Trigger |
-|---|---|
-| Load Created | A new reloading load has been started |
-| Load Completed | All workflow steps are done and the load is marked complete |
-| Load Fired | A completed load has been marked as fired |
-| Low Stock | A component has dropped below your configured threshold |
-
-Notifications only send if SMTP is enabled in Settings and the user has an email address set.
+- Change their email address
+- Toggle email notifications on or off
+- Change their password
 
 ---
 
@@ -209,197 +230,386 @@ Notifications only send if SMTP is enabled in Settings and the user has an email
 
 ### Dashboard
 
-The dashboard gives you an at-a-glance view of the entire operation:
+The dashboard gives you an at-a-glance overview of the entire operation.
 
-- **Inventory counters** — total cartridge batches, bullets, primers, and powders in stock
-- **Load counters** — active (in progress), completed, and fired loads
-- **Low stock warnings** — components below your configured thresholds appear here
-- **Recent loads** — the latest load records with batch ID, caliber, quantity, and status
-- **Export** — download a full JSON backup of all data
+**Inventory cards** (clickable, takes you to the relevant page):
+- Cartridge batches in stock
+- Bullets in stock
+- Powder in stock (grams)
+- Primers in stock
+
+**Load status cards:**
+- Active loads (in progress)
+- Completed loads
+- Fired loads
+
+**Low stock warnings** — any component below your configured threshold appears as an amber alert.
+
+**Recent loads** — the latest 10 load records with batch ID, caliber, quantity, date, and current step.
+
+**Export button** — downloads a full JSON backup of all data in one click.
+
+---
+
+### Cartridges — Brass Inventory
+
+Tracks your brass by batch. Each row represents a specific batch from a specific manufacturer.
+
+**Fields available:**
+| Field | Description |
+|---|---|
+| Manufacturer | Brass manufacturer (e.g. Lapua, Winchester) |
+| Caliber | Cartridge caliber (e.g. 6.5 Creedmoor, 9mm) |
+| Production Charge | Headstamp batch identifier |
+| Quantity Total | Total cases in this batch |
+| Quantity Loaded | How many are currently loaded |
+| Times Fired | Reload cycle counter |
+| L6 (in) | Case length measurement |
+| Avg H₂O Volume (gr) | Internal case volume in water grains |
+| Shoulder Diameter (in) | Measured shoulder diameter |
+| Base Diameter (in) | Measured base diameter |
+| Neck Wall Thickness (in) | Measured neck wall |
+| AMP Aztec Code | For AMP annealing machine integration |
+| AMP Pilot Number | For AMP annealing machine |
+| Notes | Free-text notes |
+| Photo | Optional photo with hover preview |
+
+**Expanded batch view:** Click the expand arrow on any batch row to see all reload loads ever created from it, with batch ID, date, quantity, step, and status. Fired loads are hidden by default with a toggle to reveal them.
+
+---
+
+### Bullets
+
+Inventory of projectiles.
+
+**Fields:**
+| Field | Description |
+|---|---|
+| Manufacturer | Bullet manufacturer |
+| Model | Product name or model |
+| Weight (gr) | Bullet weight in grains |
+| Diameter (in) | Bullet diameter in inches |
+| Qty Available | Current stock count |
+| Notes | Free-text notes |
+| Photo | Optional photo with hover preview |
+
+**Automatic deduction:** Quantity is deducted when a load using that bullet is marked as **Completed**.
+
+**Low-stock warning:** An amber triangle appears in the list when quantity drops below your configured threshold (set in Settings → General).
+
+---
+
+### Powders
+
+Inventory of propellant powders. Stock is tracked in **grams**.
+
+**Fields:**
+| Field | Description |
+|---|---|
+| Manufacturer | Powder manufacturer |
+| Name | Powder product name (e.g. Varget, H4350) |
+| Type | Powder type classification |
+| Grains Available | Current stock in grams |
+| Notes | Free-text notes |
+| Photo | Optional photo with hover preview |
+
+**Automatic deduction:** Powder is deducted in grams when a load is completed, calculated as `charge weight (gr) × number of rounds`.
+
+---
+
+### Primers
+
+Inventory of primers. Stock is tracked in units.
+
+**Fields:**
+| Field | Description |
+|---|---|
+| Manufacturer | Primer manufacturer |
+| Type | Primer type (e.g. Small Rifle, Large Pistol, Small Pistol Magnum) |
+| Qty Available | Current stock count |
+| Notes | Free-text notes |
+| Photo | Optional photo with hover preview |
+
+**Automatic deduction:** Quantity is deducted when a load using that primer is marked as **Completed**.
 
 ---
 
 ### Load Records
 
-The Load Records page groups all loads by cartridge batch. Within each group:
+The Load Records page groups all loads by cartridge batch. Within each batch group:
 
-- **Active loads** are shown by default — everything from washing through bullet seating that has not yet been fired
-- **Show fired loads** — toggle to reveal loads that have been fired within that batch
-- **Show deleted loads** — toggle to reveal soft-deleted loads, shown in red with strikethrough and the deletion note if one was recorded
+- **Active loads** are shown by default
+- **Show fired loads** toggle — reveals loads marked as fired within that batch
+- **Show deleted loads** toggle — reveals soft-deleted loads (shown with strikethrough and the deletion reason)
 
 Each load row shows:
-- **Batch ID** (e.g. `#00003-002`) — see [Batch ID Format](#batch-id-format)
+- **Batch ID** — e.g. `#00003-002` (see [Batch ID Format](#batch-id-format))
 - **Quantity** — number of rounds in this load
-- **Cycle** — which reload cycle this is for the batch
-- **Date** — load creation date
-- **Current step** — where in the workflow this load is
+- **Cycle** — which reload cycle this is for the brass batch
+- **Date** — load creation date (dd/mm/yyyy)
+- **Step** — current workflow step
 - **Status** — Active, Completed, or Fired
 
-#### Deleting a load (admin only)
+**Open a load:** Click **Workflow →** to open the full step-by-step detail view.
 
-Click the trash icon on any load row. A dialog asks whether to restock components back to inventory:
+#### Deleting a load
 
-- **Restock primers** — returns the primer quantity used
-- **Restock powder** — returns the total powder weight in grams
-- **Restock bullets** — returns the bullet quantity used
-- **Note** — optional reason for deletion, stored and shown in the deleted loads view
+Click the trash icon. A dialog lets you optionally restock components:
+
+| Option | Effect |
+|---|---|
+| Restock primers | Returns the primer quantity to inventory |
+| Restock powder | Returns the total powder weight (grams) to inventory |
+| Restock bullets | Returns the bullet quantity to inventory |
+| Note | Optional deletion reason, stored and visible in the deleted loads view |
 
 ---
 
 ### The Reloading Workflow
 
-Each load follows an 8-step workflow. Open a load by clicking **Workflow →** in the load list. Steps can be individually skipped where not applicable.
+Each load follows an 8-step workflow. Open a load to access its detail page.
 
 | Step | What you record |
 |---|---|
-| **1. Washing** | Duration in minutes and date of initial cleaning |
+| **1. Washing** | Cleaning duration (minutes) and date |
 | **2. Calibration** | Sizing method (e.g. Full Length Resize, Neck Sizing) |
-| **3. Trim** | Final case length (L6 measurement in inches) |
-| **4. Annealing** | Mark cases as annealed |
-| **5. Second Washing** | Duration and date of post-prep cleaning |
-| **6. Priming** | Select primer from inventory; quantity used is recorded |
-| **7. Powder** | Either a single powder + charge weight, or a linked Charge Ladder |
+| **3. Trim** | Final case length (L6 in inches) |
+| **4. Annealing** | Mark cases as annealed; record duration in minutes |
+| **5. Second Washing** | Post-prep cleaning duration and date |
+| **6. Priming** | Select primer from inventory; quantity deducted on completion |
+| **7. Powder** | Select powder + charge weight, or link a Charge Ladder |
 | **8. Bullet Seating** | Select bullet, record COAL and OAL in inches |
+
+**Steps can be individually skipped** where not applicable to your process. Skipped steps count as complete for workflow progression purposes.
 
 All step dates are recorded and displayed in European format (dd/mm/yyyy).
 
 #### Completing a load
 
-Once all steps are done, click **Mark as Completed**. This:
+Once all steps are done (or skipped), click **Mark as Completed**. This:
 - Changes the load status to Completed
 - Automatically deducts bullets, primers, and powder from inventory
 
 #### Marking as fired
 
-After shooting, click **Mark as Fired**. Optionally record:
-- **H₂O weight** of the fired brass (tracks case expansion over multiple cycles)
+After your range session, click **Mark as Fired**. You can optionally record:
+- **H₂O weight** of the fired brass (tracks case expansion over reload cycles)
 - **Best charge level** if the load used a charge ladder
 
 #### Starting a new cycle
 
 After a load is fired, click **Start New Cycle**. A new load record is created for the same batch of brass:
 - Inherits the same batch number
-- Cycle number increments automatically (e.g. `#00003-002` → `#00003-003`)
-- No additional inventory is consumed — the brass is being reused
+- Cycle number increments automatically (`#00003-002` → `#00003-003`)
+- No additional brass inventory is consumed — the same cases are being reused
 
 #### Undoing states (admin only)
 
-Admins can reverse the last final state:
+Admins can reverse the last final state if a mistake was made:
 - **Undo Completion** — returns a Completed load to In Progress
 - **Undo Fired** — clears the fired flag and H₂O weight
 
+#### Photo on load
+
+A photo can be attached to any completed load for documentation — e.g. a group target photo or a headstamp photo.
+
+#### Print label
+
+Click **Print Label** on any load to generate a Dymo-compatible label via the browser print dialog.
+
 ---
 
-### Cartridges
+### Charge Ladders — Load Development
 
-Tracks your brass by batch. Each record represents a specific batch from a specific manufacturer.
+Charge ladders let you systematically test multiple powder charges in a single range session.
+
+#### Creating a ladder
+
+1. Navigate to **Loads → Charge Ladders** (or via the main nav)
+2. Click **New Ladder**
+3. Name your session and select the powder, caliber, cartridge batch, bullet, and primer
+4. Set **Cartridges per Level** — how many rounds you'll load at each charge weight
+5. Add levels — each level specifies a charge weight in grains
+
+#### Linking a ladder to a load
+
+In **Step 7 (Powder)** of the load workflow, choose **Use Charge Ladder** instead of a single charge weight, then select your ladder from the list.
+
+#### Recording results after firing
+
+1. Open the load and click **Mark as Fired**
+2. In the fired dialog, select the **Best Level** — the charge weight that produced the best results
+3. That level is permanently marked with a ★ in the ladder view
+
+#### Ladder detail view
+
+The ladder detail page shows all charge levels with:
+- Charge weight (grains)
+- Number of rounds loaded at that level
+- OAL (in) and COAL (in)
+- Group size (mm) and velocity (fps)
+- Status (loaded, fired, best)
+
+---
+
+### Buy-In — Factory Ammo Inventory
+
+Track factory ammunition purchases alongside your own reloads.
 
 **Fields:**
-- Manufacturer, Caliber, Production Charge (headstamp batch identifier)
-- Quantity Total and Quantity Loaded
-- Average H₂O internal volume (grains)
-- Shoulder diameter, base diameter, neck wall thickness (inches)
-- AMP Aztec Code and Pilot Number (for AMP annealing machines)
-- Notes and photo
+| Field | Description |
+|---|---|
+| Manufacturer | Ammunition brand (e.g. Federal, Winchester, Fiocchi) |
+| Caliber | Cartridge caliber |
+| Model | Product line or model name |
+| Bullet Weight (gr) | Projectile weight |
+| Count Total | Total rounds purchased |
+| Count Fired | Rounds already fired from this purchase |
+| Notes | Free-text notes |
+| Photo | Optional product photo with hover preview |
 
-The expanded view for each cartridge batch shows all loads ever created from it, with batch ID, date, quantity, and status.
-
----
-
-### Bullets
-
-Inventory of projectiles. Each record tracks:
-- Manufacturer, model/type, caliber, weight (grains), length (inches)
-- Quantity in stock
-- Photo and notes
-
-Quantity is automatically deducted when a load using that bullet is marked as completed.
+Each row shows remaining count (`Total − Fired`) and the total quantity. The photo column shows a thumbnail that expands on hover.
 
 ---
 
-### Primers
+### Weapons Inventory
 
-Inventory of primers. Each record tracks:
-- Manufacturer, type (e.g. Small Rifle, Large Pistol), quantity in stock
-- Notes
+A complete registry for every firearm and accessory you own or have owned.
 
-Quantity is automatically deducted when a load using that primer is marked as completed.
+#### List view
 
----
+The main table shows all weapons with:
+- **Photo thumbnail** — hover to see an enlarged preview; `+N` indicator when there are multiple photos
+- **Type badge** — color-coded by category (blue for Pistol, green for Rifle, purple for Revolver, orange for Shotgun, etc.)
+- **Name / Model** — weapon name and model side by side
+- **Manufacturer**
+- **Caliber** — in monospace font
+- **Serial Number**
+- **Purchased** — buy date and buy price on separate lines
+- **Status** — green "Owned" or red "Sold" badge
 
-### Powders
+**Filters:**
+- Free-text search across name, manufacturer, model, caliber, and serial number
+- Filter by weapon type
+- Toggle between All / Owned / Sold
 
-Inventory of propellant powders. Each record tracks:
-- Manufacturer, powder name/type, quantity in stock (grams)
-- Notes
+#### Adding a weapon
 
-Quantity is deducted in grams when a load is completed, calculated as charge weight × number of rounds.
+Click **Add Weapon** and fill in as many fields as apply:
 
----
+**Identification:**
+| Field | Description |
+|---|---|
+| Name | Your descriptive name for the weapon |
+| Manufacturer | Brand / maker |
+| Model | Specific model designation |
+| Type | Pistol / Revolver / Rifle / Shotgun / Silencer / Air Gun / Crossbow / Other |
+| Action Type | Semi-Automatic / Bolt Action / Lever Action / Pump Action / Single Shot / Break Action / Revolver / Full Auto / Other |
+| Caliber | Cartridge caliber |
+| Serial Number | Legal serial number |
+| Barrel Length (in) | Barrel length in inches |
+| Weight (kg) | Weapon weight in kilograms |
+| Color / Finish | Color and surface finish |
+| Country of Origin | Country where manufactured |
 
-### Charge Ladders
+**Purchase Details:**
+| Field | Description |
+|---|---|
+| Buy Date | Date of purchase |
+| Buy Price | Purchase price |
+| Purchased From | Dealer or private seller name |
 
-Used for systematic load development — testing multiple powder charges in a single range session.
+**Sale Details:**
 
-**Creating a ladder:**
+Toggle **Mark as Sold** to reveal the sale fields:
 
-1. Go to **Charge Ladders** and click **New Ladder**
-2. Give it a name and select the powder
-3. Add levels — each level defines a charge weight in grains and how many rounds to load at that weight
+| Field | Description |
+|---|---|
+| Sell Date | Date of sale |
+| Sell Price | Sale price achieved |
+| Sold To | Buyer name or reference |
+| Sale Notes | Any notes about the transaction |
 
-**Linking to a load:**
+**Notes:** A free-text field for modifications, accessories, maintenance history, etc.
 
-In the Powder step of the load workflow, choose **Use Charge Ladder** instead of a single charge and select your ladder.
+#### Managing photos
 
-**After firing:**
-
-In the **Mark as Fired** dialog, select the **Best Level** — the charge that produced the best results. This level is highlighted with a ★ in the ladder view for future reference.
+After a weapon is saved, open the **Edit** dialog to manage photos:
+- Click the **+Add** tile to upload one or more photos at once (multi-select supported)
+- Click any photo thumbnail to open a **full-screen lightbox**
+- Hover over the **X** button that appears on hover to delete an individual photo
+- The first photo in the gallery is used as the table thumbnail
 
 ---
 
 ### History
 
-A consolidated table showing performance data for cartridge batches over time — total rounds reloaded, number of cycles completed, and times fired.
+A consolidated table showing the reloading history for each cartridge batch:
+- Total rounds ever reloaded
+- Number of cycles completed
+- Loads deleted (with delete notes)
+- Times fired
 
 ---
 
 ## Settings
 
-Accessible from the sidebar. All tabs are admin-only except personal notification preferences.
+Accessible from the sidebar. Most tabs are admin-only.
 
 ### General
 
-- **Low Stock Thresholds** — quantities at which bullets (units), powder (grams), and primers (units) trigger a dashboard warning and email notification
-- **Next Load Number** — the auto-incrementing counter used to generate batch IDs; can be adjusted if needed
-- **Branding** — upload a custom logo and background image stored in the database
+- **Low Stock Thresholds** — set the quantities at which each component type triggers a dashboard warning and email alert:
+  - Bullets (units)
+  - Powder (grams)
+  - Primers (units)
+- **Next Load Number** — the auto-incrementing counter used to generate batch IDs; can be manually adjusted if needed
+- **Branding** — upload a custom logo (shown in the sidebar) and a background image (applied to the whole app)
 
 ### Mail / SMTP
 
-Configure outgoing email for notifications:
+Configure outgoing email for all notification types:
 
 | Field | Description |
 |---|---|
-| Host | SMTP server hostname (e.g. `smtp.gmail.com`) |
+| Host | SMTP server hostname (e.g. `smtp.gmail.com`, `mail.yourdomain.com`) |
 | Port | Usually `587` (STARTTLS) or `465` (SSL) |
 | Username | SMTP authentication username |
 | Password | SMTP authentication password |
-| From address | The `From:` address in sent emails |
-| Enabled | Master toggle for all outgoing notifications |
+| From address | The `From:` address on all sent emails |
+| Enabled | Master on/off toggle for all outgoing notifications |
 
-Use **Send Test Email** to verify the configuration. **Mail History** shows the last 100 sent or failed email attempts with timestamps and any error details.
+**Send Test Email** — sends a test message immediately to verify your configuration.
+
+**Notification preferences** — each user individually controls which events trigger an email to them:
+
+| Event | When it fires |
+|---|---|
+| Load Created | A new reloading load has been started |
+| Load Completed | All workflow steps are done |
+| Load Fired | A completed load is marked as fired |
+| Low Stock | A component drops below the threshold |
+
+Notifications only send if SMTP is enabled **and** the user has an email address set in their profile.
+
+**Mail History** — shows the last 100 sent or failed email attempts with timestamps, recipient, subject, and any error message.
 
 ### Backup & Restore
 
-- **Download Backup** — exports all data (loads, inventory, settings, users) as a single JSON file
-- **Restore Backup** — upload a previously downloaded JSON file to fully restore the database
+- **Download Backup** — exports all data (loads, inventory, weapons, settings, users, reference lists) as a single JSON file. Use this for regular backups or before major changes.
+- **Restore Backup** — upload a previously downloaded JSON backup to fully restore the database.
 
-> Restore replaces all existing data. Always download a backup before restoring.
+> **Warning:** Restore replaces all existing data. Always download a backup before performing a restore.
+
+### Users (Admin)
+
+The same user management described in [User Management](#user-management) is also accessible from Settings → Users.
 
 ### Reference Lists
 
-Manage the dropdown options used throughout the application:
+Manage the autocomplete dropdown options used throughout the application. Changes take effect immediately across all forms.
 
-- Calibers
+Available lists:
+- Calibers (46 pre-populated)
 - Cartridge manufacturers
 - Bullet manufacturers
 - Powder manufacturers
@@ -407,7 +617,35 @@ Manage the dropdown options used throughout the application:
 - Powder types
 - Primer types
 
-Add, rename, or remove entries. Changes take effect immediately across all forms.
+You can add, rename, or remove any entry.
+
+### Audit Log
+
+A timestamped record of every significant admin action performed in the application — user creation, deletions, password resets, setting changes, and backup operations.
+
+---
+
+## Photo Support
+
+Photos are stored as base64 strings in the PostgreSQL database — no external storage service required.
+
+Photos are supported on:
+
+| Feature | Thumbnail | Hover Preview | Lightbox |
+|---|---|---|---|
+| Cartridges | ✓ | ✓ | — |
+| Bullets | ✓ | ✓ | — |
+| Powders | ✓ | ✓ | — |
+| Primers | ✓ | ✓ | — |
+| Buy-In (factory ammo) | ✓ | ✓ | — |
+| Weapons | ✓ (first photo) | ✓ | ✓ (per-photo) |
+| Loads / LoadDetail | ✓ | — | — |
+
+**Hover preview:** Move your mouse over any thumbnail to see a 280×280 px floating enlarged view that follows the cursor.
+
+**Lightbox (weapons only):** Click any weapon photo thumbnail in the edit dialog to open a full-screen black overlay with the full-size image. Click outside the image or the × button to close.
+
+**Multi-photo (weapons only):** Each weapon can have unlimited photos. The edit dialog shows a photo gallery where you can upload multiple files at once and delete individual photos independently.
 
 ---
 
@@ -415,30 +653,26 @@ Add, rename, or remove entries. Changes take effect immediately across all forms
 
 Every load gets a batch ID in the format **`#LLLLL-CCC`**:
 
-- `LLLLL` — five-digit zero-padded load number (increments globally for each new load)
+- `LLLLL` — five-digit zero-padded global load number (increments by 1 for each new load ever created across all batches)
 - `CCC` — three-digit zero-padded cycle number (starts at `001`, increments each time the same brass is reloaded via **Start New Cycle**)
 
 **Examples:**
 
 | Scenario | Batch ID |
 |---|---|
-| New load from a fresh batch of brass | `#00007-001` |
-| Same brass reloaded a second time | `#00007-002` |
-| Same brass reloaded a third time | `#00007-003` |
-| A completely different cartridge batch | `#00008-001` |
+| First load from a fresh batch of brass | `#00001-001` |
+| Same brass, reloaded a second time | `#00001-002` |
+| Same brass, reloaded a third time | `#00001-003` |
+| A completely different cartridge batch | `#00002-001` |
+| Two independent loads from the same batch | `#00003-001` and `#00004-001` |
 
-Two independent loads created from the same cartridge stock each get their own load number but both start at cycle `001`:
-
-| Scenario | Batch ID |
-|---|---|
-| 50 rounds from Batch A | `#00007-001` |
-| Another 50 rounds from the same Batch A | `#00008-001` |
+The load number (`LLLLL`) is always unique globally. The cycle number (`CCC`) only increments within the same cartridge batch via **Start New Cycle**.
 
 ---
 
 ## Building from Source
 
-For local development without Docker:
+For local development without Docker.
 
 ### Prerequisites
 
@@ -449,21 +683,54 @@ For local development without Docker:
 ### Setup
 
 ```bash
-# Install all dependencies
+# Clone the repo
+git clone https://github.com/andyelsen85-bit/Reloading-Manager-Web.git
+cd Reloading-Manager-Web
+
+# Install all dependencies across the monorepo
 pnpm install
 
-# Create your local environment
+# Set required environment variables
 export DATABASE_URL="postgres://user:password@localhost:5432/reloading"
 export SESSION_SECRET="dev-secret-change-me"
 
-# Start the API server (auto-runs migrations on startup)
+# Start the API server in development mode
+# (automatically runs all database migrations on startup)
 pnpm --filter @workspace/api-server run dev
 
-# In a second terminal — start the React dev server
+# In a second terminal — start the React + Vite dev server
 pnpm --filter @workspace/reloading-manager run dev
 ```
 
-The frontend is served at `http://localhost:5173` in development mode and proxies API calls to the backend automatically.
+The frontend is served at `http://localhost:5173` in development mode and proxies all `/api` calls to the backend automatically.
+
+### Monorepo structure
+
+```
+.
+├── artifacts/
+│   ├── api-server/          # Express 5 API (TypeScript, esbuild output)
+│   └── reloading-manager/   # React + Vite frontend
+├── lib/
+│   ├── db/                  # Drizzle ORM schema definitions
+│   ├── api-spec/            # OpenAPI YAML specification
+│   ├── api-client-react/    # Generated React Query hooks (orval)
+│   └── api-zod/             # Generated Zod schemas (orval)
+└── docker-compose.yml
+```
+
+### Useful commands
+
+```bash
+# Type-check the entire monorepo
+pnpm run typecheck
+
+# Build all packages
+pnpm run build
+
+# Regenerate API client from the OpenAPI spec
+pnpm --filter @workspace/api-spec run codegen
+```
 
 ---
 
