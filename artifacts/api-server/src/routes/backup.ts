@@ -23,6 +23,19 @@ import { sql } from "drizzle-orm";
 
 const router = Router();
 
+// JSON.parse gives us date strings, but Drizzle timestamp columns expect Date objects.
+// Walk every row and convert ISO-8601 strings back to Date instances.
+const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+function hydrateDates(rows: any[]): any[] {
+  return rows.map((row) => {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(row)) {
+      out[k] = typeof v === "string" && ISO_RE.test(v) ? new Date(v) : v;
+    }
+    return out;
+  });
+}
+
 router.get("/backup", async (_req, res) => {
   try {
     const [
@@ -121,77 +134,77 @@ router.post("/restore", async (req, res) => {
 
       // Standalone / leaf tables first
       if (Array.isArray(data.settings) && data.settings.length > 0) {
-        await tx.insert(settingsTable).values(data.settings as any[]);
+        await tx.insert(settingsTable).values(hydrateDates(data.settings));
       } else {
         // Always ensure a settings row exists
         await tx.execute(sql`INSERT INTO settings DEFAULT VALUES ON CONFLICT DO NOTHING`);
       }
 
       if (Array.isArray(data.referenceData) && data.referenceData.length > 0) {
-        await tx.insert(referenceDataTable).values(data.referenceData as any[]);
+        await tx.insert(referenceDataTable).values(hydrateDates(data.referenceData));
       }
 
       if (Array.isArray(data.cartridges) && data.cartridges.length > 0) {
-        await tx.insert(cartridgesTable).values(data.cartridges as any[]);
+        await tx.insert(cartridgesTable).values(hydrateDates(data.cartridges));
       }
 
       if (Array.isArray(data.bullets) && data.bullets.length > 0) {
-        await tx.insert(bulletsTable).values(data.bullets as any[]);
+        await tx.insert(bulletsTable).values(hydrateDates(data.bullets));
       }
 
       if (Array.isArray(data.powders) && data.powders.length > 0) {
-        await tx.insert(powdersTable).values(data.powders as any[]);
+        await tx.insert(powdersTable).values(hydrateDates(data.powders));
       }
 
       if (Array.isArray(data.primers) && data.primers.length > 0) {
-        await tx.insert(primersTable).values(data.primers as any[]);
+        await tx.insert(primersTable).values(hydrateDates(data.primers));
       }
 
       // charge_ladders depends on cartridges, bullets, primers
       if (Array.isArray(data.chargeLadders) && data.chargeLadders.length > 0) {
-        await tx.insert(chargeLaddersTable).values(data.chargeLadders as any[]);
+        await tx.insert(chargeLaddersTable).values(hydrateDates(data.chargeLadders));
       }
 
       // charge_levels depends on charge_ladders (CASCADE)
       if (Array.isArray(data.chargeLevels) && data.chargeLevels.length > 0) {
-        await tx.insert(chargeLevelsTable).values(data.chargeLevels as any[]);
+        await tx.insert(chargeLevelsTable).values(hydrateDates(data.chargeLevels));
       }
 
       // loads depends on cartridges, primers, powders, bullets, charge_ladders
       if (Array.isArray(data.loads) && data.loads.length > 0) {
-        await tx.insert(loadsTable).values(data.loads as any[]);
+        await tx.insert(loadsTable).values(hydrateDates(data.loads));
       }
 
       // ammo_inventory — standalone (added in v2; v1 backups simply skip this)
       if (Array.isArray(data.ammoInventory) && data.ammoInventory.length > 0) {
-        await tx.insert(ammoInventoryTable).values(data.ammoInventory as any[]);
+        await tx.insert(ammoInventoryTable).values(hydrateDates(data.ammoInventory));
       }
 
       // weapons — standalone (added in v3; older backups skip)
       if (Array.isArray(data.weapons) && data.weapons.length > 0) {
-        await tx.insert(weaponsTable).values(data.weapons as any[]);
+        await tx.insert(weaponsTable).values(hydrateDates(data.weapons));
       }
       if (Array.isArray(data.weaponPhotos) && data.weaponPhotos.length > 0) {
-        await tx.insert(weaponPhotosTable).values(data.weaponPhotos as any[]);
+        await tx.insert(weaponPhotosTable).values(hydrateDates(data.weaponPhotos));
       }
       if (Array.isArray(data.weaponLicenses) && data.weaponLicenses.length > 0) {
-        await tx.insert(weaponLicensesTable).values(data.weaponLicenses as any[]);
+        await tx.insert(weaponLicensesTable).values(hydrateDates(data.weaponLicenses));
       }
       if (Array.isArray(data.weaponLicensePhotos) && data.weaponLicensePhotos.length > 0) {
-        await tx.insert(weaponLicensePhotosTable).values(data.weaponLicensePhotos as any[]);
+        await tx.insert(weaponLicensePhotosTable).values(hydrateDates(data.weaponLicensePhotos));
       }
       if (Array.isArray(data.weaponLicenseWeapons) && data.weaponLicenseWeapons.length > 0) {
-        await tx.insert(weaponLicenseWeaponsTable).values(data.weaponLicenseWeapons as any[]);
+        await tx.insert(weaponLicenseWeaponsTable).values(hydrateDates(data.weaponLicenseWeapons));
       }
 
       // email_log — standalone (added in v4; older backups skip)
       if (Array.isArray(data.emailLog) && data.emailLog.length > 0) {
-        await tx.insert(emailLogTable).values(data.emailLog as any[]);
+        await tx.insert(emailLogTable).values(hydrateDates(data.emailLog));
       }
 
       // weapon_magazines — depends on weapons (added in v5; older backups skip)
       if (Array.isArray(data.weaponMagazines) && data.weaponMagazines.length > 0) {
-        await tx.insert(weaponMagazinesTable).values(data.weaponMagazines as any[]);
+        await tx.insert(weaponMagazinesTable).values(hydrateDates(data.weaponMagazines));
       }
 
       // ── 3. Advance all sequences past the max restored ID ───────────────────
