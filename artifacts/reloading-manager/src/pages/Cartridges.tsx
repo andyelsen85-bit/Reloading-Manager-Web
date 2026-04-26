@@ -37,6 +37,32 @@ const formatBatchId = (loadNumber: number | null | undefined, cycle: number | nu
   return `#${batch}-${cyc}`;
 };
 
+function PhotoCell({ src, alt }: { src: string | null | undefined; alt: string }) {
+  const [hovered, setHovered] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const handleMouseEnter = (e: React.MouseEvent) => { setPos({ x: e.clientX, y: e.clientY }); setHovered(true); };
+  const handleMouseMove = (e: React.MouseEvent) => { setPos({ x: e.clientX, y: e.clientY }); };
+  if (!src) {
+    return (
+      <div className="w-9 h-9 rounded border border-border bg-muted flex items-center justify-center">
+        <Camera className="w-3.5 h-3.5 text-muted-foreground" />
+      </div>
+    );
+  }
+  return (
+    <div className="relative inline-block" onMouseEnter={handleMouseEnter} onMouseLeave={() => setHovered(false)} onMouseMove={handleMouseMove}>
+      <img src={src} alt={alt} className="w-9 h-9 object-cover rounded border border-border cursor-zoom-in" />
+      <AnimatePresence>
+        {hovered && (
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.15 }} className="fixed z-50 pointer-events-none" style={{ left: pos.x + 16, top: pos.y + 16 }}>
+            <img src={src} alt={alt} className="max-w-[280px] max-h-[280px] object-contain rounded-lg border border-border shadow-2xl bg-background" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function Cartridges() {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -177,13 +203,7 @@ export default function Cartridges() {
                         )}
                       </td>
                       <td className="px-3 py-2">
-                        {c.photoBase64 ? (
-                          <img src={c.photoBase64} alt={c.caliber} className="w-9 h-9 object-cover rounded border border-border" />
-                        ) : (
-                          <div className="w-9 h-9 rounded border border-border bg-muted flex items-center justify-center">
-                            <Camera className="w-3.5 h-3.5 text-muted-foreground" />
-                          </div>
-                        )}
+                        <PhotoCell src={c.photoBase64} alt={c.caliber} />
                       </td>
                       <td className="px-3 py-2.5 font-mono text-muted-foreground">{c.id}</td>
                       <td className="px-3 py-2.5 text-foreground">{c.manufacturer}</td>

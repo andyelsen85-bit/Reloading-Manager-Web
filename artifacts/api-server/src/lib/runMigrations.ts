@@ -486,6 +486,13 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       );
     `,
   },
+  {
+    id: "0011_powder_primer_photos",
+    sql: `
+      ALTER TABLE "powders" ADD COLUMN IF NOT EXISTS "photo_base64" text;
+      ALTER TABLE "primers" ADD COLUMN IF NOT EXISTS "photo_base64" text;
+    `,
+  },
 ];
 
 export async function runMigrations(pool: Pool): Promise<void> {
