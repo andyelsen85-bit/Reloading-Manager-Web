@@ -340,7 +340,12 @@ function AmmoFormFields({ form, setForm }: { form: AmmoForm; setForm: (f: AmmoFo
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <Label>Manufacturer</Label>
-          <Input value={form.manufacturer} onChange={set("manufacturer")} placeholder="e.g. Federal" />
+          <RefCombobox
+            category="cartridge_manufacturer"
+            value={form.manufacturer}
+            onValueChange={(v) => setForm({ ...form, manufacturer: v })}
+            placeholder="Select manufacturer..."
+          />
         </div>
         <div className="space-y-1">
           <Label>Model</Label>
