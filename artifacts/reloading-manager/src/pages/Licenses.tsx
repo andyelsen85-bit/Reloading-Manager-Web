@@ -79,7 +79,11 @@ function PhotoHoverCell({ src, alt }: { src: string | null | undefined; alt: str
       onMouseMove={(e) => setPos({ x: e.clientX, y: e.clientY })}
       onMouseLeave={() => setHovered(false)}
     >
-      <img src={src} alt={alt} className="w-8 h-8 object-cover rounded border border-border cursor-zoom-in" />
+      <img
+        src={src} alt={alt}
+        className="w-8 h-8 object-cover rounded border border-border cursor-zoom-in"
+        onClick={() => { const w = window.open(); if (w) { w.document.write(`<body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${src}" style="max-width:none" /></body>`); w.document.close(); } }}
+      />
       <AnimatePresence>
         {hovered && (
           <motion.div
@@ -108,7 +112,6 @@ function PhotoGallery({
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [deletePhotoId, setDeletePhotoId] = useState<number | null>(null);
-  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const handleFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -133,7 +136,7 @@ function PhotoGallery({
           <div key={p.id} className="relative group">
             <img src={p.photoBase64} alt={`Photo ${p.id}`}
               className="w-20 h-20 object-cover rounded border border-border cursor-zoom-in hover:border-primary/50 transition-colors"
-              onClick={() => setLightbox(p.photoBase64)} />
+              onClick={() => { const w = window.open(); if (w) { w.document.write(`<body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${p.photoBase64}" style="max-width:none" /></body>`); w.document.close(); } }} />
             <button onClick={() => setDeletePhotoId(p.id)}
               className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <X className="w-3 h-3" />
@@ -157,20 +160,6 @@ function PhotoGallery({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AnimatePresence>
-        {lightbox && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
-            onClick={() => setLightbox(null)}>
-            <motion.img initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
-              src={lightbox} alt="Full size" className="max-w-full max-h-full object-contain rounded-lg"
-              onClick={(e) => e.stopPropagation()} />
-            <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors">
-              <X className="w-5 h-5" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
