@@ -13,6 +13,7 @@ import usersRouter from "./users";
 import referenceRouter from "./reference";
 import chargeLaddersRouter from "./charge_ladders";
 import backupRouter from "./backup";
+import ammoInventoryRouter from "./ammo_inventory";
 
 const router: IRouter = Router();
 
@@ -28,6 +29,7 @@ router.use(bulletsRouter);
 router.use(powdersRouter);
 router.use(primersRouter);
 router.use(loadsRouter);
+router.use(ammoInventoryRouter);
 router.use(dashboardRouter);
 
 router.use(requireAdmin as any);

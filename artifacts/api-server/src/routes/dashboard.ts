@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { cartridgesTable, bulletsTable, powdersTable, primersTable, loadsTable, settingsTable } from "@workspace/db";
-import { desc, isNull, or, isNotNull } from "drizzle-orm";
+import { cartridgesTable, bulletsTable, powdersTable, primersTable, loadsTable, settingsTable, ammoInventoryTable } from "@workspace/db";
+import { desc, isNull } from "drizzle-orm";
 
 const router = Router();
 
@@ -27,6 +27,32 @@ router.get("/dashboard/overview", async (_req, res) => {
 
   const recentLoads = loads.slice(0, 5);
 
+  // Ready-to-fire by caliber: completed+unfired loads + ammo inventory remaining
+  const ammoInventory = await db.select().from(ammoInventoryTable);
+
+  const readyMap: Record<string, { fromLoads: number; fromBuyIn: number }> = {};
+
+  // Completed but not yet fired loads
+  for (const l of loads.filter((l) => l.completed && !l.fired)) {
+    if (!readyMap[l.caliber]) readyMap[l.caliber] = { fromLoads: 0, fromBuyIn: 0 };
+    readyMap[l.caliber].fromLoads += l.cartridgeQuantityUsed;
+  }
+
+  // Ammo inventory remaining (total - fired)
+  for (const a of ammoInventory) {
+    const remaining = a.countTotal - a.countFired;
+    if (remaining > 0) {
+      if (!readyMap[a.caliber]) readyMap[a.caliber] = { fromLoads: 0, fromBuyIn: 0 };
+      readyMap[a.caliber].fromBuyIn += remaining;
+    }
+  }
+
+  const readyToFireByCaliber = Object.entries(readyMap)
+    .map(([caliber, { fromLoads, fromBuyIn }]) => ({ caliber, fromLoads, fromBuyIn, total: fromLoads + fromBuyIn }))
+    .sort((a, b) => a.caliber.localeCompare(b.caliber));
+
+  const totalReadyToFire = readyToFireByCaliber.reduce((sum, c) => sum + c.total, 0);
+
   res.json({
     cartridgeBatches: cartridges.length,
     bulletTypes: bullets.length,
@@ -40,6 +66,8 @@ router.get("/dashboard/overview", async (_req, res) => {
     lowStockPowders,
     lowStockPrimers,
     recentLoads,
+    totalReadyToFire,
+    readyToFireByCaliber,
   });
 });
 

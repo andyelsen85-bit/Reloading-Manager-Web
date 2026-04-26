@@ -469,6 +469,23 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       ALTER TABLE "charge_levels" ADD COLUMN IF NOT EXISTS "velocity_fps" double precision;
     `,
   },
+  {
+    id: "0010_ammo_inventory",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "ammo_inventory" (
+        "id" serial PRIMARY KEY,
+        "manufacturer" text NOT NULL,
+        "caliber" text NOT NULL,
+        "model" text NOT NULL,
+        "bullet_weight_gr" double precision,
+        "count_total" integer NOT NULL DEFAULT 0,
+        "count_fired" integer NOT NULL DEFAULT 0,
+        "notes" text,
+        "photo_base64" text,
+        "created_at" timestamp NOT NULL DEFAULT NOW()
+      );
+    `,
+  },
 ];
 
 export async function runMigrations(pool: Pool): Promise<void> {

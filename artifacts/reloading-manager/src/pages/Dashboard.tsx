@@ -1,6 +1,6 @@
 import { useGetDashboardOverview, getGetDashboardOverviewQueryKey } from "@workspace/api-client-react";
 import { motion } from "framer-motion";
-import { AlertTriangle, Download, Boxes, Crosshair, Flame, Zap, ClipboardList, CheckCircle, Circle, Target, ChevronRight } from "lucide-react";
+import { AlertTriangle, Download, Boxes, Crosshair, Flame, Zap, ClipboardList, CheckCircle, Circle, Target, ChevronRight, PackageOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -121,6 +121,54 @@ export default function Dashboard() {
           <StatCard label="Fired" value={overview?.firedLoads ?? 0} icon={Target} color="bg-red-800 text-red-200" href="/history" />
         </div>
       </div>
+
+      {/* Ready to fire */}
+      {(() => {
+        const rtf = (overview as any)?.readyToFireByCaliber as { caliber: string; fromLoads: number; fromBuyIn: number; total: number }[] | undefined;
+        const total = (overview as any)?.totalReadyToFire as number | undefined;
+        if (!rtf || rtf.length === 0) return null;
+        return (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <Target className="w-3.5 h-3.5 text-green-400" />
+                Ready to Fire
+                <span className="ml-1 px-1.5 py-0.5 rounded bg-green-900/50 text-green-300 font-mono text-xs">{total ?? 0} total</span>
+              </h2>
+              <Button variant="ghost" size="sm" className="text-xs gap-1 h-7" onClick={() => navigate("/buy-in")}>
+                Buy-In <ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            <Card className="border-green-700/30">
+              <CardContent className="p-0">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      {["Caliber", "Reloads (completed)", "Buy-In", "Total"].map((h) => (
+                        <th key={h} className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rtf.map((row, i) => (
+                      <tr key={row.caliber} className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${i === rtf.length - 1 ? "border-0" : ""}`}>
+                        <td className="px-4 py-2.5 font-semibold text-foreground">{row.caliber}</td>
+                        <td className="px-4 py-2.5 font-mono text-blue-300">{row.fromLoads}</td>
+                        <td className="px-4 py-2.5 font-mono text-purple-300 flex items-center gap-1.5">
+                          <PackageOpen className="w-3.5 h-3.5 text-muted-foreground" />{row.fromBuyIn}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className="font-mono font-bold text-green-400">{row.total}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
 
       {/* Recent loads */}
       {(overview?.recentLoads?.length ?? 0) > 0 && (

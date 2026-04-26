@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard, CircleDot, Crosshair, Flame, Zap, ClipboardList,
-  History, Menu, X, Settings, LogOut, User, ChevronDown, Bell, BellOff, Users,
+  History, Menu, X, Settings, LogOut, User, ChevronDown, Bell, BellOff, Users, PackageOpen,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,7 @@ function buildNav(isAdmin: boolean) {
     { href: "/powders", label: "Powders", icon: Flame },
     { href: "/primers", label: "Primers", icon: Zap },
     { href: "/loads", label: "Loads", icon: ClipboardList },
+    { href: "/buy-in", label: "Buy-In", icon: PackageOpen },
     { href: "/history", label: "History", icon: History },
   ];
   if (isAdmin) {
