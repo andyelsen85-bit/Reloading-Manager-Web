@@ -33,3 +33,28 @@ export const weaponPhotosTable = pgTable("weapon_photos", {
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const weaponLicensesTable = pgTable("weapon_licenses", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  licenseNumber: text("license_number"),
+  issueDate: text("issue_date"),
+  expiryDate: text("expiry_date"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const weaponLicensePhotosTable = pgTable("weapon_license_photos", {
+  id: serial("id").primaryKey(),
+  licenseId: integer("license_id").notNull(),
+  photoBase64: text("photo_base64").notNull(),
+  caption: text("caption"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const weaponLicenseWeaponsTable = pgTable("weapon_license_weapons", {
+  id: serial("id").primaryKey(),
+  licenseId: integer("license_id").notNull(),
+  weaponId: integer("weapon_id").notNull(),
+});

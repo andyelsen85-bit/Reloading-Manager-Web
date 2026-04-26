@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { weaponsTable, weaponPhotosTable } from "@workspace/db";
-import { eq, asc } from "drizzle-orm";
+import { weaponsTable, weaponPhotosTable, weaponLicensesTable, weaponLicensePhotosTable, weaponLicenseWeaponsTable } from "@workspace/db";
+import { eq, asc, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
@@ -124,6 +124,121 @@ router.post("/weapons/:id/photos", async (req, res) => {
 router.delete("/weapons/:id/photos/:photoId", async (req, res) => {
   const photoId = Number(req.params.photoId);
   await db.delete(weaponPhotosTable).where(eq(weaponPhotosTable.id, photoId));
+  res.status(204).send();
+});
+
+// ─── License helpers ──────────────────────────────────────────────────────────
+
+const LicenseBody = z.object({
+  name: z.string().min(1),
+  licenseNumber: z.string().optional().nullable(),
+  issueDate: z.string().optional().nullable(),
+  expiryDate: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  weaponIds: z.array(z.number()).optional(),
+});
+
+async function buildLicense(id: number) {
+  const [license] = await db.select().from(weaponLicensesTable).where(eq(weaponLicensesTable.id, id));
+  if (!license) return null;
+  const photos = await db.select().from(weaponLicensePhotosTable)
+    .where(eq(weaponLicensePhotosTable.licenseId, id))
+    .orderBy(asc(weaponLicensePhotosTable.sortOrder), asc(weaponLicensePhotosTable.id));
+  const links = await db.select().from(weaponLicenseWeaponsTable).where(eq(weaponLicenseWeaponsTable.licenseId, id));
+  const weaponIds = links.map((l) => l.weaponId);
+  let weapons: any[] = [];
+  if (weaponIds.length > 0) {
+    weapons = await db.select().from(weaponsTable).where(inArray(weaponsTable.id, weaponIds));
+  }
+  return { ...license, photos, weapons };
+}
+
+router.get("/weapon-licenses", async (_req, res) => {
+  const licenses = await db.select().from(weaponLicensesTable).orderBy(weaponLicensesTable.createdAt);
+  const allPhotos = await db.select().from(weaponLicensePhotosTable)
+    .orderBy(asc(weaponLicensePhotosTable.sortOrder), asc(weaponLicensePhotosTable.id));
+  const allLinks = await db.select().from(weaponLicenseWeaponsTable);
+  const allWeapons = await db.select().from(weaponsTable);
+
+  const result = licenses.map((lic) => {
+    const photos = allPhotos.filter((p) => p.licenseId === lic.id);
+    const weaponIds = allLinks.filter((l) => l.licenseId === lic.id).map((l) => l.weaponId);
+    const weapons = allWeapons.filter((w) => weaponIds.includes(w.id));
+    return { ...lic, photos, weapons };
+  });
+  res.json(result);
+});
+
+router.post("/weapon-licenses", async (req, res) => {
+  const body = LicenseBody.parse(req.body);
+  const [lic] = await db.insert(weaponLicensesTable).values({
+    name: body.name,
+    licenseNumber: body.licenseNumber ?? null,
+    issueDate: body.issueDate ?? null,
+    expiryDate: body.expiryDate ?? null,
+    notes: body.notes ?? null,
+  }).returning();
+
+  if (body.weaponIds && body.weaponIds.length > 0) {
+    await db.insert(weaponLicenseWeaponsTable).values(
+      body.weaponIds.map((wid) => ({ licenseId: lic.id, weaponId: wid }))
+    );
+  }
+
+  res.status(201).json(await buildLicense(lic.id));
+});
+
+router.patch("/weapon-licenses/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const body = LicenseBody.partial().parse(req.body);
+  const updates: Record<string, unknown> = {};
+  if (body.name !== undefined) updates.name = body.name;
+  if (body.licenseNumber !== undefined) updates.licenseNumber = body.licenseNumber;
+  if (body.issueDate !== undefined) updates.issueDate = body.issueDate;
+  if (body.expiryDate !== undefined) updates.expiryDate = body.expiryDate;
+  if (body.notes !== undefined) updates.notes = body.notes;
+
+  if (Object.keys(updates).length > 0) {
+    await db.update(weaponLicensesTable).set(updates).where(eq(weaponLicensesTable.id, id));
+  }
+
+  if (body.weaponIds !== undefined) {
+    await db.delete(weaponLicenseWeaponsTable).where(eq(weaponLicenseWeaponsTable.licenseId, id));
+    if (body.weaponIds.length > 0) {
+      await db.insert(weaponLicenseWeaponsTable).values(
+        body.weaponIds.map((wid) => ({ licenseId: id, weaponId: wid }))
+      );
+    }
+  }
+
+  const result = await buildLicense(id);
+  if (!result) return res.status(404).json({ error: "Not found" });
+  res.json(result);
+});
+
+router.delete("/weapon-licenses/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  await db.delete(weaponLicenseWeaponsTable).where(eq(weaponLicenseWeaponsTable.licenseId, id));
+  await db.delete(weaponLicensePhotosTable).where(eq(weaponLicensePhotosTable.licenseId, id));
+  await db.delete(weaponLicensesTable).where(eq(weaponLicensesTable.id, id));
+  res.status(204).send();
+});
+
+router.post("/weapon-licenses/:id/photos", async (req, res) => {
+  const id = Number(req.params.id);
+  const body = PhotoBody.parse(req.body);
+  const [photo] = await db.insert(weaponLicensePhotosTable).values({
+    licenseId: id,
+    photoBase64: body.photoBase64,
+    caption: body.caption ?? null,
+    sortOrder: body.sortOrder ?? 0,
+  }).returning();
+  res.status(201).json(photo);
+});
+
+router.delete("/weapon-licenses/:id/photos/:photoId", async (req, res) => {
+  const photoId = Number(req.params.photoId);
+  await db.delete(weaponLicensePhotosTable).where(eq(weaponLicensePhotosTable.id, photoId));
   res.status(204).send();
 });
 

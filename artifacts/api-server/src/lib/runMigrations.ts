@@ -494,7 +494,7 @@ const MIGRATIONS: { id: string; sql: string }[] = [
     `,
   },
   {
-    id: "0012_weapons",
+    id: "0012_weapons_real",
     sql: `
       CREATE TABLE IF NOT EXISTS "weapons" (
         "id" serial PRIMARY KEY,
@@ -528,6 +528,35 @@ const MIGRATIONS: { id: string; sql: string }[] = [
         "caption" text,
         "sort_order" integer NOT NULL DEFAULT 0,
         "created_at" timestamp NOT NULL DEFAULT NOW()
+      );
+    `,
+  },
+  {
+    id: "0013_weapon_licenses",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "weapon_licenses" (
+        "id" serial PRIMARY KEY,
+        "name" text NOT NULL,
+        "license_number" text,
+        "issue_date" text,
+        "expiry_date" text,
+        "notes" text,
+        "created_at" timestamp NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS "weapon_license_photos" (
+        "id" serial PRIMARY KEY,
+        "license_id" integer NOT NULL,
+        "photo_base64" text NOT NULL,
+        "caption" text,
+        "sort_order" integer NOT NULL DEFAULT 0,
+        "created_at" timestamp NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS "weapon_license_weapons" (
+        "id" serial PRIMARY KEY,
+        "license_id" integer NOT NULL,
+        "weapon_id" integer NOT NULL
       );
     `,
   },
