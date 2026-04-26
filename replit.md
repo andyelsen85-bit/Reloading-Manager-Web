@@ -49,7 +49,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - **Settings**: 6-tab UI (General / Mail / Backup / Users / Lists / Audit) — thresholds, load numbering, branding, SMTP, test mail, notification prefs, mail history, backup/restore, user management, reference data, login audit trail
 - **JSON export**: Full data export from dashboard
 - **Photo upload**: Loads, Bullets, Cartridges, Powders, Primers support photo upload (base64 in DB)
-- **Weapons Inventory**: Full weapon registry with multi-photo gallery, type/action classification, serial number, purchase details (date/price/from), sale tracking (sold toggle, sell date/price/buyer), hover photo previews, type-color badges, owned/sold filter
+- **Weapons Inventory**: Full weapon registry with multi-photo gallery, type/action classification, serial number, purchase details (date/price/from), sale tracking (sold toggle, sell date/price/buyer), hover photo previews, type-color badges, owned/sold filter; magazine/charger tracker (label, capacity, quantity, notes) shown as total count in table column, managed in edit dialog
 - **Licenses & Permits**: Standalone page (between Weapons and Users in sidebar) — name, license number, license type (National/European/International, configurable in Settings → Lists), issue/expiry dates, notes, multi-photo gallery, linked weapon associations; expiry status badges (Valid / Expiring Soon <60 days / Expired); search and filter by type
 - **Dymo print**: Print Label on LoadDetail generates a Dymo label via browser print
 
@@ -72,7 +72,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `/api/reference/:category` — CRUD for calibers/manufacturers reference lists
 - `/api/charge-ladders` — CRUD + `/api/charge-ladders/:id/levels` + `/api/charge-ladders/:id/best`
 - `/api/cartridges`, `/api/bullets`, `/api/powders`, `/api/primers` — CRUD with photoBase64
-- `/api/weapons` — CRUD + `/api/weapons/:id/photos` (add/delete individual photos)
+- `/api/weapons` — CRUD + `/api/weapons/:id/photos` (add/delete photos) + `/api/weapons/:id/magazines` (CRUD magazines)
 - `/api/weapon-licenses` — CRUD; supports `weaponIds[]` to link weapons; backup v4 includes all weapon/license tables
 - `/api/weapon-licenses/:id/photos` — add/delete license photos
 - `/api/loads` — CRUD + complete + fire; DELETE sends restock body; create adjusts cartridge.quantityLoaded
@@ -92,12 +92,13 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `weapon_licenses` — id, name, licenseNumber, licenseType, issueDate, expiryDate, notes, createdAt
 - `weapon_license_photos` — id, licenseId, photoBase64, caption, sortOrder, createdAt
 - `weapon_license_weapons` — id, licenseId, weaponId (join table linking licenses to weapons)
+- `weapon_magazines` — id, weaponId, label, capacity, quantity, notes, createdAt
 - `email_log` — id, toAddress, subject, body, status, error, sentAt (mail history; included in backup v4)
 
 ### Backup System
 - **Backup route**: `GET /api/backup` (admin only) — returns versioned JSON with all 16 app tables
 - **Restore route**: `POST /api/restore` (admin only) — transaction truncates all tables (CASCADE, RESTART IDENTITY), re-inserts in FK order, advances sequences
-- **Current version**: v4 (added emailLog)
+- **Current version**: v5 (added weaponMagazines)
 - **Excluded intentionally**: `users`, `audit_log` (security — not overwritten by restore)
 - **Backward compatibility**: each table insert uses `Array.isArray` guard so older backups (v1/v2/v3) restore cleanly without the newer tables
 
@@ -110,6 +111,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `0012_weapons` / `0012_weapons_real` — creates `weapons` and `weapon_photos` tables.
 - `0013_weapon_licenses` — creates `weapon_licenses`, `weapon_license_photos`, `weapon_license_weapons` tables.
 - `0014_license_type` — adds `license_type` column to `weapon_licenses`.
+- `0015_weapon_magazines` — creates `weapon_magazines` table.
 
 ### Theme
 Dark gunmetal/steel theme (HSL 220 16% 10% bg, amber 38 90% 52% primary)

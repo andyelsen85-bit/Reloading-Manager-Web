@@ -566,6 +566,20 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       ALTER TABLE "weapon_licenses" ADD COLUMN IF NOT EXISTS "license_type" text;
     `,
   },
+  {
+    id: "0015_weapon_magazines",
+    sql: `
+      CREATE TABLE IF NOT EXISTS weapon_magazines (
+        id serial PRIMARY KEY,
+        weapon_id integer NOT NULL,
+        label text,
+        capacity integer,
+        quantity integer NOT NULL DEFAULT 1,
+        notes text,
+        created_at timestamp NOT NULL DEFAULT now()
+      );
+    `,
+  },
 ];
 
 export async function runMigrations(pool: Pool): Promise<void> {

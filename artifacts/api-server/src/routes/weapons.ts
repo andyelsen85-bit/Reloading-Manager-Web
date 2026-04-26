@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { weaponsTable, weaponPhotosTable, weaponLicensesTable, weaponLicensePhotosTable, weaponLicenseWeaponsTable } from "@workspace/db";
+import { weaponsTable, weaponPhotosTable, weaponLicensesTable, weaponLicensePhotosTable, weaponLicenseWeaponsTable, weaponMagazinesTable } from "@workspace/db";
 import { eq, asc, inArray } from "drizzle-orm";
 import { z } from "zod";
 
@@ -38,9 +38,11 @@ const PhotoBody = z.object({
 router.get("/weapons", async (_req, res) => {
   const weapons = await db.select().from(weaponsTable).orderBy(weaponsTable.createdAt);
   const photos = await db.select().from(weaponPhotosTable).orderBy(asc(weaponPhotosTable.sortOrder), asc(weaponPhotosTable.id));
+  const magazines = await db.select().from(weaponMagazinesTable).orderBy(asc(weaponMagazinesTable.createdAt));
   const result = weapons.map((w) => ({
     ...w,
     photos: photos.filter((p) => p.weaponId === w.id),
+    magazines: magazines.filter((m) => m.weaponId === w.id),
   }));
   res.json(result);
 });
@@ -105,7 +107,57 @@ router.patch("/weapons/:id", async (req, res) => {
 router.delete("/weapons/:id", async (req, res) => {
   const id = Number(req.params.id);
   await db.delete(weaponPhotosTable).where(eq(weaponPhotosTable.weaponId, id));
+  await db.delete(weaponMagazinesTable).where(eq(weaponMagazinesTable.weaponId, id));
   await db.delete(weaponsTable).where(eq(weaponsTable.id, id));
+  res.status(204).send();
+});
+
+// ─── Magazine routes ──────────────────────────────────────────────────────────
+
+const MagazineBody = z.object({
+  label: z.string().optional().nullable(),
+  capacity: z.number().int().optional().nullable(),
+  quantity: z.number().int().min(1).optional(),
+  notes: z.string().optional().nullable(),
+});
+
+router.get("/weapons/:id/magazines", async (req, res) => {
+  const id = Number(req.params.id);
+  const mags = await db.select().from(weaponMagazinesTable)
+    .where(eq(weaponMagazinesTable.weaponId, id))
+    .orderBy(asc(weaponMagazinesTable.createdAt));
+  res.json(mags);
+});
+
+router.post("/weapons/:id/magazines", async (req, res) => {
+  const id = Number(req.params.id);
+  const body = MagazineBody.parse(req.body);
+  const [mag] = await db.insert(weaponMagazinesTable).values({
+    weaponId: id,
+    label: body.label ?? null,
+    capacity: body.capacity ?? null,
+    quantity: body.quantity ?? 1,
+    notes: body.notes ?? null,
+  }).returning();
+  res.status(201).json(mag);
+});
+
+router.patch("/weapons/:id/magazines/:magId", async (req, res) => {
+  const magId = Number(req.params.magId);
+  const body = MagazineBody.partial().parse(req.body);
+  const updates: Record<string, unknown> = {};
+  if (body.label !== undefined) updates.label = body.label;
+  if (body.capacity !== undefined) updates.capacity = body.capacity;
+  if (body.quantity !== undefined) updates.quantity = body.quantity;
+  if (body.notes !== undefined) updates.notes = body.notes;
+  const [mag] = await db.update(weaponMagazinesTable).set(updates).where(eq(weaponMagazinesTable.id, magId)).returning();
+  if (!mag) return res.status(404).json({ error: "Not found" });
+  res.json(mag);
+});
+
+router.delete("/weapons/:id/magazines/:magId", async (req, res) => {
+  const magId = Number(req.params.magId);
+  await db.delete(weaponMagazinesTable).where(eq(weaponMagazinesTable.id, magId));
   res.status(204).send();
 });
 

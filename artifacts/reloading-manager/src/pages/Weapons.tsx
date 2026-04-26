@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Pencil, Trash2, Search, Camera, X,
-  Shield, Tag, DollarSign, FileText, ImagePlus,
+  Shield, Tag, DollarSign, FileText, ImagePlus, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 type WeaponPhoto = { id: number; weaponId: number; photoBase64: string; caption: string | null; sortOrder: number };
+type Magazine = { id: number; weaponId: number; label: string | null; capacity: number | null; quantity: number; notes: string | null; createdAt: string };
 type Weapon = {
   id: number; name: string; manufacturer: string; model: string | null; type: string;
   caliber: string | null; serialNumber: string | null; actionType: string | null;
@@ -38,8 +39,11 @@ type Weapon = {
   countryOfOrigin: string | null; buyDate: string | null; buyPrice: number | null;
   buyFrom: string | null; sold: boolean; sellDate: string | null; sellPrice: number | null;
   soldTo: string | null; soldNotes: string | null; notes: string | null;
-  createdAt: string; photos: WeaponPhoto[];
+  createdAt: string; photos: WeaponPhoto[]; magazines: Magazine[];
 };
+
+type MagForm = { label: string; capacity: string; quantity: string; notes: string };
+const emptyMagForm: MagForm = { label: "", capacity: "", quantity: "1", notes: "" };
 
 type WeaponForm = {
   name: string; manufacturer: string; model: string; type: string; caliber: string;
@@ -182,6 +186,56 @@ export default function Weapons() {
     onError: () => toast({ title: "Failed to delete photo", variant: "destructive" }),
   });
 
+  const addMagMutation = useMutation({
+    mutationFn: async ({ weaponId, data }: { weaponId: number; data: MagForm }) => {
+      const res = await fetch(`${API}/weapons/${weaponId}/magazines`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: data.label || null,
+          capacity: data.capacity ? Number(data.capacity) : null,
+          quantity: data.quantity ? Number(data.quantity) : 1,
+          notes: data.notes || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to add magazine");
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["weapons"] }),
+    onError: () => toast({ title: "Failed to add magazine", variant: "destructive" }),
+  });
+
+  const updateMagMutation = useMutation({
+    mutationFn: async ({ weaponId, magId, data }: { weaponId: number; magId: number; data: MagForm }) => {
+      const res = await fetch(`${API}/weapons/${weaponId}/magazines/${magId}`, {
+        method: "PATCH", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: data.label || null,
+          capacity: data.capacity ? Number(data.capacity) : null,
+          quantity: data.quantity ? Number(data.quantity) : 1,
+          notes: data.notes || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update magazine");
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["weapons"] }),
+    onError: () => toast({ title: "Failed to update magazine", variant: "destructive" }),
+  });
+
+  const deleteMagMutation = useMutation({
+    mutationFn: async ({ weaponId, magId }: { weaponId: number; magId: number }) => {
+      const res = await fetch(`${API}/weapons/${weaponId}/magazines/${magId}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) throw new Error("Failed to delete magazine");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["weapons"] }),
+    onError: () => toast({ title: "Failed to delete magazine", variant: "destructive" }),
+  });
+
+  const [magForm, setMagForm] = useState<MagForm>(emptyMagForm);
+  const [editMag, setEditMag] = useState<Magazine | null>(null);
+
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<"all" | "owned" | "sold">("all");
@@ -297,6 +351,7 @@ export default function Weapons() {
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Caliber</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Serial #</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Purchased</th>
+                <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Magazines</th>
                 <th className="text-left px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
                 <th className="px-3 py-2.5"></th>
               </tr>
@@ -329,6 +384,16 @@ export default function Weapons() {
                   <td className="px-3 py-2.5 text-muted-foreground text-xs">
                     {w.buyDate ?? "—"}
                     {w.buyPrice != null && <span className="block font-mono">{w.buyPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    {w.magazines.length > 0 ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border bg-indigo-500/15 text-indigo-400 border-indigo-500/30">
+                        <Layers className="w-3 h-3" />
+                        {w.magazines.reduce((s, m) => s + m.quantity, 0)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className="px-3 py-2.5">
                     {w.sold ? (
@@ -367,11 +432,23 @@ export default function Weapons() {
           <WeaponFormFields form={form} setForm={setForm} />
 
           {editItem && (
-            <PhotoGallery
-              onAdd={(photoBase64) => addPhotoMutation.mutateAsync({ id: editItem.id, photoBase64 })}
-              onDelete={(photoId) => deletePhotoMutation.mutateAsync({ weaponId: editItem.id, photoId })}
-              photos={weapons.find((w) => w.id === editItem.id)?.photos ?? []}
-            />
+            <>
+              <PhotoGallery
+                onAdd={(photoBase64) => addPhotoMutation.mutateAsync({ id: editItem.id, photoBase64 })}
+                onDelete={(photoId) => deletePhotoMutation.mutateAsync({ weaponId: editItem.id, photoId })}
+                photos={weapons.find((w) => w.id === editItem.id)?.photos ?? []}
+              />
+              <MagazineManager
+                weapon={weapons.find((w) => w.id === editItem.id)!}
+                form={magForm}
+                setForm={setMagForm}
+                editMag={editMag}
+                setEditMag={setEditMag}
+                onAdd={() => addMagMutation.mutateAsync({ weaponId: editItem.id, data: magForm }).then(() => setMagForm(emptyMagForm))}
+                onUpdate={() => editMag && updateMagMutation.mutateAsync({ weaponId: editItem.id, magId: editMag.id, data: magForm }).then(() => { setEditMag(null); setMagForm(emptyMagForm); })}
+                onDelete={(magId) => deleteMagMutation.mutateAsync({ weaponId: editItem.id, magId })}
+              />
+            </>
           )}
 
           <DialogFooter>
@@ -623,6 +700,88 @@ function PhotoGallery({
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function MagazineManager({
+  weapon, form, setForm, editMag, setEditMag, onAdd, onUpdate, onDelete,
+}: {
+  weapon: Weapon;
+  form: MagForm;
+  setForm: (f: MagForm) => void;
+  editMag: Magazine | null;
+  setEditMag: (m: Magazine | null) => void;
+  onAdd: () => void;
+  onUpdate: () => void;
+  onDelete: (id: number) => void;
+}) {
+  const set = (key: keyof MagForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm({ ...form, [key]: e.target.value });
+
+  const startEdit = (m: Magazine) => {
+    setEditMag(m);
+    setForm({ label: m.label ?? "", capacity: m.capacity != null ? String(m.capacity) : "", quantity: String(m.quantity), notes: m.notes ?? "" });
+  };
+  const cancelEdit = () => { setEditMag(null); setForm({ label: "", capacity: "", quantity: "1", notes: "" }); };
+
+  const totalQty = weapon.magazines.reduce((s, m) => s + m.quantity, 0);
+
+  return (
+    <div className="space-y-3 pt-2">
+      <SectionHeader icon={Layers} title={`Magazines & Chargers ${totalQty > 0 ? `· ${totalQty} total` : ""}`} />
+
+      {weapon.magazines.length > 0 && (
+        <div className="space-y-1.5">
+          {weapon.magazines.map((m) => (
+            <div key={m.id} className="flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-muted/20 text-sm">
+              <Layers className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <span className="font-medium text-foreground flex-1 truncate">
+                {m.label || "Magazine"}
+                {m.capacity && <span className="text-muted-foreground font-normal"> · {m.capacity} rds</span>}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+                ×{m.quantity}
+              </span>
+              {m.notes && <span className="text-xs text-muted-foreground truncate max-w-[120px]">{m.notes}</span>}
+              <div className="flex gap-1 shrink-0">
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => startEdit(m)}><Pencil className="w-3 h-3" /></Button>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDelete(m.id)}><Trash2 className="w-3 h-3" /></Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-md border border-border bg-muted/10 p-3 space-y-2">
+        <p className="text-xs font-semibold text-muted-foreground">{editMag ? "Edit magazine" : "Add magazine"}</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1 col-span-2 sm:col-span-1">
+            <Label className="text-xs">Label</Label>
+            <Input className="h-8 text-sm" placeholder="e.g. Factory 17-rd" value={form.label} onChange={set("label")} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Capacity (rds)</Label>
+            <Input className="h-8 text-sm" type="number" min="1" placeholder="17" value={form.capacity} onChange={set("capacity")} />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Quantity</Label>
+            <Input className="h-8 text-sm" type="number" min="1" placeholder="1" value={form.quantity} onChange={set("quantity")} />
+          </div>
+          <div className="space-y-1 col-span-2">
+            <Label className="text-xs">Notes</Label>
+            <Input className="h-8 text-sm" placeholder="e.g. aftermarket +5 extension" value={form.notes} onChange={set("notes")} />
+          </div>
+        </div>
+        <div className="flex gap-2 justify-end">
+          {editMag && (
+            <Button variant="outline" size="sm" onClick={cancelEdit}>Cancel</Button>
+          )}
+          <Button size="sm" onClick={editMag ? onUpdate : onAdd} className="gap-1.5">
+            <Plus className="w-3.5 h-3.5" /> {editMag ? "Update" : "Add"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

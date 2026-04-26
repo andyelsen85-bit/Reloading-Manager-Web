@@ -59,3 +59,13 @@ export const weaponLicenseWeaponsTable = pgTable("weapon_license_weapons", {
   licenseId: integer("license_id").notNull(),
   weaponId: integer("weapon_id").notNull(),
 });
+
+export const weaponMagazinesTable = pgTable("weapon_magazines", {
+  id: serial("id").primaryKey(),
+  weaponId: integer("weapon_id").notNull(),
+  label: text("label"),
+  capacity: integer("capacity"),
+  quantity: integer("quantity").notNull().default(1),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
