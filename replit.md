@@ -48,7 +48,8 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - **Reference Lists**: Pre-populated calibers (46) and manufacturer lists (bullets, powders, primers, cartridges) — editable in Settings → Lists tab
 - **Settings**: 6-tab UI (General / Mail / Backup / Users / Lists / Audit) — thresholds, load numbering, branding, SMTP, test mail, notification prefs, mail history, backup/restore, user management, reference data, login audit trail
 - **JSON export**: Full data export from dashboard
-- **Photo upload**: Loads, Bullets, Cartridges support photo upload (base64 in DB)
+- **Photo upload**: Loads, Bullets, Cartridges, Powders, Primers support photo upload (base64 in DB)
+- **Weapons Inventory**: Full weapon registry with multi-photo gallery, type/action classification, serial number, purchase details (date/price/from), sale tracking (sold toggle, sell date/price/buyer), hover photo previews, type-color badges, owned/sold filter
 - **Dymo print**: Print Label on LoadDetail generates a Dymo label via browser print
 
 ### Frontend Pages
@@ -60,6 +61,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `ChargeLadders.tsx` — load development session list
 - `ChargeLadderDetail.tsx` — charge level management, result recording, best selection
 - `History.tsx` — reload history with deleted loads count column
+- `Weapons.tsx` — weapon inventory with multi-photo gallery, type/status filters, sale tracking
 - `Settings.tsx` — 6-tab layout: General / Mail (SMTP, test, notification prefs, history) / Backup (download + restore) / Users / Lists / Audit
 
 ### API Routes (api-server)
@@ -68,6 +70,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `/api/reference/:category` — CRUD for calibers/manufacturers reference lists
 - `/api/charge-ladders` — CRUD + `/api/charge-ladders/:id/levels` + `/api/charge-ladders/:id/best`
 - `/api/cartridges`, `/api/bullets`, `/api/powders`, `/api/primers` — CRUD with photoBase64
+- `/api/weapons` — CRUD + `/api/weapons/:id/photos` (add/delete individual photos)
 - `/api/loads` — CRUD + complete + fire; DELETE sends restock body; create adjusts cartridge.quantityLoaded
 - `/api/settings` — GET / PATCH (single-row, supports SMTP fields)
 - `/api/dashboard/overview`, `/api/dashboard/history` (includes deletedLoadsCount), `/api/dashboard/export`
@@ -80,6 +83,8 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `reference_data` — id, category, value, sortOrder (pre-populated with 46 calibers + 16 manufacturers)
 - `charge_ladders` — id, name, caliber, cartridgeId, bulletId, primerId, status, bestLevelId, cartridgesPerLevel
 - `charge_levels` — id, ladderId, chargeGr, cartridgeCount, sortOrder, status, oalIn, coalIn, groupSizeMm, velocityFps
+- `weapons` — id, name, manufacturer, model, type, caliber, serialNumber, actionType, barrelLengthIn, weightKg, color, countryOfOrigin, buyDate, buyPrice, buyFrom, sold, sellDate, sellPrice, soldTo, soldNotes, notes
+- `weapon_photos` — id, weaponId, photoBase64, caption, sortOrder
 
 ### Migrations Applied
 - `0000_initial.sql` — baseline schema

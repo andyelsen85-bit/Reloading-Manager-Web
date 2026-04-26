@@ -10,3 +10,4 @@ export * from "./charge_ladders";
 export * from "./email_log";
 export * from "./audit_log";
 export * from "./ammo_inventory";
+export * from "./weapons";

@@ -16,6 +16,7 @@ import BuyIn from "@/pages/BuyIn";
 import History from "@/pages/History";
 import Settings from "@/pages/Settings";
 import Users from "@/pages/Users";
+import Weapons from "@/pages/Weapons";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -37,6 +38,7 @@ function Router() {
         <Route path="/loads/:id" component={LoadDetail} />
         <Route path="/buy-in" component={BuyIn} />
         <Route path="/history" component={History} />
+        <Route path="/weapons" component={Weapons} />
         <Route path="/users" component={Users} />
         <Route path="/settings" component={Settings} />
         <Route component={NotFound} />

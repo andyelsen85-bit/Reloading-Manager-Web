@@ -14,6 +14,7 @@ import referenceRouter from "./reference";
 import chargeLaddersRouter from "./charge_ladders";
 import backupRouter from "./backup";
 import ammoInventoryRouter from "./ammo_inventory";
+import weaponsRouter from "./weapons";
 
 const router: IRouter = Router();
 
@@ -30,6 +31,7 @@ router.use(powdersRouter);
 router.use(primersRouter);
 router.use(loadsRouter);
 router.use(ammoInventoryRouter);
+router.use(weaponsRouter);
 router.use(dashboardRouter);
 
 router.use(requireAdmin as any);

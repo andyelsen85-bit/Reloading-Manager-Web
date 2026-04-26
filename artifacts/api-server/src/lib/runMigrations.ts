@@ -493,6 +493,44 @@ const MIGRATIONS: { id: string; sql: string }[] = [
       ALTER TABLE "primers" ADD COLUMN IF NOT EXISTS "photo_base64" text;
     `,
   },
+  {
+    id: "0012_weapons",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "weapons" (
+        "id" serial PRIMARY KEY,
+        "name" text NOT NULL,
+        "manufacturer" text NOT NULL,
+        "model" text,
+        "type" text NOT NULL,
+        "caliber" text,
+        "serial_number" text,
+        "action_type" text,
+        "barrel_length_in" double precision,
+        "weight_kg" double precision,
+        "color" text,
+        "country_of_origin" text,
+        "buy_date" text,
+        "buy_price" double precision,
+        "buy_from" text,
+        "sold" boolean NOT NULL DEFAULT false,
+        "sell_date" text,
+        "sell_price" double precision,
+        "sold_to" text,
+        "sold_notes" text,
+        "notes" text,
+        "created_at" timestamp NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS "weapon_photos" (
+        "id" serial PRIMARY KEY,
+        "weapon_id" integer NOT NULL,
+        "photo_base64" text NOT NULL,
+        "caption" text,
+        "sort_order" integer NOT NULL DEFAULT 0,
+        "created_at" timestamp NOT NULL DEFAULT NOW()
+      );
+    `,
+  },
 ];
 
 export async function runMigrations(pool: Pool): Promise<void> {
