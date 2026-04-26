@@ -243,6 +243,7 @@ export default function Weapons() {
   const [editItem, setEditItem] = useState<Weapon | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState<WeaponForm>(emptyForm);
+  const [formErrors, setFormErrors] = useState<Set<string>>(new Set());
 
   const filtered = weapons.filter((w) => {
     const q = search.toLowerCase();
@@ -254,18 +255,25 @@ export default function Weapons() {
     return matchSearch && matchType && matchStatus;
   });
 
+  const validate = () => {
+    const e = new Set<string>();
+    if (!form.name) e.add("name");
+    if (!form.manufacturer) e.add("manufacturer");
+    setFormErrors(e);
+    return e.size === 0;
+  };
+
   const handleAdd = async () => {
-    if (!form.name || !form.manufacturer || !form.type) {
-      toast({ title: "Name, Manufacturer and Type are required", variant: "destructive" }); return;
-    }
+    if (!validate()) return;
     await createMutation.mutateAsync(form);
-    setAddOpen(false); setForm(emptyForm);
+    setAddOpen(false); setForm(emptyForm); setFormErrors(new Set());
   };
 
   const handleEdit = async () => {
     if (!editItem) return;
+    if (!validate()) return;
     await updateMutation.mutateAsync({ id: editItem.id, data: form });
-    setEditItem(null); setForm(emptyForm);
+    setEditItem(null); setForm(emptyForm); setFormErrors(new Set());
   };
 
   const handleDelete = async () => {
@@ -276,6 +284,7 @@ export default function Weapons() {
 
   const openEdit = (w: Weapon) => {
     setEditItem(w);
+    setFormErrors(new Set());
     setForm({
       name: w.name, manufacturer: w.manufacturer, model: w.model ?? "", type: w.type,
       caliber: w.caliber ?? "", serialNumber: w.serialNumber ?? "", actionType: w.actionType ?? "",
@@ -301,7 +310,7 @@ export default function Weapons() {
             {ownedCount} owned · {soldCount} sold · {weapons.length} total
           </p>
         </div>
-        <Button size="sm" onClick={() => { setForm(emptyForm); setAddOpen(true); }} className="gap-1.5">
+        <Button size="sm" onClick={() => { setForm(emptyForm); setFormErrors(new Set()); setAddOpen(true); }} className="gap-1.5">
           <Plus className="w-4 h-4" /> Add Weapon
         </Button>
       </div>
@@ -415,10 +424,10 @@ export default function Weapons() {
         </div>
       )}
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) setFormErrors(new Set()); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Shield className="w-4 h-4" /> Add Weapon</DialogTitle></DialogHeader>
-          <WeaponFormFields form={form} setForm={setForm} />
+          <WeaponFormFields form={form} setForm={setForm} errors={formErrors} setErrors={setFormErrors} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={createMutation.isPending}>Add Weapon</Button>
@@ -426,10 +435,10 @@ export default function Weapons() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
+      <Dialog open={!!editItem} onOpenChange={(o) => { if (!o) { setEditItem(null); setFormErrors(new Set()); } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Shield className="w-4 h-4" /> Edit Weapon</DialogTitle></DialogHeader>
-          <WeaponFormFields form={form} setForm={setForm} />
+          <WeaponFormFields form={form} setForm={setForm} errors={formErrors} setErrors={setFormErrors} />
 
           {editItem && (
             <>
@@ -452,7 +461,7 @@ export default function Weapons() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setEditItem(null); setFormErrors(new Set()); }}>Cancel</Button>
             <Button onClick={handleEdit} disabled={updateMutation.isPending}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
@@ -475,20 +484,22 @@ export default function Weapons() {
   );
 }
 
-function WeaponFormFields({ form, setForm }: { form: WeaponForm; setForm: (f: WeaponForm) => void }) {
-  const set = (key: keyof WeaponForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+function WeaponFormFields({ form, setForm, errors = new Set<string>(), setErrors = () => {} }: { form: WeaponForm; setForm: (f: WeaponForm) => void; errors?: Set<string>; setErrors?: (e: Set<string>) => void }) {
+  const set = (key: keyof WeaponForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [key]: e.target.value });
+    if (errors.has(key)) { const ne = new Set(errors); ne.delete(key); setErrors(ne); }
+  };
   return (
     <div className="space-y-4 py-1">
       <SectionHeader icon={Shield} title="Identification" />
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2">
           <Label>Name <span className="text-destructive">*</span></Label>
-          <Input placeholder="e.g. Glock 17 Gen5" value={form.name} onChange={set("name")} />
+          <Input placeholder="e.g. Glock 17 Gen5" value={form.name} onChange={set("name")} className={errors.has("name") ? "border-destructive" : ""} />
         </div>
         <div className="space-y-1.5">
           <Label>Manufacturer <span className="text-destructive">*</span></Label>
-          <Input placeholder="e.g. Glock" value={form.manufacturer} onChange={set("manufacturer")} />
+          <Input placeholder="e.g. Glock" value={form.manufacturer} onChange={set("manufacturer")} className={errors.has("manufacturer") ? "border-destructive" : ""} />
         </div>
         <div className="space-y-1.5">
           <Label>Model</Label>

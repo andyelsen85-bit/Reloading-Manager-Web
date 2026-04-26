@@ -164,12 +164,15 @@ function PhotoGallery({
   );
 }
 
-function LicenseFormFields({ form, setForm, weapons, licenseTypes }: {
+function LicenseFormFields({ form, setForm, weapons, licenseTypes, errors = new Set<string>(), setErrors = () => {} }: {
   form: LicenseForm; setForm: (f: LicenseForm) => void;
   weapons: Weapon[]; licenseTypes: string[];
+  errors?: Set<string>; setErrors?: (e: Set<string>) => void;
 }) {
-  const set = (key: keyof LicenseForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+  const set = (key: keyof LicenseForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setForm({ ...form, [key]: e.target.value });
+    if (errors.has(key)) { const ne = new Set(errors); ne.delete(key); setErrors(ne); }
+  };
   const toggleWeapon = (id: number) => {
     const ids = form.weaponIds.includes(id) ? form.weaponIds.filter((x) => x !== id) : [...form.weaponIds, id];
     setForm({ ...form, weaponIds: ids });
@@ -180,7 +183,7 @@ function LicenseFormFields({ form, setForm, weapons, licenseTypes }: {
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5 col-span-2">
           <Label>License Name <span className="text-destructive">*</span></Label>
-          <Input placeholder="e.g. Firearms License A" value={form.name} onChange={set("name")} />
+          <Input placeholder="e.g. Firearms License A" value={form.name} onChange={set("name")} className={errors.has("name") ? "border-destructive" : ""} />
         </div>
         <div className="space-y-1.5">
           <Label>License Number</Label>
@@ -351,6 +354,7 @@ export default function Licenses() {
   const [editItem, setEditItem] = useState<License | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState<LicenseForm>(emptyLicenseForm);
+  const [formErrors, setFormErrors] = useState<Set<string>>(new Set());
 
   const filtered = licenses.filter((l) => {
     const q = search.toLowerCase();
@@ -362,16 +366,24 @@ export default function Licenses() {
     return matchSearch && matchType;
   });
 
+  const validate = () => {
+    const e = new Set<string>();
+    if (!form.name) e.add("name");
+    setFormErrors(e);
+    return e.size === 0;
+  };
+
   const handleAdd = async () => {
-    if (!form.name) { toast({ title: "License name is required", variant: "destructive" }); return; }
+    if (!validate()) return;
     await createMutation.mutateAsync(form);
-    setAddOpen(false); setForm(emptyLicenseForm);
+    setAddOpen(false); setForm(emptyLicenseForm); setFormErrors(new Set());
   };
 
   const handleEdit = async () => {
     if (!editItem) return;
+    if (!validate()) return;
     await updateMutation.mutateAsync({ id: editItem.id, data: form });
-    setEditItem(null); setForm(emptyLicenseForm);
+    setEditItem(null); setForm(emptyLicenseForm); setFormErrors(new Set());
   };
 
   const handleDelete = async () => {
@@ -382,6 +394,7 @@ export default function Licenses() {
 
   const openEdit = (lic: License) => {
     setEditItem(lic);
+    setFormErrors(new Set());
     setForm({
       name: lic.name, licenseNumber: lic.licenseNumber ?? "",
       licenseType: lic.licenseType ?? "",
@@ -401,7 +414,7 @@ export default function Licenses() {
           </h1>
           <p className="text-sm text-muted-foreground">{licenses.length} license{licenses.length !== 1 ? "s" : ""} registered</p>
         </div>
-        <Button size="sm" onClick={() => { setForm(emptyLicenseForm); setAddOpen(true); }} className="gap-1.5">
+        <Button size="sm" onClick={() => { setForm(emptyLicenseForm); setFormErrors(new Set()); setAddOpen(true); }} className="gap-1.5">
           <Plus className="w-4 h-4" /> Add License
         </Button>
       </div>
@@ -512,21 +525,21 @@ export default function Licenses() {
         </div>
       )}
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) setFormErrors(new Set()); }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><BookOpen className="w-4 h-4" /> Add License</DialogTitle></DialogHeader>
-          <LicenseFormFields form={form} setForm={setForm} weapons={weapons} licenseTypes={licenseTypes} />
+          <LicenseFormFields form={form} setForm={setForm} weapons={weapons} licenseTypes={licenseTypes} errors={formErrors} setErrors={setFormErrors} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setAddOpen(false); setFormErrors(new Set()); }}>Cancel</Button>
             <Button onClick={handleAdd} disabled={createMutation.isPending}>Add License</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
+      <Dialog open={!!editItem} onOpenChange={(o) => { if (!o) { setEditItem(null); setFormErrors(new Set()); } }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><BookOpen className="w-4 h-4" /> Edit License</DialogTitle></DialogHeader>
-          <LicenseFormFields form={form} setForm={setForm} weapons={weapons} licenseTypes={licenseTypes} />
+          <LicenseFormFields form={form} setForm={setForm} weapons={weapons} licenseTypes={licenseTypes} errors={formErrors} setErrors={setFormErrors} />
           {editItem && (
             <PhotoGallery
               onAdd={(photoBase64) => addPhotoMutation.mutateAsync({ id: editItem.id, photoBase64 })}
@@ -535,7 +548,7 @@ export default function Licenses() {
             />
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setEditItem(null); setFormErrors(new Set()); }}>Cancel</Button>
             <Button onClick={handleEdit} disabled={updateMutation.isPending}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>

@@ -66,6 +66,7 @@ export default function Loads() {
   const [deleteLoad, setDeleteLoad] = useState<LoadRow | null>(null);
   const [restockOpts, setRestockOpts] = useState({ primers: false, powder: false, bullets: false, primerQty: 0, powderGr: 0, bulletQty: 0, note: "" });
   const [form, setForm] = useState({ cartridgeId: "", cartridgeQuantityUsed: "", notes: "" });
+  const [formErrors, setFormErrors] = useState<Set<string>>(new Set());
   const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
   const [showFiredFor, setShowFiredFor] = useState<Set<number>>(new Set());
   const [showDeletedFor, setShowDeletedFor] = useState<Set<number>>(new Set());
@@ -89,11 +90,12 @@ export default function Loads() {
   };
 
   const handleAdd = async () => {
-    if (!form.cartridgeId || !form.cartridgeQuantityUsed) {
-      toast({ title: "Missing fields", variant: "destructive" }); return;
-    }
+    const e = new Set<string>();
+    if (!form.cartridgeId) e.add("cartridgeId");
+    if (!form.cartridgeQuantityUsed) e.add("cartridgeQuantityUsed");
+    if (e.size > 0) { setFormErrors(e); return; }
     await createMutation.mutateAsync({ data: { cartridgeId: Number(form.cartridgeId), cartridgeQuantityUsed: Number(form.cartridgeQuantityUsed), notes: form.notes || undefined } });
-    invalidate(); setAddOpen(false); setForm({ cartridgeId: "", cartridgeQuantityUsed: "", notes: "" });
+    invalidate(); setAddOpen(false); setForm({ cartridgeId: "", cartridgeQuantityUsed: "", notes: "" }); setFormErrors(new Set());
     toast({ title: "Load created" });
   };
 
@@ -292,14 +294,14 @@ export default function Loads() {
       )}
 
       {/* Create Load Dialog */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) setFormErrors(new Set()); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Create New Load</DialogTitle><DialogDescription>Select a cartridge batch to begin the reloading workflow.</DialogDescription></DialogHeader>
           <div className="grid gap-3 py-2">
             <div className="space-y-1">
-              <Label>Cartridge Batch</Label>
-              <Select value={form.cartridgeId} onValueChange={(v) => setForm({ ...form, cartridgeId: v })}>
-                <SelectTrigger><SelectValue placeholder="Select cartridge..." /></SelectTrigger>
+              <Label>Cartridge Batch <span className="text-destructive">*</span></Label>
+              <Select value={form.cartridgeId} onValueChange={(v) => { setForm({ ...form, cartridgeId: v }); if (formErrors.has("cartridgeId")) { const ne = new Set(formErrors); ne.delete("cartridgeId"); setFormErrors(ne); } }}>
+                <SelectTrigger className={formErrors.has("cartridgeId") ? "border-destructive" : ""}><SelectValue placeholder="Select cartridge..." /></SelectTrigger>
                 <SelectContent>
                   {cartridges.map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>
@@ -309,7 +311,7 @@ export default function Loads() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1"><Label>Quantity</Label><Input type="number" value={form.cartridgeQuantityUsed} onChange={(e) => setForm({ ...form, cartridgeQuantityUsed: e.target.value })} /></div>
+            <div className="space-y-1"><Label>Quantity <span className="text-destructive">*</span></Label><Input type="number" value={form.cartridgeQuantityUsed} onChange={(e) => { setForm({ ...form, cartridgeQuantityUsed: e.target.value }); if (formErrors.has("cartridgeQuantityUsed")) { const ne = new Set(formErrors); ne.delete("cartridgeQuantityUsed"); setFormErrors(ne); } }} className={formErrors.has("cartridgeQuantityUsed") ? "border-destructive" : ""} /></div>
             <div className="space-y-1"><Label>Notes (optional)</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
             <p className="text-xs text-muted-foreground">Load number is assigned automatically. Cartridge quantity is adjusted immediately on creation.</p>
           </div>

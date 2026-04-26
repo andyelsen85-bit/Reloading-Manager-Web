@@ -78,6 +78,7 @@ export default function Cartridges() {
   const [editItem, setEditItem] = useState<(typeof cartridges)[0] | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState<CartridgeForm>(empty);
+  const [formErrors, setFormErrors] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showFiredFor, setShowFiredFor] = useState<Set<number>>(new Set());
   const toggleShowFired = (id: number) =>
@@ -101,19 +102,28 @@ export default function Cartridges() {
     ampPilotNumber: f.ampPilotNumber || undefined,
   });
 
+  const validate = () => {
+    const e = new Set<string>();
+    if (!form.manufacturer) e.add("manufacturer");
+    if (!form.caliber) e.add("caliber");
+    if (!form.productionCharge) e.add("productionCharge");
+    if (!form.quantityTotal) e.add("quantityTotal");
+    setFormErrors(e);
+    return e.size === 0;
+  };
+
   const handleAdd = async () => {
-    if (!form.manufacturer || !form.caliber || !form.productionCharge || !form.quantityTotal) {
-      toast({ title: "Missing fields", variant: "destructive" }); return;
-    }
+    if (!validate()) return;
     await createMutation.mutateAsync({ data: { manufacturer: form.manufacturer, caliber: form.caliber, productionCharge: form.productionCharge, quantityTotal: Number(form.quantityTotal), notes: form.notes || undefined, photoBase64: form.photoBase64 ?? undefined, ...cartridgeExtraData(form) } });
-    invalidate(); setAddOpen(false); setForm(empty);
+    invalidate(); setAddOpen(false); setForm(empty); setFormErrors(new Set());
     toast({ title: "Cartridge batch added" });
   };
 
   const handleEdit = async () => {
     if (!editItem) return;
+    if (!validate()) return;
     await updateMutation.mutateAsync({ id: editItem.id, data: { manufacturer: form.manufacturer, caliber: form.caliber, productionCharge: form.productionCharge, quantityTotal: Number(form.quantityTotal), currentStep: form.currentStep, l6In: form.l6In || undefined, notes: form.notes || undefined, photoBase64: form.photoBase64, ...cartridgeExtraData(form) } });
-    invalidate(); setEditItem(null); setForm(empty);
+    invalidate(); setEditItem(null); setForm(empty); setFormErrors(new Set());
     toast({ title: "Cartridge updated" });
   };
 
@@ -126,6 +136,7 @@ export default function Cartridges() {
 
   const openEdit = (c: (typeof cartridges)[0]) => {
     setEditItem(c);
+    setFormErrors(new Set());
     setForm({
       manufacturer: c.manufacturer, caliber: c.caliber, productionCharge: c.productionCharge,
       quantityTotal: String(c.quantityTotal), currentStep: c.currentStep,
@@ -148,7 +159,7 @@ export default function Cartridges() {
           <h1 className="text-xl font-bold text-foreground tracking-tight">Cartridge Inventory</h1>
           <p className="text-sm text-muted-foreground">{cartridges.length} batches</p>
         </div>
-        <Button size="sm" onClick={() => { setForm(empty); setAddOpen(true); }} className="gap-1.5">
+        <Button size="sm" onClick={() => { setForm(empty); setFormErrors(new Set()); setAddOpen(true); }} className="gap-1.5">
           <Plus className="w-4 h-4" /> Add Batch
         </Button>
       </div>
@@ -272,10 +283,10 @@ export default function Cartridges() {
         </div>
       )}
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) setFormErrors(new Set()); }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Add Cartridge Batch</DialogTitle></DialogHeader>
-          <CartridgeFormFields form={form} setForm={setForm} showStep={false} />
+          <CartridgeFormFields form={form} setForm={setForm} showStep={false} errors={formErrors} setErrors={setFormErrors} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={createMutation.isPending}>Add Batch</Button>
@@ -283,12 +294,12 @@ export default function Cartridges() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
+      <Dialog open={!!editItem} onOpenChange={(o) => { if (!o) { setEditItem(null); setFormErrors(new Set()); } }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Edit Cartridge Batch</DialogTitle></DialogHeader>
-          <CartridgeFormFields form={form} setForm={setForm} showStep={false} />
+          <CartridgeFormFields form={form} setForm={setForm} showStep={false} errors={formErrors} setErrors={setFormErrors} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setEditItem(null); setFormErrors(new Set()); }}>Cancel</Button>
             <Button onClick={handleEdit} disabled={updateMutation.isPending}>Save</Button>
           </DialogFooter>
         </DialogContent>
@@ -310,8 +321,11 @@ export default function Cartridges() {
   );
 }
 
-function CartridgeFormFields({ form, setForm, showStep }: { form: CartridgeForm; setForm: (f: CartridgeForm) => void; showStep: boolean }) {
-  const set = (key: keyof CartridgeForm) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
+function CartridgeFormFields({ form, setForm, showStep, errors = new Set<string>(), setErrors = () => {} }: { form: CartridgeForm; setForm: (f: CartridgeForm) => void; showStep: boolean; errors?: Set<string>; setErrors?: (e: Set<string>) => void }) {
+  const set = (key: keyof CartridgeForm) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [key]: e.target.value });
+    if (errors.has(key)) { const ne = new Set(errors); ne.delete(key); setErrors(ne); }
+  };
   const photoRef = useRef<HTMLInputElement>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -327,17 +341,21 @@ function CartridgeFormFields({ form, setForm, showStep }: { form: CartridgeForm;
     <div className="grid gap-3 py-2">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label>Manufacturer</Label>
-          <RefCombobox category="cartridge_manufacturer" value={form.manufacturer} onValueChange={(v) => setForm({ ...form, manufacturer: v })} />
+          <Label>Manufacturer <span className="text-destructive">*</span></Label>
+          <div className={errors.has("manufacturer") ? "ring-1 ring-destructive rounded-md" : ""}>
+            <RefCombobox category="cartridge_manufacturer" value={form.manufacturer} onValueChange={(v) => { setForm({ ...form, manufacturer: v }); if (errors.has("manufacturer")) { const ne = new Set(errors); ne.delete("manufacturer"); setErrors(ne); } }} />
+          </div>
         </div>
         <div className="space-y-1">
-          <Label>Caliber</Label>
-          <RefCombobox category="caliber" value={form.caliber} onValueChange={(v) => setForm({ ...form, caliber: v })} />
+          <Label>Caliber <span className="text-destructive">*</span></Label>
+          <div className={errors.has("caliber") ? "ring-1 ring-destructive rounded-md" : ""}>
+            <RefCombobox category="caliber" value={form.caliber} onValueChange={(v) => { setForm({ ...form, caliber: v }); if (errors.has("caliber")) { const ne = new Set(errors); ne.delete("caliber"); setErrors(ne); } }} />
+          </div>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1"><Label>Production Charge</Label><Input value={form.productionCharge} onChange={set("productionCharge")} /></div>
-        <div className="space-y-1"><Label>Total Quantity</Label><Input type="number" value={form.quantityTotal} onChange={set("quantityTotal")} /></div>
+        <div className="space-y-1"><Label>Production Charge <span className="text-destructive">*</span></Label><Input value={form.productionCharge} onChange={set("productionCharge")} className={errors.has("productionCharge") ? "border-destructive" : ""} /></div>
+        <div className="space-y-1"><Label>Total Quantity <span className="text-destructive">*</span></Label><Input type="number" value={form.quantityTotal} onChange={set("quantityTotal")} className={errors.has("quantityTotal") ? "border-destructive" : ""} /></div>
       </div>
       {showStep && (
         <div className="grid grid-cols-2 gap-3">

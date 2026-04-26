@@ -69,6 +69,7 @@ export default function Primers() {
   const [editItem, setEditItem] = useState<(typeof primers)[0] | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState<PrimerForm>(empty);
+  const [formErrors, setFormErrors] = useState<Set<string>>(new Set());
 
   const filtered = primers.filter((p) =>
     p.manufacturer.toLowerCase().includes(search.toLowerCase()) ||
@@ -77,19 +78,27 @@ export default function Primers() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListPrimersQueryKey() });
 
+  const validate = () => {
+    const e = new Set<string>();
+    if (!form.manufacturer) e.add("manufacturer");
+    if (!form.type) e.add("type");
+    if (!form.quantityAvailable) e.add("quantityAvailable");
+    setFormErrors(e);
+    return e.size === 0;
+  };
+
   const handleAdd = async () => {
-    if (!form.manufacturer || !form.type || !form.quantityAvailable) {
-      toast({ title: "Missing fields", variant: "destructive" }); return;
-    }
+    if (!validate()) return;
     await createMutation.mutateAsync({ data: { manufacturer: form.manufacturer, type: form.type, quantityAvailable: Number(form.quantityAvailable), notes: form.notes || undefined, photoBase64: form.photoBase64 ?? undefined } });
-    invalidate(); setAddOpen(false); setForm(empty);
+    invalidate(); setAddOpen(false); setForm(empty); setFormErrors(new Set());
     toast({ title: "Primer added" });
   };
 
   const handleEdit = async () => {
     if (!editItem) return;
+    if (!validate()) return;
     await updateMutation.mutateAsync({ id: editItem.id, data: { manufacturer: form.manufacturer, type: form.type, quantityAvailable: Number(form.quantityAvailable), notes: form.notes || undefined, photoBase64: form.photoBase64 } });
-    invalidate(); setEditItem(null); setForm(empty);
+    invalidate(); setEditItem(null); setForm(empty); setFormErrors(new Set());
     toast({ title: "Primer updated" });
   };
 
@@ -103,6 +112,7 @@ export default function Primers() {
   const openEdit = (p: (typeof primers)[0]) => {
     setEditItem(p);
     setForm({ manufacturer: p.manufacturer, type: p.type, quantityAvailable: String(p.quantityAvailable), notes: p.notes ?? "", photoBase64: p.photoBase64 ?? null });
+    setFormErrors(new Set());
   };
 
   return (
@@ -112,7 +122,7 @@ export default function Primers() {
           <h1 className="text-xl font-bold text-foreground tracking-tight">Primer Inventory</h1>
           <p className="text-sm text-muted-foreground">{primers.length} types</p>
         </div>
-        <Button size="sm" onClick={() => { setForm(empty); setAddOpen(true); }} className="gap-1.5">
+        <Button size="sm" onClick={() => { setForm(empty); setFormErrors(new Set()); setAddOpen(true); }} className="gap-1.5">
           <Plus className="w-4 h-4" /> Add Primer
         </Button>
       </div>
@@ -165,10 +175,10 @@ export default function Primers() {
         </div>
       )}
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) setFormErrors(new Set()); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Primer</DialogTitle></DialogHeader>
-          <PrimerFormFields form={form} setForm={setForm} />
+          <PrimerFormFields form={form} setForm={setForm} errors={formErrors} setErrors={setFormErrors} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={createMutation.isPending}>Add</Button>
@@ -176,12 +186,12 @@ export default function Primers() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
+      <Dialog open={!!editItem} onOpenChange={(o) => { if (!o) { setEditItem(null); setFormErrors(new Set()); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Primer</DialogTitle></DialogHeader>
-          <PrimerFormFields form={form} setForm={setForm} />
+          <PrimerFormFields form={form} setForm={setForm} errors={formErrors} setErrors={setFormErrors} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setEditItem(null); setFormErrors(new Set()); }}>Cancel</Button>
             <Button onClick={handleEdit} disabled={updateMutation.isPending}>Save</Button>
           </DialogFooter>
         </DialogContent>
@@ -200,8 +210,11 @@ export default function Primers() {
   );
 }
 
-function PrimerFormFields({ form, setForm }: { form: PrimerForm; setForm: (f: PrimerForm) => void }) {
-  const set = (key: keyof PrimerForm) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
+function PrimerFormFields({ form, setForm, errors, setErrors }: { form: PrimerForm; setForm: (f: PrimerForm) => void; errors: Set<string>; setErrors: (e: Set<string>) => void }) {
+  const set = (key: keyof PrimerForm) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [key]: e.target.value });
+    if (errors.has(key)) { const ne = new Set(errors); ne.delete(key); setErrors(ne); }
+  };
   const photoRef = useRef<HTMLInputElement>(null);
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -216,16 +229,20 @@ function PrimerFormFields({ form, setForm }: { form: PrimerForm; setForm: (f: Pr
     <div className="grid gap-3 py-2">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label>Manufacturer</Label>
-          <RefCombobox category="primer_manufacturer" value={form.manufacturer} onValueChange={(v) => setForm({ ...form, manufacturer: v })} />
+          <Label>Manufacturer <span className="text-destructive">*</span></Label>
+          <div className={errors.has("manufacturer") ? "ring-1 ring-destructive rounded-md" : ""}>
+            <RefCombobox category="primer_manufacturer" value={form.manufacturer} onValueChange={(v) => { setForm({ ...form, manufacturer: v }); if (errors.has("manufacturer")) { const ne = new Set(errors); ne.delete("manufacturer"); setErrors(ne); } }} />
+          </div>
         </div>
         <div className="space-y-1">
-          <Label>Type</Label>
-          <RefCombobox category="primer_type" value={form.type} onValueChange={(v) => setForm({ ...form, type: v })} placeholder="e.g. Small Rifle, Large Pistol" />
+          <Label>Type <span className="text-destructive">*</span></Label>
+          <div className={errors.has("type") ? "ring-1 ring-destructive rounded-md" : ""}>
+            <RefCombobox category="primer_type" value={form.type} onValueChange={(v) => { setForm({ ...form, type: v }); if (errors.has("type")) { const ne = new Set(errors); ne.delete("type"); setErrors(ne); } }} placeholder="e.g. Small Rifle, Large Pistol" />
+          </div>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1"><Label>Qty Available</Label><Input type="number" value={form.quantityAvailable} onChange={set("quantityAvailable")} /></div>
+        <div className="space-y-1"><Label>Qty Available <span className="text-destructive">*</span></Label><Input type="number" value={form.quantityAvailable} onChange={set("quantityAvailable")} className={errors.has("quantityAvailable") ? "border-destructive" : ""} /></div>
         <div className="space-y-1"><Label>Notes</Label><Input value={form.notes} onChange={set("notes")} /></div>
       </div>
       <div className="space-y-1.5">

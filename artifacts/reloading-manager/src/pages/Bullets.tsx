@@ -54,6 +54,7 @@ export default function Bullets() {
   const [editItem, setEditItem] = useState<(typeof bullets)[0] | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState<BulletForm>(empty);
+  const [formErrors, setFormErrors] = useState<Set<string>>(new Set());
 
   const filtered = bullets.filter((b) =>
     b.manufacturer.toLowerCase().includes(search.toLowerCase()) ||
@@ -62,19 +63,29 @@ export default function Bullets() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListBulletsQueryKey() });
 
+  const validate = () => {
+    const e = new Set<string>();
+    if (!form.manufacturer) e.add("manufacturer");
+    if (!form.model) e.add("model");
+    if (!form.weightGr) e.add("weightGr");
+    if (!form.diameterIn) e.add("diameterIn");
+    if (!form.quantityAvailable) e.add("quantityAvailable");
+    setFormErrors(e);
+    return e.size === 0;
+  };
+
   const handleAdd = async () => {
-    if (!form.manufacturer || !form.model || !form.weightGr || !form.diameterIn || !form.quantityAvailable) {
-      toast({ title: "Missing fields", variant: "destructive" }); return;
-    }
+    if (!validate()) return;
     await createMutation.mutateAsync({ data: { manufacturer: form.manufacturer, model: form.model, weightGr: Number(form.weightGr), diameterIn: Number(form.diameterIn), quantityAvailable: Number(form.quantityAvailable), notes: form.notes || undefined, photoBase64: form.photoBase64 ?? undefined } });
-    invalidate(); setAddOpen(false); setForm(empty);
+    invalidate(); setAddOpen(false); setForm(empty); setFormErrors(new Set());
     toast({ title: "Bullet added" });
   };
 
   const handleEdit = async () => {
     if (!editItem) return;
+    if (!validate()) return;
     await updateMutation.mutateAsync({ id: editItem.id, data: { manufacturer: form.manufacturer, model: form.model, weightGr: Number(form.weightGr), diameterIn: Number(form.diameterIn), quantityAvailable: Number(form.quantityAvailable), notes: form.notes || undefined, photoBase64: form.photoBase64 } });
-    invalidate(); setEditItem(null); setForm(empty);
+    invalidate(); setEditItem(null); setForm(empty); setFormErrors(new Set());
     toast({ title: "Bullet updated" });
   };
 
@@ -88,6 +99,7 @@ export default function Bullets() {
   const openEdit = (b: (typeof bullets)[0]) => {
     setEditItem(b);
     setForm({ manufacturer: b.manufacturer, model: b.model, weightGr: String(b.weightGr), diameterIn: String(b.diameterIn), quantityAvailable: String(b.quantityAvailable), notes: b.notes ?? "", photoBase64: b.photoBase64 ?? null });
+    setFormErrors(new Set());
   };
 
   return (
@@ -97,7 +109,7 @@ export default function Bullets() {
           <h1 className="text-xl font-bold text-foreground tracking-tight">Bullet Inventory</h1>
           <p className="text-sm text-muted-foreground">{bullets.length} types</p>
         </div>
-        <Button size="sm" onClick={() => { setForm(empty); setAddOpen(true); }} className="gap-1.5">
+        <Button size="sm" onClick={() => { setForm(empty); setFormErrors(new Set()); setAddOpen(true); }} className="gap-1.5">
           <Plus className="w-4 h-4" /> Add Bullet
         </Button>
       </div>
@@ -158,10 +170,10 @@ export default function Bullets() {
         </div>
       )}
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) setFormErrors(new Set()); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Bullet</DialogTitle></DialogHeader>
-          <BulletFormFields form={form} setForm={setForm} />
+          <BulletFormFields form={form} setForm={setForm} errors={formErrors} setErrors={setFormErrors} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={createMutation.isPending}>Add</Button>
@@ -169,12 +181,12 @@ export default function Bullets() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
+      <Dialog open={!!editItem} onOpenChange={(o) => { if (!o) { setEditItem(null); setFormErrors(new Set()); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Bullet</DialogTitle></DialogHeader>
-          <BulletFormFields form={form} setForm={setForm} />
+          <BulletFormFields form={form} setForm={setForm} errors={formErrors} setErrors={setFormErrors} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setEditItem(null); setFormErrors(new Set()); }}>Cancel</Button>
             <Button onClick={handleEdit} disabled={updateMutation.isPending}>Save</Button>
           </DialogFooter>
         </DialogContent>
@@ -193,8 +205,11 @@ export default function Bullets() {
   );
 }
 
-function BulletFormFields({ form, setForm }: { form: BulletForm; setForm: (f: BulletForm) => void }) {
-  const set = (key: keyof BulletForm) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
+function BulletFormFields({ form, setForm, errors, setErrors }: { form: BulletForm; setForm: (f: BulletForm) => void; errors: Set<string>; setErrors: (e: Set<string>) => void }) {
+  const set = (key: keyof BulletForm) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [key]: e.target.value });
+    if (errors.has(key)) { const ne = new Set(errors); ne.delete(key); setErrors(ne); }
+  };
   const photoRef = useRef<HTMLInputElement>(null);
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,15 +224,17 @@ function BulletFormFields({ form, setForm }: { form: BulletForm; setForm: (f: Bu
     <div className="grid gap-3 py-2">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label>Manufacturer</Label>
-          <RefCombobox category="bullet_manufacturer" value={form.manufacturer} onValueChange={(v) => setForm({ ...form, manufacturer: v })} />
+          <Label>Manufacturer <span className="text-destructive">*</span></Label>
+          <div className={errors.has("manufacturer") ? "ring-1 ring-destructive rounded-md" : ""}>
+            <RefCombobox category="bullet_manufacturer" value={form.manufacturer} onValueChange={(v) => { setForm({ ...form, manufacturer: v }); if (errors.has("manufacturer")) { const ne = new Set(errors); ne.delete("manufacturer"); setErrors(ne); } }} />
+          </div>
         </div>
-        <div className="space-y-1"><Label>Model</Label><Input value={form.model} onChange={set("model")} /></div>
+        <div className="space-y-1"><Label>Model <span className="text-destructive">*</span></Label><Input value={form.model} onChange={set("model")} className={errors.has("model") ? "border-destructive" : ""} /></div>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-1"><Label>Weight (gr)</Label><Input type="number" step="0.1" value={form.weightGr} onChange={set("weightGr")} /></div>
-        <div className="space-y-1"><Label>Diameter (in)</Label><Input type="number" step="0.001" value={form.diameterIn} onChange={set("diameterIn")} /></div>
-        <div className="space-y-1"><Label>Qty Available</Label><Input type="number" value={form.quantityAvailable} onChange={set("quantityAvailable")} /></div>
+        <div className="space-y-1"><Label>Weight (gr) <span className="text-destructive">*</span></Label><Input type="number" step="0.1" value={form.weightGr} onChange={set("weightGr")} className={errors.has("weightGr") ? "border-destructive" : ""} /></div>
+        <div className="space-y-1"><Label>Diameter (in) <span className="text-destructive">*</span></Label><Input type="number" step="0.001" value={form.diameterIn} onChange={set("diameterIn")} className={errors.has("diameterIn") ? "border-destructive" : ""} /></div>
+        <div className="space-y-1"><Label>Qty Available <span className="text-destructive">*</span></Label><Input type="number" value={form.quantityAvailable} onChange={set("quantityAvailable")} className={errors.has("quantityAvailable") ? "border-destructive" : ""} /></div>
       </div>
       <div className="space-y-1"><Label>Notes</Label><Input value={form.notes} onChange={set("notes")} /></div>
       <div className="space-y-1.5">

@@ -69,6 +69,7 @@ export default function Powders() {
   const [editItem, setEditItem] = useState<(typeof powders)[0] | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [form, setForm] = useState<PowderForm>(empty);
+  const [formErrors, setFormErrors] = useState<Set<string>>(new Set());
 
   const filtered = powders.filter((p) =>
     p.manufacturer.toLowerCase().includes(search.toLowerCase()) ||
@@ -77,19 +78,28 @@ export default function Powders() {
 
   const invalidate = () => qc.invalidateQueries({ queryKey: getListPowdersQueryKey() });
 
+  const validate = () => {
+    const e = new Set<string>();
+    if (!form.manufacturer) e.add("manufacturer");
+    if (!form.name) e.add("name");
+    if (!form.type) e.add("type");
+    if (!form.grainsAvailable) e.add("grainsAvailable");
+    setFormErrors(e);
+    return e.size === 0;
+  };
+
   const handleAdd = async () => {
-    if (!form.manufacturer || !form.name || !form.type || !form.grainsAvailable) {
-      toast({ title: "Missing fields", variant: "destructive" }); return;
-    }
+    if (!validate()) return;
     await createMutation.mutateAsync({ data: { manufacturer: form.manufacturer, name: form.name, type: form.type, grainsAvailable: Number(form.grainsAvailable), notes: form.notes || undefined, photoBase64: form.photoBase64 ?? undefined } });
-    invalidate(); setAddOpen(false); setForm(empty);
+    invalidate(); setAddOpen(false); setForm(empty); setFormErrors(new Set());
     toast({ title: "Powder added" });
   };
 
   const handleEdit = async () => {
     if (!editItem) return;
+    if (!validate()) return;
     await updateMutation.mutateAsync({ id: editItem.id, data: { manufacturer: form.manufacturer, name: form.name, type: form.type, grainsAvailable: Number(form.grainsAvailable), notes: form.notes || undefined, photoBase64: form.photoBase64 } });
-    invalidate(); setEditItem(null); setForm(empty);
+    invalidate(); setEditItem(null); setForm(empty); setFormErrors(new Set());
     toast({ title: "Powder updated" });
   };
 
@@ -103,6 +113,7 @@ export default function Powders() {
   const openEdit = (p: (typeof powders)[0]) => {
     setEditItem(p);
     setForm({ manufacturer: p.manufacturer, name: p.name, type: p.type, grainsAvailable: String(p.grainsAvailable), notes: p.notes ?? "", photoBase64: p.photoBase64 ?? null });
+    setFormErrors(new Set());
   };
 
   return (
@@ -112,7 +123,7 @@ export default function Powders() {
           <h1 className="text-xl font-bold text-foreground tracking-tight">Powder Inventory</h1>
           <p className="text-sm text-muted-foreground">{powders.length} types</p>
         </div>
-        <Button size="sm" onClick={() => { setForm(empty); setAddOpen(true); }} className="gap-1.5">
+        <Button size="sm" onClick={() => { setForm(empty); setFormErrors(new Set()); setAddOpen(true); }} className="gap-1.5">
           <Plus className="w-4 h-4" /> Add Powder
         </Button>
       </div>
@@ -166,10 +177,10 @@ export default function Powders() {
         </div>
       )}
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={addOpen} onOpenChange={(o) => { setAddOpen(o); if (!o) setFormErrors(new Set()); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Powder</DialogTitle></DialogHeader>
-          <PowderFormFields form={form} setForm={setForm} />
+          <PowderFormFields form={form} setForm={setForm} errors={formErrors} setErrors={setFormErrors} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
             <Button onClick={handleAdd} disabled={createMutation.isPending}>Add</Button>
@@ -177,12 +188,12 @@ export default function Powders() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editItem} onOpenChange={(o) => !o && setEditItem(null)}>
+      <Dialog open={!!editItem} onOpenChange={(o) => { if (!o) { setEditItem(null); setFormErrors(new Set()); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Powder</DialogTitle></DialogHeader>
-          <PowderFormFields form={form} setForm={setForm} />
+          <PowderFormFields form={form} setForm={setForm} errors={formErrors} setErrors={setFormErrors} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setEditItem(null); setFormErrors(new Set()); }}>Cancel</Button>
             <Button onClick={handleEdit} disabled={updateMutation.isPending}>Save</Button>
           </DialogFooter>
         </DialogContent>
@@ -201,8 +212,11 @@ export default function Powders() {
   );
 }
 
-function PowderFormFields({ form, setForm }: { form: PowderForm; setForm: (f: PowderForm) => void }) {
-  const set = (key: keyof PowderForm) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [key]: e.target.value });
+function PowderFormFields({ form, setForm, errors, setErrors }: { form: PowderForm; setForm: (f: PowderForm) => void; errors: Set<string>; setErrors: (e: Set<string>) => void }) {
+  const set = (key: keyof PowderForm) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [key]: e.target.value });
+    if (errors.has(key)) { const ne = new Set(errors); ne.delete(key); setErrors(ne); }
+  };
   const photoRef = useRef<HTMLInputElement>(null);
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -217,17 +231,21 @@ function PowderFormFields({ form, setForm }: { form: PowderForm; setForm: (f: Po
     <div className="grid gap-3 py-2">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label>Manufacturer</Label>
-          <RefCombobox category="powder_manufacturer" value={form.manufacturer} onValueChange={(v) => setForm({ ...form, manufacturer: v })} />
+          <Label>Manufacturer <span className="text-destructive">*</span></Label>
+          <div className={errors.has("manufacturer") ? "ring-1 ring-destructive rounded-md" : ""}>
+            <RefCombobox category="powder_manufacturer" value={form.manufacturer} onValueChange={(v) => { setForm({ ...form, manufacturer: v }); if (errors.has("manufacturer")) { const ne = new Set(errors); ne.delete("manufacturer"); setErrors(ne); } }} />
+          </div>
         </div>
-        <div className="space-y-1"><Label>Name</Label><Input value={form.name} onChange={set("name")} /></div>
+        <div className="space-y-1"><Label>Name <span className="text-destructive">*</span></Label><Input value={form.name} onChange={set("name")} className={errors.has("name") ? "border-destructive" : ""} /></div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label>Type</Label>
-          <RefCombobox category="powder_type" value={form.type} onValueChange={(v) => setForm({ ...form, type: v })} placeholder="e.g. Stick, Ball, Flake" />
+          <Label>Type <span className="text-destructive">*</span></Label>
+          <div className={errors.has("type") ? "ring-1 ring-destructive rounded-md" : ""}>
+            <RefCombobox category="powder_type" value={form.type} onValueChange={(v) => { setForm({ ...form, type: v }); if (errors.has("type")) { const ne = new Set(errors); ne.delete("type"); setErrors(ne); } }} placeholder="e.g. Stick, Ball, Flake" />
+          </div>
         </div>
-        <div className="space-y-1"><Label>Grains Available</Label><Input type="number" step="0.1" value={form.grainsAvailable} onChange={set("grainsAvailable")} /></div>
+        <div className="space-y-1"><Label>Grains Available <span className="text-destructive">*</span></Label><Input type="number" step="0.1" value={form.grainsAvailable} onChange={set("grainsAvailable")} className={errors.has("grainsAvailable") ? "border-destructive" : ""} /></div>
       </div>
       <div className="space-y-1"><Label>Notes</Label><Input value={form.notes} onChange={set("notes")} /></div>
       <div className="space-y-1.5">
