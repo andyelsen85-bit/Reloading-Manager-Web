@@ -50,6 +50,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - **JSON export**: Full data export from dashboard
 - **Photo upload**: Loads, Bullets, Cartridges, Powders, Primers support photo upload (base64 in DB)
 - **Weapons Inventory**: Full weapon registry with multi-photo gallery, type/action classification, serial number, purchase details (date/price/from), sale tracking (sold toggle, sell date/price/buyer), hover photo previews, type-color badges, owned/sold filter
+- **Weapons Licenses**: License/permit registry on the Weapons page — name, license number, issue/expiry dates, notes, multi-photo gallery, linked weapon associations; expiry status badges (Valid / Expiring Soon <60 days / Expired)
 - **Dymo print**: Print Label on LoadDetail generates a Dymo label via browser print
 
 ### Frontend Pages
@@ -61,7 +62,7 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `ChargeLadders.tsx` — load development session list
 - `ChargeLadderDetail.tsx` — charge level management, result recording, best selection
 - `History.tsx` — reload history with deleted loads count column
-- `Weapons.tsx` — weapon inventory with multi-photo gallery, type/status filters, sale tracking
+- `Weapons.tsx` — weapon inventory with multi-photo gallery, type/status filters, sale tracking; Licenses & Permits section below with license cards, expiry status badges, weapon associations, photo gallery
 - `Settings.tsx` — 6-tab layout: General / Mail (SMTP, test, notification prefs, history) / Backup (download + restore) / Users / Lists / Audit
 
 ### API Routes (api-server)
@@ -71,6 +72,8 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `/api/charge-ladders` — CRUD + `/api/charge-ladders/:id/levels` + `/api/charge-ladders/:id/best`
 - `/api/cartridges`, `/api/bullets`, `/api/powders`, `/api/primers` — CRUD with photoBase64
 - `/api/weapons` — CRUD + `/api/weapons/:id/photos` (add/delete individual photos)
+- `/api/weapon-licenses` — CRUD; supports `weaponIds[]` to link weapons; version 3 backup includes all weapon/license tables
+- `/api/weapon-licenses/:id/photos` — add/delete license photos
 - `/api/loads` — CRUD + complete + fire; DELETE sends restock body; create adjusts cartridge.quantityLoaded
 - `/api/settings` — GET / PATCH (single-row, supports SMTP fields)
 - `/api/dashboard/overview`, `/api/dashboard/history` (includes deletedLoadsCount), `/api/dashboard/export`
@@ -85,6 +88,9 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - `charge_levels` — id, ladderId, chargeGr, cartridgeCount, sortOrder, status, oalIn, coalIn, groupSizeMm, velocityFps
 - `weapons` — id, name, manufacturer, model, type, caliber, serialNumber, actionType, barrelLengthIn, weightKg, color, countryOfOrigin, buyDate, buyPrice, buyFrom, sold, sellDate, sellPrice, soldTo, soldNotes, notes
 - `weapon_photos` — id, weaponId, photoBase64, caption, sortOrder
+- `weapon_licenses` — id, name, licenseNumber, issueDate, expiryDate, notes, createdAt
+- `weapon_license_photos` — id, licenseId, photoBase64, caption, sortOrder, createdAt
+- `weapon_license_weapons` — id, licenseId, weaponId (join table linking licenses to weapons)
 
 ### Migrations Applied
 - `0000_initial.sql` — baseline schema
@@ -92,6 +98,8 @@ A full-stack web app for sport shooting reloaders. Self-hosted via Docker.
 - Actual migrations are inline in `artifacts/api-server/src/lib/runMigrations.ts` and tracked by `__app_migrations`; Drizzle SQL files under `lib/db/drizzle` are legacy/dead for runtime.
 - `0008_bullet_schema_repair` — ensures Docker/upgraded databases have `bullets.diameter_in` and `bullets.photo_base64`, and relaxes the legacy `bullets.caliber` column if present.
 - `0009_backup_schema_repair` — repairs legacy Docker databases so broad reads used by backup/export/dashboard have every current schema column.
+- `0012_weapons` / `0012_weapons_real` — creates `weapons` and `weapon_photos` tables.
+- `0013_weapon_licenses` — creates `weapon_licenses`, `weapon_license_photos`, `weapon_license_weapons` tables.
 
 ### Theme
 Dark gunmetal/steel theme (HSL 220 16% 10% bg, amber 38 90% 52% primary)
