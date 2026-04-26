@@ -60,6 +60,18 @@ function PhotoHoverCell({ src, alt }: { src: string | null | undefined; alt: str
   const [hovered, setHovered] = useState(false);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   if (!src) return null;
+
+  const PREVIEW = 320;
+  const OFFSET = 16;
+
+  const getStyle = (x: number, y: number): React.CSSProperties => {
+    const vpW = window.innerWidth;
+    const vpH = window.innerHeight;
+    const left = x + OFFSET + PREVIEW > vpW ? x - PREVIEW - OFFSET : x + OFFSET;
+    const top = Math.min(Math.max(y - PREVIEW / 2, 8), vpH - PREVIEW - 8);
+    return { left, top, width: PREVIEW, height: PREVIEW };
+  };
+
   return (
     <div
       className="relative"
@@ -74,11 +86,11 @@ function PhotoHoverCell({ src, alt }: { src: string | null | undefined; alt: str
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.92 }}
-            transition={{ duration: 0.1 }}
-            className="fixed z-[200] pointer-events-none"
-            style={{ left: pos.x + 12, top: pos.y - 80 }}
+            transition={{ duration: 0.12 }}
+            className="fixed z-[200] pointer-events-none rounded-xl border-2 border-primary shadow-2xl overflow-hidden bg-black"
+            style={getStyle(pos.x, pos.y)}
           >
-            <img src={src} alt={alt} className="w-40 h-40 object-cover rounded-lg border-2 border-primary shadow-2xl" />
+            <img src={src} alt={alt} className="w-full h-full object-contain" />
           </motion.div>
         )}
       </AnimatePresence>
