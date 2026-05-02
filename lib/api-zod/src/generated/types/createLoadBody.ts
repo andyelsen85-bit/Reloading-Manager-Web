@@ -10,5 +10,5 @@ export interface CreateLoadBody {
   cartridgeId: number;
   cartridgeQuantityUsed: number;
   notes?: string;
-  parentLoadId?: number;
+  parentLoadId?: number | null;
 }

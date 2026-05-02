@@ -648,7 +648,7 @@ export const CreateLoadBody = zod.object({
   cartridgeId: zod.number(),
   cartridgeQuantityUsed: zod.number(),
   notes: zod.string().optional(),
-  parentLoadId: zod.number().optional(),
+  parentLoadId: zod.number().nullish(),
 });
 
 /**
@@ -1156,6 +1156,7 @@ export const GetDashboardOverviewResponse = zod.object({
       type: zod.string(),
       grainsAvailable: zod.number(),
       notes: zod.string().nullish(),
+      photoBase64: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -1166,6 +1167,7 @@ export const GetDashboardOverviewResponse = zod.object({
       type: zod.string(),
       quantityAvailable: zod.number(),
       notes: zod.string().nullish(),
+      photoBase64: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -1292,6 +1294,7 @@ export const ExportDataResponse = zod.object({
       type: zod.string(),
       grainsAvailable: zod.number(),
       notes: zod.string().nullish(),
+      photoBase64: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -1302,6 +1305,7 @@ export const ExportDataResponse = zod.object({
       type: zod.string(),
       quantityAvailable: zod.number(),
       notes: zod.string().nullish(),
+      photoBase64: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),

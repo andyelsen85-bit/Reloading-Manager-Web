@@ -1668,6 +1668,9 @@ components:
           type: integer
         notes:
           type: string
+        parentLoadId:
+          type: integer
+          nullable: true
       required: [cartridgeId, cartridgeQuantityUsed]
 
     UpdateLoadBody:

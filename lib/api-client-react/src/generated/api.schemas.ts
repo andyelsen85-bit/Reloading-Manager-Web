@@ -223,6 +223,7 @@ export interface Powder {
   type: string;
   grainsAvailable: number;
   notes?: string | null;
+  photoBase64?: string | null;
   createdAt: string;
 }
 
@@ -232,6 +233,7 @@ export interface CreatePowderBody {
   type: string;
   grainsAvailable: number;
   notes?: string;
+  photoBase64?: string;
 }
 
 export interface UpdatePowderBody {
@@ -240,6 +242,7 @@ export interface UpdatePowderBody {
   type?: string;
   grainsAvailable?: number;
   notes?: string;
+  photoBase64?: string | null;
 }
 
 export interface Primer {
@@ -248,6 +251,7 @@ export interface Primer {
   type: string;
   quantityAvailable: number;
   notes?: string | null;
+  photoBase64?: string | null;
   createdAt: string;
 }
 
@@ -256,6 +260,7 @@ export interface CreatePrimerBody {
   type: string;
   quantityAvailable: number;
   notes?: string;
+  photoBase64?: string;
 }
 
 export interface UpdatePrimerBody {
@@ -263,6 +268,7 @@ export interface UpdatePrimerBody {
   type?: string;
   quantityAvailable?: number;
   notes?: string;
+  photoBase64?: string | null;
 }
 
 export interface Load {
@@ -315,7 +321,7 @@ export interface CreateLoadBody {
   cartridgeId: number;
   cartridgeQuantityUsed: number;
   notes?: string;
-  parentLoadId?: number;
+  parentLoadId?: number | null;
 }
 
 export interface UpdateLoadBody {
