@@ -87,6 +87,7 @@ export default function LoadDetail() {
   const fireMutation = useFireLoad();
 
   const [activeStep, setActiveStep] = useState<string | null>(null);
+  const [photoHovered, setPhotoHovered] = useState(false);
 
   const [washingMinutes, setWashingMinutes] = useState("");
   const [washingDate, setWashingDate] = useState("");
@@ -617,7 +618,27 @@ export default function LoadDetail() {
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Load Photo</h2>
           {load.photoBase64 ? (
             <div className="flex items-start gap-3">
-              <img src={load.photoBase64} alt="Load" className="w-32 h-32 object-cover rounded-lg border border-border" />
+              <div
+                className="relative"
+                onMouseEnter={() => setPhotoHovered(true)}
+                onMouseLeave={() => setPhotoHovered(false)}
+              >
+                <img
+                  src={load.photoBase64}
+                  alt="Load"
+                  className="w-32 h-32 object-cover rounded-lg border border-border cursor-pointer"
+                  onClick={() => window.open(load.photoBase64!, '_blank', 'noopener,noreferrer')}
+                />
+                {photoHovered && (
+                  <div className="absolute left-full top-0 ml-3 z-50 pointer-events-none">
+                    <img
+                      src={load.photoBase64}
+                      alt="Load preview"
+                      className="w-72 h-72 object-cover rounded-xl border border-border shadow-xl"
+                    />
+                  </div>
+                )}
+              </div>
               <Button variant="ghost" size="sm" className="gap-1.5 text-destructive hover:text-destructive" onClick={handleRemovePhoto}>
                 <X className="w-4 h-4" /> Remove
               </Button>
