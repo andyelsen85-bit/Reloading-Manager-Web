@@ -88,6 +88,8 @@ export default function LoadDetail() {
 
   const [activeStep, setActiveStep] = useState<string | null>(null);
   const [photoHovered, setPhotoHovered] = useState(false);
+  const [previewPos, setPreviewPos] = useState({ top: 0, left: 0 });
+  const thumbRef = useRef<HTMLDivElement>(null);
 
   const [washingMinutes, setWashingMinutes] = useState("");
   const [washingDate, setWashingDate] = useState("");
@@ -619,18 +621,36 @@ export default function LoadDetail() {
           {load.photoBase64 ? (
             <div className="flex items-start gap-3">
               <div
+                ref={thumbRef}
                 className="relative"
-                onMouseEnter={() => setPhotoHovered(true)}
+                onMouseEnter={() => {
+                  if (thumbRef.current) {
+                    const r = thumbRef.current.getBoundingClientRect();
+                    setPreviewPos({ top: r.top, left: r.right + 12 });
+                  }
+                  setPhotoHovered(true);
+                }}
                 onMouseLeave={() => setPhotoHovered(false)}
               >
                 <img
                   src={load.photoBase64}
                   alt="Load"
                   className="w-32 h-32 object-cover rounded-lg border border-border cursor-pointer"
-                  onClick={() => window.open(load.photoBase64!, '_blank', 'noopener,noreferrer')}
+                  onClick={() => {
+                    const [header, b64] = load.photoBase64!.split(",");
+                    const mime = header.split(":")[1].split(";")[0];
+                    const binary = atob(b64);
+                    const bytes = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                    const blob = new Blob([bytes], { type: mime });
+                    const url = URL.createObjectURL(blob);
+                    const win = window.open(url, "_blank", "noopener,noreferrer");
+                    if (!win) URL.revokeObjectURL(url);
+                    else setTimeout(() => URL.revokeObjectURL(url), 30000);
+                  }}
                 />
                 {photoHovered && (
-                  <div className="absolute left-full top-0 ml-3 z-50 pointer-events-none">
+                  <div className="fixed z-50 pointer-events-none" style={{ top: previewPos.top, left: previewPos.left }}>
                     <img
                       src={load.photoBase64}
                       alt="Load preview"
