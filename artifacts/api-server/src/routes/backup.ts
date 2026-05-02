@@ -71,7 +71,7 @@ router.get("/backup", async (_req, res) => {
       powders,
       primers,
       loads,
-      settings,
+      settings: settings.map(({ smtpPass: _omit, ...rest }) => rest),
       referenceData,
       chargeLadders,
       chargeLevels,
@@ -96,11 +96,39 @@ router.get("/backup", async (_req, res) => {
   }
 });
 
+const CURRENT_BACKUP_VERSION = 5;
+// All sections present in a v5 backup — every one must be an array
+const REQUIRED_BACKUP_SECTIONS = [
+  "cartridges", "bullets", "powders", "primers", "loads",
+  "settings", "referenceData", "chargeLadders", "chargeLevels",
+  "ammoInventory", "weapons", "weaponPhotos", "weaponLicenses",
+  "weaponLicensePhotos", "weaponLicenseWeapons", "emailLog", "weaponMagazines",
+] as const;
+
 router.post("/restore", async (req, res) => {
   const data = req.body as Record<string, unknown>;
 
   if (!data || typeof data !== "object" || !("version" in data)) {
     return res.status(400).json({ error: "Invalid backup file format" });
+  }
+
+  if (typeof data.version !== "number" || data.version !== CURRENT_BACKUP_VERSION) {
+    return res.status(400).json({
+      error: `Unsupported backup version. Expected version ${CURRENT_BACKUP_VERSION}, got ${JSON.stringify(data.version)}.`,
+    });
+  }
+
+  if (typeof data.exportedAt !== "string") {
+    return res.status(400).json({ error: "Invalid backup: missing exportedAt timestamp." });
+  }
+
+  const missingSections = REQUIRED_BACKUP_SECTIONS.filter(
+    (key) => !Array.isArray(data[key])
+  );
+  if (missingSections.length > 0) {
+    return res.status(400).json({
+      error: `Invalid backup: missing or malformed required sections: ${missingSections.join(", ")}.`,
+    });
   }
 
   try {
@@ -134,7 +162,10 @@ router.post("/restore", async (req, res) => {
 
       // Standalone / leaf tables first
       if (Array.isArray(data.settings) && data.settings.length > 0) {
-        await tx.insert(settingsTable).values(hydrateDates(data.settings));
+        const settingsRows = (data.settings as Record<string, unknown>[]).map(
+          ({ smtpPass: _omit, ...rest }) => rest
+        );
+        await tx.insert(settingsTable).values(hydrateDates(settingsRows));
       } else {
         // Always ensure a settings row exists
         await tx.execute(sql`INSERT INTO settings DEFAULT VALUES ON CONFLICT DO NOTHING`);

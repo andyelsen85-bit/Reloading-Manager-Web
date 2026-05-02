@@ -29,8 +29,8 @@ app.use(
   }),
 );
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json({ limit: "1024mb" }));
-app.use(express.urlencoded({ extended: true, limit: "1024mb" }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 const PgStore = connectPg(session);
 

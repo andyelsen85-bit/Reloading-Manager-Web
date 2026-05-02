@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useGetSettings, useUpdateSettings, getGetSettingsQueryKey, useListUsers, useCreateUser, useUpdateUser, useDeleteUser, useResetUserPassword, getListUsersQueryKey, useListReferenceData, getListReferenceDataQueryKey, useCreateReferenceItem, useDeleteReferenceItem, useUpdateReferenceItem } from "@workspace/api-client-react";
+import type { UpdateSettingsBody } from "@workspace/api-client-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Save, Upload, X, Image, Hash, Mail, Users, List, Send, History, Download, HardDriveDownload, RotateCcw, Pencil, Trash2, Plus, Eye, EyeOff, ToggleLeft, ToggleRight, BadgeCheck, ShieldCheck } from "lucide-react";
@@ -336,7 +337,7 @@ export default function Settings() {
   };
 
   if (settings && !smtp.loaded) {
-    setSmtp({ host: settings.smtpHost ?? "", port: String(settings.smtpPort ?? 587), user: settings.smtpUser ?? "", pass: settings.smtpPass ?? "", from: settings.smtpFrom ?? "", enabled: settings.smtpEnabled ?? false, loaded: true });
+    setSmtp({ host: settings.smtpHost ?? "", port: String(settings.smtpPort ?? 587), user: settings.smtpUser ?? "", pass: "", from: settings.smtpFrom ?? "", enabled: settings.smtpEnabled ?? false, loaded: true });
   }
 
   const handleTestMail = async () => {
@@ -418,7 +419,16 @@ export default function Settings() {
   };
 
   const handleSaveSmtp = async () => {
-    await updateMutation.mutateAsync({ data: { smtpHost: smtp.host || null, smtpPort: smtp.port ? Number(smtp.port) : null, smtpUser: smtp.user || null, smtpPass: smtp.pass || null, smtpFrom: smtp.from || null, smtpEnabled: smtp.enabled } });
+    const smtpData: UpdateSettingsBody = {
+      smtpHost: smtp.host || null,
+      smtpPort: smtp.port ? Number(smtp.port) : null,
+      smtpUser: smtp.user || null,
+      smtpFrom: smtp.from || null,
+      smtpEnabled: smtp.enabled,
+      ...(smtp.pass ? { smtpPass: smtp.pass } : {}),
+    };
+    await updateMutation.mutateAsync({ data: smtpData });
+    setSmtp((s) => ({ ...s, pass: "" }));
     qc.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
     toast({ title: "Mail server settings saved" });
   };
@@ -500,7 +510,7 @@ export default function Settings() {
                 <div className="space-y-1.5"><Label>SMTP Host</Label><Input placeholder="smtp.gmail.com" value={smtp.host} onChange={(e) => setSmtp({ ...smtp, host: e.target.value })} /></div>
                 <div className="space-y-1.5"><Label>Port</Label><Input type="number" placeholder="587" value={smtp.port} onChange={(e) => setSmtp({ ...smtp, port: e.target.value })} /></div>
                 <div className="space-y-1.5"><Label>Username</Label><Input placeholder="user@example.com" value={smtp.user} onChange={(e) => setSmtp({ ...smtp, user: e.target.value })} /></div>
-                <div className="space-y-1.5"><Label>Password</Label><Input type="password" value={smtp.pass} onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })} /></div>
+                <div className="space-y-1.5"><Label>Password</Label><Input type="password" placeholder={settings?.smtpPassConfigured && !smtp.pass ? "••••••••" : ""} value={smtp.pass} onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })} /></div>
                 <div className="col-span-2 space-y-1.5"><Label>From Address</Label><Input placeholder="reloading@example.com" value={smtp.from} onChange={(e) => setSmtp({ ...smtp, from: e.target.value })} /></div>
               </div>
             </CardContent>

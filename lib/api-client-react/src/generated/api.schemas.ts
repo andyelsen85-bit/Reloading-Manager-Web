@@ -89,7 +89,8 @@ export interface Settings {
   smtpHost?: string | null;
   smtpPort?: number | null;
   smtpUser?: string | null;
-  smtpPass?: string | null;
+  /** True if an SMTP password is stored; the password itself is never returned */
+  smtpPassConfigured?: boolean | null;
   smtpFrom?: string | null;
   smtpEnabled?: boolean | null;
 }

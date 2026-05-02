@@ -203,7 +203,12 @@ export const GetSettingsResponse = zod.object({
   smtpHost: zod.string().nullish(),
   smtpPort: zod.number().nullish(),
   smtpUser: zod.string().nullish(),
-  smtpPass: zod.string().nullish(),
+  smtpPassConfigured: zod
+    .boolean()
+    .nullish()
+    .describe(
+      "True if an SMTP password is stored; the password itself is never returned",
+    ),
   smtpFrom: zod.string().nullish(),
   smtpEnabled: zod.boolean().nullish(),
 });
@@ -237,7 +242,12 @@ export const UpdateSettingsResponse = zod.object({
   smtpHost: zod.string().nullish(),
   smtpPort: zod.number().nullish(),
   smtpUser: zod.string().nullish(),
-  smtpPass: zod.string().nullish(),
+  smtpPassConfigured: zod
+    .boolean()
+    .nullish()
+    .describe(
+      "True if an SMTP password is stored; the password itself is never returned",
+    ),
   smtpFrom: zod.string().nullish(),
   smtpEnabled: zod.boolean().nullish(),
 });

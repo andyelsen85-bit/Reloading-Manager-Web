@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { settingsTable, emailLogTable } from "@workspace/db";
+import type { Settings } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { sendMail } from "../lib/mailer";
 
@@ -15,9 +16,16 @@ async function ensureSettings() {
   return rows[0];
 }
 
+type RedactedSettings = Omit<Settings, "smtpPass"> & { smtpPassConfigured: boolean };
+
+function redactSettings(row: Settings): RedactedSettings {
+  const { smtpPass, ...safe } = row;
+  return { ...safe, smtpPassConfigured: smtpPass != null && smtpPass !== "" };
+}
+
 router.get("/settings", async (_req, res) => {
   const settings = await ensureSettings();
-  res.json(settings);
+  res.json(redactSettings(settings));
 });
 
 router.patch("/settings", async (req, res) => {
@@ -37,7 +45,7 @@ router.patch("/settings", async (req, res) => {
   if (body.smtpFrom !== undefined) updates.smtpFrom = body.smtpFrom;
   if (body.smtpEnabled !== undefined) updates.smtpEnabled = body.smtpEnabled;
   const [updated] = await db.update(settingsTable).set(updates).where(eq(settingsTable.id, settings.id)).returning();
-  res.json(updated);
+  res.json(redactSettings(updated));
 });
 
 router.post("/settings/test-mail", async (req, res) => {

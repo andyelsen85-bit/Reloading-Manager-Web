@@ -1177,9 +1177,10 @@ components:
         smtpUser:
           type: string
           nullable: true
-        smtpPass:
-          type: string
+        smtpPassConfigured:
+          type: boolean
           nullable: true
+          description: True if an SMTP password is stored; the password itself is never returned
         smtpFrom:
           type: string
           nullable: true
