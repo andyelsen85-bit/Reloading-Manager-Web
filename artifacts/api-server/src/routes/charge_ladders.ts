@@ -11,24 +11,24 @@ const LevelInput = z.object({
   cartridgeCount: z.number().optional().default(3),
   powderId: z.number().optional(),
   sortOrder: z.number().optional().default(0),
-  notes: z.string().optional(),
+  notes: z.string().max(10_000).optional(),
 });
 
 const CreateLadderBody = z.object({
-  name: z.string().min(1),
-  caliber: z.string().min(1),
+  name: z.string().min(1).max(200),
+  caliber: z.string().min(1).max(100),
   cartridgeId: z.number().int(),
   bulletId: z.number().int().optional().nullable(),
   primerId: z.number().int().optional().nullable(),
   cartridgesPerLevel: z.number().int().optional().default(5),
-  notes: z.string().optional(),
-  levels: z.array(LevelInput).optional().default([]),
+  notes: z.string().max(10_000).optional(),
+  levels: z.array(LevelInput).max(100).optional().default([]),
 });
 
 const UpdateLadderBody = z.object({
-  name: z.string().optional(),
-  notes: z.string().optional(),
-  status: z.string().optional(),
+  name: z.string().max(200).optional(),
+  notes: z.string().max(10_000).optional(),
+  status: z.string().max(50).optional(),
   bulletId: z.number().nullable().optional(),
   primerId: z.number().nullable().optional(),
 });
@@ -38,15 +38,15 @@ const CreateLevelBody = z.object({
   cartridgeCount: z.number().optional().default(3),
   powderId: z.number().optional(),
   sortOrder: z.number().optional().default(0),
-  notes: z.string().optional(),
+  notes: z.string().max(10_000).optional(),
 });
 
 const UpdateLevelBody = z.object({
   chargeGr: z.number().optional(),
   cartridgeCount: z.number().optional(),
   powderId: z.number().nullable().optional(),
-  status: z.string().optional(),
-  notes: z.string().optional(),
+  status: z.string().max(50).optional(),
+  notes: z.string().max(10_000).optional(),
   oalIn: z.number().optional(),
   coalIn: z.number().optional(),
   groupSizeMm: z.number().optional(),

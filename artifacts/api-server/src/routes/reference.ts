@@ -6,8 +6,8 @@ import { z } from "zod";
 
 const router = Router();
 
-const CreateBody = z.object({ value: z.string().min(1), sortOrder: z.number().optional().default(0) });
-const UpdateBody = z.object({ value: z.string().optional(), sortOrder: z.number().optional() });
+const CreateBody = z.object({ value: z.string().min(1).max(1_000), sortOrder: z.number().optional().default(0) });
+const UpdateBody = z.object({ value: z.string().max(1_000).optional(), sortOrder: z.number().optional() });
 
 router.get("/reference/:category", async (req, res) => {
   const { category } = req.params;

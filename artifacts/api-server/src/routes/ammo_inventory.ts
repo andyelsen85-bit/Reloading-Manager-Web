@@ -1,29 +1,40 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { ammoInventoryTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
 
+const SAFE_IMAGE_DATA_URL = /^data:image\/(jpeg|png|gif|webp|bmp|tiff|svg\+xml);base64,[A-Za-z0-9+/]+=*$/;
+
+const photoField = () =>
+  z.string()
+    .max(3_000_000, "Photo exceeds maximum allowed size")
+    .refine((val) => SAFE_IMAGE_DATA_URL.test(val), {
+      message: "photoBase64 must be a valid image data URL (jpeg, png, gif, webp, bmp, tiff, or svg+xml)",
+    })
+    .optional()
+    .nullable();
+
 const CreateBody = z.object({
-  manufacturer: z.string().min(1),
-  caliber: z.string().min(1),
-  model: z.string().min(1),
+  manufacturer: z.string().min(1).max(200),
+  caliber: z.string().min(1).max(100),
+  model: z.string().min(1).max(200),
   bulletWeightGr: z.number().optional().nullable(),
   countTotal: z.number().int().min(0),
-  notes: z.string().optional().nullable(),
-  photoBase64: z.string().optional().nullable(),
+  notes: z.string().max(10_000).optional().nullable(),
+  photoBase64: photoField(),
 });
 
 const UpdateBody = z.object({
-  manufacturer: z.string().optional(),
-  caliber: z.string().optional(),
-  model: z.string().optional(),
+  manufacturer: z.string().max(200).optional(),
+  caliber: z.string().max(100).optional(),
+  model: z.string().max(200).optional(),
   bulletWeightGr: z.number().optional().nullable(),
   countTotal: z.number().int().min(0).optional(),
-  notes: z.string().optional().nullable(),
-  photoBase64: z.string().optional().nullable(),
+  notes: z.string().max(10_000).optional().nullable(),
+  photoBase64: photoField(),
 });
 
 const FireBody = z.object({
@@ -81,16 +92,27 @@ router.post("/ammo-inventory/:id/fire", async (req, res) => {
   try {
     const id = Number(req.params.id);
     const { count } = FireBody.parse(req.body);
-    const [existing] = await db.select().from(ammoInventoryTable).where(eq(ammoInventoryTable.id, id));
-    if (!existing) return res.status(404).json({ error: "Not found" });
-    const remaining = existing.countTotal - existing.countFired;
-    if (count > remaining) {
-      return res.status(400).json({ error: `Cannot fire ${count} — only ${remaining} rounds remaining` });
-    }
+
+    // Perform the update atomically: only succeeds when there are enough rounds remaining.
+    // The WHERE clause enforces the bounds check inside the database, eliminating the
+    // read-then-write race that would allow countFired to exceed countTotal under
+    // concurrent requests.
     const [row] = await db.update(ammoInventoryTable)
       .set({ countFired: sql`${ammoInventoryTable.countFired} + ${count}` })
-      .where(eq(ammoInventoryTable.id, id))
+      .where(and(
+        eq(ammoInventoryTable.id, id),
+        sql`${ammoInventoryTable.countFired} + ${count} <= ${ammoInventoryTable.countTotal}`
+      ))
       .returning();
+
+    if (!row) {
+      // Distinguish "not found" from "insufficient rounds"
+      const [existing] = await db.select().from(ammoInventoryTable).where(eq(ammoInventoryTable.id, id));
+      if (!existing) return res.status(404).json({ error: "Not found" });
+      const remaining = existing.countTotal - existing.countFired;
+      return res.status(400).json({ error: `Cannot fire ${count} — only ${remaining} rounds remaining` });
+    }
+
     res.json(row);
   } catch (err: any) {
     res.status(500).json({ error: err?.message ?? "Failed to record fired rounds" });

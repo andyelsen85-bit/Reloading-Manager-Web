@@ -221,13 +221,13 @@ export const UpdateSettingsBody = zod.object({
   powderLowStockThreshold: zod.number().optional(),
   primerLowStockThreshold: zod.number().optional(),
   nextLoadNumber: zod.number().optional(),
-  logoBase64: zod.string().nullish(),
-  backgroundBase64: zod.string().nullish(),
-  smtpHost: zod.string().nullish(),
+  logoBase64: zod.string().max(5_000_000).regex(/^data:image\//, "logoBase64 must be an image data URL").nullish(),
+  backgroundBase64: zod.string().max(5_000_000).regex(/^data:image\//, "backgroundBase64 must be an image data URL").nullish(),
+  smtpHost: zod.string().max(500).nullish(),
   smtpPort: zod.number().nullish(),
-  smtpUser: zod.string().nullish(),
-  smtpPass: zod.string().nullish(),
-  smtpFrom: zod.string().nullish(),
+  smtpUser: zod.string().max(500).nullish(),
+  smtpPass: zod.string().max(500).nullish(),
+  smtpFrom: zod.string().max(500).nullish(),
   smtpEnabled: zod.boolean().optional(),
 });
 
@@ -294,20 +294,20 @@ export const ListCartridgesResponse = zod.array(ListCartridgesResponseItem);
  * @summary Add a cartridge batch
  */
 export const CreateCartridgeBody = zod.object({
-  manufacturer: zod.string(),
-  caliber: zod.string(),
-  productionCharge: zod.string(),
+  manufacturer: zod.string().max(200),
+  caliber: zod.string().max(100),
+  productionCharge: zod.string().max(100),
   quantityTotal: zod.number(),
-  notes: zod.string().optional(),
-  photoBase64: zod.string().optional(),
-  primerType: zod.string().optional(),
+  notes: zod.string().max(10_000).optional(),
+  photoBase64: zod.string().max(3_000_000).regex(/^data:image\//, "photoBase64 must be an image data URL").optional(),
+  primerType: zod.string().max(100).optional(),
   avgEmptyWeightGr: zod.number().optional(),
   avgInternalVolumeGr: zod.number().optional(),
   avgShoulderDiameterIn: zod.number().optional(),
   avgBaseDiameterIn: zod.number().optional(),
   avgNeckWallThicknessIn: zod.number().optional(),
-  ampAztecCode: zod.string().optional(),
-  ampPilotNumber: zod.string().optional(),
+  ampAztecCode: zod.string().max(200).optional(),
+  ampPilotNumber: zod.string().max(200).optional(),
 });
 
 /**
@@ -359,22 +359,22 @@ export const UpdateCartridgeParams = zod.object({
 });
 
 export const UpdateCartridgeBody = zod.object({
-  manufacturer: zod.string().optional(),
-  caliber: zod.string().optional(),
-  productionCharge: zod.string().optional(),
+  manufacturer: zod.string().max(200).optional(),
+  caliber: zod.string().max(100).optional(),
+  productionCharge: zod.string().max(100).optional(),
   quantityTotal: zod.number().optional(),
-  currentStep: zod.string().optional(),
-  l6In: zod.string().optional(),
-  notes: zod.string().optional(),
-  photoBase64: zod.string().nullish(),
-  primerType: zod.string().nullish(),
+  currentStep: zod.string().max(50).optional(),
+  l6In: zod.string().max(50).optional(),
+  notes: zod.string().max(10_000).optional(),
+  photoBase64: zod.string().max(3_000_000).regex(/^data:image\//, "photoBase64 must be an image data URL").nullish(),
+  primerType: zod.string().max(100).nullish(),
   avgEmptyWeightGr: zod.number().nullish(),
   avgInternalVolumeGr: zod.number().nullish(),
   avgShoulderDiameterIn: zod.number().nullish(),
   avgBaseDiameterIn: zod.number().nullish(),
   avgNeckWallThicknessIn: zod.number().nullish(),
-  ampAztecCode: zod.string().nullish(),
-  ampPilotNumber: zod.string().nullish(),
+  ampAztecCode: zod.string().max(200).nullish(),
+  ampPilotNumber: zod.string().max(200).nullish(),
 });
 
 export const UpdateCartridgeResponse = zod.object({
@@ -438,13 +438,13 @@ export const ListBulletsResponse = zod.array(ListBulletsResponseItem);
  * @summary Add a bullet
  */
 export const CreateBulletBody = zod.object({
-  manufacturer: zod.string(),
-  model: zod.string(),
+  manufacturer: zod.string().max(200),
+  model: zod.string().max(200),
   weightGr: zod.number(),
   diameterIn: zod.number(),
   quantityAvailable: zod.number(),
-  notes: zod.string().optional(),
-  photoBase64: zod.string().optional(),
+  notes: zod.string().max(10_000).optional(),
+  photoBase64: zod.string().max(3_000_000).regex(/^data:image\//, "photoBase64 must be an image data URL").optional(),
 });
 
 /**
@@ -455,13 +455,13 @@ export const UpdateBulletParams = zod.object({
 });
 
 export const UpdateBulletBody = zod.object({
-  manufacturer: zod.string().optional(),
-  model: zod.string().optional(),
+  manufacturer: zod.string().max(200).optional(),
+  model: zod.string().max(200).optional(),
   weightGr: zod.number().optional(),
   diameterIn: zod.number().optional(),
   quantityAvailable: zod.number().optional(),
-  notes: zod.string().optional(),
-  photoBase64: zod.string().nullish(),
+  notes: zod.string().max(10_000).optional(),
+  photoBase64: zod.string().max(3_000_000).regex(/^data:image\//, "photoBase64 must be an image data URL").nullish(),
 });
 
 export const UpdateBulletResponse = zod.object({
@@ -502,12 +502,12 @@ export const ListPowdersResponse = zod.array(ListPowdersResponseItem);
  * @summary Add a powder
  */
 export const CreatePowderBody = zod.object({
-  manufacturer: zod.string(),
-  name: zod.string(),
-  type: zod.string(),
+  manufacturer: zod.string().max(200),
+  name: zod.string().max(200),
+  type: zod.string().max(100),
   grainsAvailable: zod.number(),
-  notes: zod.string().optional(),
-  photoBase64: zod.string().optional(),
+  notes: zod.string().max(10_000).optional(),
+  photoBase64: zod.string().max(3_000_000).regex(/^data:image\//, "photoBase64 must be an image data URL").optional(),
 });
 
 /**
@@ -518,12 +518,12 @@ export const UpdatePowderParams = zod.object({
 });
 
 export const UpdatePowderBody = zod.object({
-  manufacturer: zod.string().optional(),
-  name: zod.string().optional(),
-  type: zod.string().optional(),
+  manufacturer: zod.string().max(200).optional(),
+  name: zod.string().max(200).optional(),
+  type: zod.string().max(100).optional(),
   grainsAvailable: zod.number().optional(),
-  notes: zod.string().optional(),
-  photoBase64: zod.string().nullish(),
+  notes: zod.string().max(10_000).optional(),
+  photoBase64: zod.string().max(3_000_000).regex(/^data:image\//, "photoBase64 must be an image data URL").nullish(),
 });
 
 export const UpdatePowderResponse = zod.object({
@@ -562,11 +562,11 @@ export const ListPrimersResponse = zod.array(ListPrimersResponseItem);
  * @summary Add a primer
  */
 export const CreatePrimerBody = zod.object({
-  manufacturer: zod.string(),
-  type: zod.string(),
+  manufacturer: zod.string().max(200),
+  type: zod.string().max(100),
   quantityAvailable: zod.number(),
-  notes: zod.string().optional(),
-  photoBase64: zod.string().optional(),
+  notes: zod.string().max(10_000).optional(),
+  photoBase64: zod.string().max(3_000_000).regex(/^data:image\//, "photoBase64 must be an image data URL").optional(),
 });
 
 /**
@@ -577,11 +577,11 @@ export const UpdatePrimerParams = zod.object({
 });
 
 export const UpdatePrimerBody = zod.object({
-  manufacturer: zod.string().optional(),
-  type: zod.string().optional(),
+  manufacturer: zod.string().max(200).optional(),
+  type: zod.string().max(100).optional(),
   quantityAvailable: zod.number().optional(),
-  notes: zod.string().optional(),
-  photoBase64: zod.string().nullish(),
+  notes: zod.string().max(10_000).optional(),
+  photoBase64: zod.string().max(3_000_000).regex(/^data:image\//, "photoBase64 must be an image data URL").nullish(),
 });
 
 export const UpdatePrimerResponse = zod.object({
@@ -657,7 +657,7 @@ export const ListLoadsResponse = zod.array(ListLoadsResponseItem);
 export const CreateLoadBody = zod.object({
   cartridgeId: zod.number(),
   cartridgeQuantityUsed: zod.number(),
-  notes: zod.string().optional(),
+  notes: zod.string().max(50_000).optional(),
   parentLoadId: zod.number().nullish(),
 });
 
@@ -732,21 +732,21 @@ export const UpdateLoadBody = zod.object({
   oalIn: zod.number().nullish(),
   l6In: zod.number().nullish(),
   washingMinutes: zod.number().nullish(),
-  washingDate: zod.string().nullish(),
+  washingDate: zod.string().max(20).nullish(),
   annealingMinutes: zod.number().optional(),
   annealingDone: zod.boolean().optional(),
-  annealingDate: zod.string().nullish(),
+  annealingDate: zod.string().max(20).nullish(),
   secondWashingMinutes: zod.number().optional(),
-  secondWashingDate: zod.string().nullish(),
-  calibrationType: zod.string().optional(),
-  calibrationDate: zod.string().nullish(),
-  trimDate: zod.string().nullish(),
-  skippedSteps: zod.string().optional(),
-  photoBase64: zod.string().nullish(),
-  primingDate: zod.string().nullish(),
-  powderDate: zod.string().nullish(),
-  bulletSeatingDate: zod.string().nullish(),
-  notes: zod.string().optional(),
+  secondWashingDate: zod.string().max(20).nullish(),
+  calibrationType: zod.string().max(100).optional(),
+  calibrationDate: zod.string().max(20).nullish(),
+  trimDate: zod.string().max(20).nullish(),
+  skippedSteps: zod.string().max(2_000).optional(),
+  photoBase64: zod.string().max(3_000_000).regex(/^data:image\//, "photoBase64 must be an image data URL").nullish(),
+  primingDate: zod.string().max(20).nullish(),
+  powderDate: zod.string().max(20).nullish(),
+  bulletSeatingDate: zod.string().max(20).nullish(),
+  notes: zod.string().max(50_000).optional(),
   chargeLadderId: zod.number().nullish(),
 });
 
@@ -955,13 +955,13 @@ export const ListChargeLaddersResponse = zod.array(
  * @summary Create a charge ladder
  */
 export const CreateChargeLadderBody = zod.object({
-  name: zod.string(),
-  caliber: zod.string(),
+  name: zod.string().max(200),
+  caliber: zod.string().max(100),
   cartridgeId: zod.number(),
   bulletId: zod.number().optional(),
   primerId: zod.number().optional(),
   cartridgesPerLevel: zod.number().optional(),
-  notes: zod.string().optional(),
+  notes: zod.string().max(10_000).optional(),
   levels: zod
     .array(
       zod.object({
@@ -1021,9 +1021,9 @@ export const UpdateChargeLadderParams = zod.object({
 });
 
 export const UpdateChargeLadderBody = zod.object({
-  name: zod.string().optional(),
-  notes: zod.string().optional(),
-  status: zod.string().optional(),
+  name: zod.string().max(200).optional(),
+  notes: zod.string().max(10_000).optional(),
+  status: zod.string().max(50).optional(),
   bulletId: zod.number().nullish(),
   primerId: zod.number().nullish(),
 });
@@ -1061,7 +1061,7 @@ export const AddChargeLevelBody = zod.object({
   cartridgeCount: zod.number().optional(),
   powderId: zod.number().optional(),
   sortOrder: zod.number().optional(),
-  notes: zod.string().optional(),
+  notes: zod.string().max(10_000).optional(),
 });
 
 /**
@@ -1076,8 +1076,8 @@ export const UpdateChargeLevelBody = zod.object({
   chargeGr: zod.number().optional(),
   cartridgeCount: zod.number().optional(),
   powderId: zod.number().nullish(),
-  status: zod.string().optional(),
-  notes: zod.string().optional(),
+  status: zod.string().max(50).optional(),
+  notes: zod.string().max(10_000).optional(),
   oalIn: zod.number().optional(),
   coalIn: zod.number().optional(),
   groupSizeMm: zod.number().optional(),

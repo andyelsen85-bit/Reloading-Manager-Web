@@ -7,36 +7,36 @@ import { z } from "zod";
 const router = Router();
 
 const WeaponBody = z.object({
-  name: z.string().min(1),
-  manufacturer: z.string().min(1),
-  model: z.string().optional().nullable(),
-  type: z.string().min(1),
-  caliber: z.string().optional().nullable(),
-  serialNumber: z.string().optional().nullable(),
-  actionType: z.string().optional().nullable(),
+  name: z.string().min(1).max(200),
+  manufacturer: z.string().min(1).max(200),
+  model: z.string().max(200).optional().nullable(),
+  type: z.string().min(1).max(100),
+  caliber: z.string().max(100).optional().nullable(),
+  serialNumber: z.string().max(100).optional().nullable(),
+  actionType: z.string().max(100).optional().nullable(),
   barrelLengthIn: z.number().optional().nullable(),
   weightKg: z.number().optional().nullable(),
-  color: z.string().optional().nullable(),
-  countryOfOrigin: z.string().optional().nullable(),
-  buyDate: z.string().optional().nullable(),
+  color: z.string().max(100).optional().nullable(),
+  countryOfOrigin: z.string().max(100).optional().nullable(),
+  buyDate: z.string().max(20).optional().nullable(),
   buyPrice: z.number().optional().nullable(),
-  buyFrom: z.string().optional().nullable(),
+  buyFrom: z.string().max(200).optional().nullable(),
   sold: z.boolean().optional(),
-  sellDate: z.string().optional().nullable(),
+  sellDate: z.string().max(20).optional().nullable(),
   sellPrice: z.number().optional().nullable(),
-  soldTo: z.string().optional().nullable(),
-  soldNotes: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
+  soldTo: z.string().max(200).optional().nullable(),
+  soldNotes: z.string().max(10_000).optional().nullable(),
+  notes: z.string().max(10_000).optional().nullable(),
 });
 
 const SAFE_IMAGE_DATA_URL = /^data:image\/(jpeg|png|gif|webp|bmp|tiff|svg\+xml);base64,[A-Za-z0-9+/]+=*$/;
 
 const PhotoBody = z.object({
-  photoBase64: z.string().min(1).refine(
+  photoBase64: z.string().min(1).max(3_000_000).refine(
     (val) => SAFE_IMAGE_DATA_URL.test(val),
     { message: "photoBase64 must be a valid image data URL (jpeg, png, gif, webp, bmp, tiff, or svg+xml)" }
   ),
-  caption: z.string().optional().nullable(),
+  caption: z.string().max(500).optional().nullable(),
   sortOrder: z.number().optional(),
 });
 
@@ -120,10 +120,10 @@ router.delete("/weapons/:id", async (req, res) => {
 // ─── Magazine routes ──────────────────────────────────────────────────────────
 
 const MagazineBody = z.object({
-  label: z.string().optional().nullable(),
+  label: z.string().max(200).optional().nullable(),
   capacity: z.number().int().optional().nullable(),
   quantity: z.number().int().min(1).optional(),
-  notes: z.string().optional().nullable(),
+  notes: z.string().max(10_000).optional().nullable(),
 });
 
 router.get("/weapons/:id/magazines", async (req, res) => {
@@ -187,13 +187,13 @@ router.delete("/weapons/:id/photos/:photoId", async (req, res) => {
 // ─── License helpers ──────────────────────────────────────────────────────────
 
 const LicenseBody = z.object({
-  name: z.string().min(1),
-  licenseNumber: z.string().optional().nullable(),
-  licenseType: z.string().optional().nullable(),
-  issueDate: z.string().optional().nullable(),
-  expiryDate: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-  weaponIds: z.array(z.number()).optional(),
+  name: z.string().min(1).max(200),
+  licenseNumber: z.string().max(100).optional().nullable(),
+  licenseType: z.string().max(100).optional().nullable(),
+  issueDate: z.string().max(20).optional().nullable(),
+  expiryDate: z.string().max(20).optional().nullable(),
+  notes: z.string().max(10_000).optional().nullable(),
+  weaponIds: z.array(z.number()).max(200).optional(),
 });
 
 async function buildLicense(id: number) {

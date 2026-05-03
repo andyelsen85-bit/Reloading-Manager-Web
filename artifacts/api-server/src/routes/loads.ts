@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { loadsTable, cartridgesTable, bulletsTable, powdersTable, primersTable, settingsTable, usersTable, chargeLevelsTable } from "@workspace/db";
-import { eq, desc, isNull, isNotNull, max, sql } from "drizzle-orm";
+import { eq, desc, isNull, and, max, sql } from "drizzle-orm";
 import {
   CreateLoadBody,
   UpdateLoadBody,
@@ -18,7 +18,7 @@ const DeleteLoadBody = z.object({
   restockPrimers: z.number().optional(),
   restockPowderGr: z.number().optional(),
   restockBullets: z.number().optional(),
-  note: z.string().optional(),
+  note: z.string().max(10_000).optional(),
 });
 
 async function getOrCreateSettings() {
@@ -59,6 +59,12 @@ async function sendNotification(subject: string, text: string, event: NotifEvent
     }
   } catch {
     // Silently ignore notification errors
+  }
+}
+
+class HttpError extends Error {
+  constructor(public statusCode: number, message: string) {
+    super(message);
   }
 }
 
@@ -205,136 +211,155 @@ router.delete("/loads/:id", async (req, res) => {
   const id = Number(req.params.id);
   if (!id || isNaN(id)) return res.status(400).json({ error: "Invalid id" });
 
-  const [load] = await db.select().from(loadsTable).where(eq(loadsTable.id, id));
-  if (!load) return res.status(404).json({ error: "Not found" });
-
   const bodyResult = DeleteLoadBody.safeParse(req.body);
   const opts = bodyResult.success ? bodyResult.data : {};
 
-  // Restock inventory if requested
-  if (opts.restockPrimers && load.primerId) {
-    const [primer] = await db.select().from(primersTable).where(eq(primersTable.id, load.primerId));
-    if (primer) {
-      await db.update(primersTable).set({ quantityAvailable: primer.quantityAvailable + opts.restockPrimers }).where(eq(primersTable.id, primer.id));
-    }
+  try {
+    await db.transaction(async (tx) => {
+      // Lock the load row to prevent concurrent deletes from double-restocking
+      const [load] = await tx.select().from(loadsTable).where(eq(loadsTable.id, id)).for("update");
+      if (!load) throw new HttpError(404, "Not found");
+      if (load.deletedAt) throw new HttpError(400, "Load is already deleted");
+
+      // Restock inventory if requested
+      if (opts.restockPrimers && load.primerId) {
+        await tx.update(primersTable)
+          .set({ quantityAvailable: sql`${primersTable.quantityAvailable} + ${opts.restockPrimers}` })
+          .where(eq(primersTable.id, load.primerId));
+      }
+
+      if (opts.restockPowderGr && load.powderId) {
+        await tx.update(powdersTable)
+          .set({ grainsAvailable: sql`${powdersTable.grainsAvailable} + ${opts.restockPowderGr}` })
+          .where(eq(powdersTable.id, load.powderId));
+      }
+
+      if (opts.restockBullets && load.bulletId) {
+        await tx.update(bulletsTable)
+          .set({ quantityAvailable: sql`${bulletsTable.quantityAvailable} + ${opts.restockBullets}` })
+          .where(eq(bulletsTable.id, load.bulletId));
+      }
+
+      // Reverse cartridge quantityLoaded (since we adjust on creation)
+      const [cartridge] = await tx.select().from(cartridgesTable).where(eq(cartridgesTable.id, load.cartridgeId));
+      if (cartridge) {
+        await tx.update(cartridgesTable).set({
+          quantityLoaded: sql`GREATEST(0, ${cartridgesTable.quantityLoaded} - ${load.cartridgeQuantityUsed})`,
+        }).where(eq(cartridgesTable.id, cartridge.id));
+      }
+
+      // Soft delete — done last so concurrent requests see deletedAt = null until we're done
+      await tx.update(loadsTable).set({
+        deletedAt: new Date(),
+        deletedNote: opts.note ?? null,
+      }).where(eq(loadsTable.id, id));
+    });
+    return res.status(204).send();
+  } catch (err: any) {
+    return res.status(err instanceof HttpError ? err.statusCode : 500).json({ error: err.message ?? "Internal error" });
   }
-
-  if (opts.restockPowderGr && load.powderId) {
-    const [powder] = await db.select().from(powdersTable).where(eq(powdersTable.id, load.powderId));
-    if (powder) {
-      await db.update(powdersTable).set({ grainsAvailable: powder.grainsAvailable + opts.restockPowderGr }).where(eq(powdersTable.id, powder.id));
-    }
-  }
-
-  if (opts.restockBullets && load.bulletId) {
-    const [bullet] = await db.select().from(bulletsTable).where(eq(bulletsTable.id, load.bulletId));
-    if (bullet) {
-      await db.update(bulletsTable).set({ quantityAvailable: bullet.quantityAvailable + opts.restockBullets }).where(eq(bulletsTable.id, bullet.id));
-    }
-  }
-
-  // Reverse cartridge quantityLoaded (since we now adjust on creation)
-  if (!load.deletedAt) {
-    const [cartridge] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, load.cartridgeId));
-    if (cartridge) {
-      await db.update(cartridgesTable).set({
-        quantityLoaded: Math.max(0, cartridge.quantityLoaded - load.cartridgeQuantityUsed),
-      }).where(eq(cartridgesTable.id, cartridge.id));
-    }
-  }
-
-  // Soft delete
-  await db.update(loadsTable).set({
-    deletedAt: new Date(),
-    deletedNote: opts.note ?? null,
-  }).where(eq(loadsTable.id, id));
-
-  res.status(204).send();
 });
 
 router.post("/loads/:id/complete", async (req, res) => {
   const { id } = CompleteLoadParams.parse({ id: Number(req.params.id) });
-  const [load] = await db.select().from(loadsTable).where(eq(loadsTable.id, id));
-  if (!load) return res.status(404).json({ error: "Not found" });
-  if (load.completed) return res.status(400).json({ error: "Already completed" });
 
-  const skipped: string[] = load.skippedSteps ? JSON.parse(load.skippedSteps) : [];
-  const primerDone = load.primerId != null || skipped.includes("priming");
-  const powderDone = load.powderId != null || load.chargeLadderId != null || skipped.includes("powder");
-  const bulletDone = (load.bulletId != null && load.coalIn != null && load.oalIn != null) || skipped.includes("bullet_seating");
+  try {
+    const updated = await db.transaction(async (tx) => {
+      // Lock the load row — prevents two concurrent complete requests from both
+      // reading completed=false and both deducting inventory.
+      const [load] = await tx.select().from(loadsTable).where(eq(loadsTable.id, id)).for("update");
+      if (!load) throw new HttpError(404, "Not found");
+      if (load.completed) throw new HttpError(400, "Already completed");
 
-  if (!primerDone || !powderDone || !bulletDone) {
-    return res.status(400).json({ error: "Missing required steps: primer, powder, bullet seating (or skip them)" });
+      const skipped: string[] = load.skippedSteps ? JSON.parse(load.skippedSteps) : [];
+      const primerDone = load.primerId != null || skipped.includes("priming");
+      const powderDone = load.powderId != null || load.chargeLadderId != null || skipped.includes("powder");
+      const bulletDone = (load.bulletId != null && load.coalIn != null && load.oalIn != null) || skipped.includes("bullet_seating");
+
+      if (!primerDone || !powderDone || !bulletDone) {
+        throw new HttpError(400, "Missing required steps: primer, powder, bullet seating (or skip them)");
+      }
+
+      if (load.primerId && !skipped.includes("priming")) {
+        await tx.update(primersTable).set({
+          quantityAvailable: sql`GREATEST(0, ${primersTable.quantityAvailable} - ${load.primerQuantityUsed ?? load.cartridgeQuantityUsed})`
+        }).where(eq(primersTable.id, load.primerId));
+      }
+
+      if (load.powderId && !skipped.includes("powder")) {
+        await tx.update(powdersTable).set({
+          grainsAvailable: sql`GREATEST(0, ${powdersTable.grainsAvailable} - ${load.powderTotalUsedGr ?? 0})`
+        }).where(eq(powdersTable.id, load.powderId));
+      }
+
+      if (load.bulletId && !skipped.includes("bullet_seating")) {
+        await tx.update(bulletsTable).set({
+          quantityAvailable: sql`GREATEST(0, ${bulletsTable.quantityAvailable} - ${load.bulletQuantityUsed ?? load.cartridgeQuantityUsed})`
+        }).where(eq(bulletsTable.id, load.bulletId));
+      }
+
+      // NOTE: quantityLoaded already incremented on creation, don't increment again
+      await tx.update(cartridgesTable)
+        .set({ currentStep: "Completed" })
+        .where(eq(cartridgesTable.id, load.cartridgeId));
+
+      const [result] = await tx.update(loadsTable)
+        .set({ completed: true })
+        .where(and(eq(loadsTable.id, id), eq(loadsTable.completed, false)))
+        .returning();
+      if (!result) throw new HttpError(400, "Already completed");
+      return result;
+    });
+
+    await sendNotification(
+      `Load Completed: #${String(updated.loadNumber).padStart(5, "0")} — ${updated.caliber}`,
+      `Load #${String(updated.loadNumber).padStart(5, "0")} (${updated.caliber}, ${updated.cartridgeQuantityUsed} rounds) has been marked as completed.`,
+      "loadCompleted"
+    );
+    return res.json(updated);
+  } catch (err: any) {
+    return res.status(err instanceof HttpError ? err.statusCode : 500).json({ error: err.message ?? "Internal error" });
   }
-
-  if (load.primerId && !skipped.includes("priming")) {
-    const [primer] = await db.select().from(primersTable).where(eq(primersTable.id, load.primerId));
-    if (primer) {
-      await db.update(primersTable).set({
-        quantityAvailable: Math.max(0, primer.quantityAvailable - (load.primerQuantityUsed ?? load.cartridgeQuantityUsed))
-      }).where(eq(primersTable.id, primer.id));
-    }
-  }
-
-  if (load.powderId && !skipped.includes("powder")) {
-    const [powder] = await db.select().from(powdersTable).where(eq(powdersTable.id, load.powderId));
-    if (powder) {
-      await db.update(powdersTable).set({
-        grainsAvailable: Math.max(0, powder.grainsAvailable - (load.powderTotalUsedGr ?? 0))
-      }).where(eq(powdersTable.id, powder.id));
-    }
-  }
-
-  if (load.bulletId && !skipped.includes("bullet_seating")) {
-    const [bullet] = await db.select().from(bulletsTable).where(eq(bulletsTable.id, load.bulletId));
-    if (bullet) {
-      await db.update(bulletsTable).set({
-        quantityAvailable: Math.max(0, bullet.quantityAvailable - (load.bulletQuantityUsed ?? load.cartridgeQuantityUsed))
-      }).where(eq(bulletsTable.id, bullet.id));
-    }
-  }
-
-  // NOTE: quantityLoaded already incremented on creation, don't increment again
-  const [cartridge] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, load.cartridgeId));
-  if (cartridge) {
-    await db.update(cartridgesTable).set({ currentStep: "Completed" }).where(eq(cartridgesTable.id, cartridge.id));
-  }
-
-  const [updated] = await db.update(loadsTable).set({ completed: true }).where(eq(loadsTable.id, id)).returning();
-  await sendNotification(
-    `Load Completed: #${String(load.loadNumber).padStart(5, "0")} — ${load.caliber}`,
-    `Load #${String(load.loadNumber).padStart(5, "0")} (${load.caliber}, ${load.cartridgeQuantityUsed} rounds) has been marked as completed.`,
-    "loadCompleted"
-  );
-  res.json(updated);
 });
 
 router.post("/loads/:id/fire", async (req, res) => {
   const { id } = FireLoadParams.parse({ id: Number(req.params.id) });
-  const [load] = await db.select().from(loadsTable).where(eq(loadsTable.id, id));
-  if (!load) return res.status(404).json({ error: "Not found" });
-  if (!load.completed) return res.status(400).json({ error: "Load must be completed before firing" });
-  if (load.fired) return res.status(400).json({ error: "Already marked as fired" });
 
   const bodyResult = FireLoadBody.safeParse(req.body);
   const h2oWeightGr = bodyResult.success ? (bodyResult.data.h2oWeightGr ?? null) : null;
   const firedDate = bodyResult.success ? (bodyResult.data.firedDate ?? new Date().toISOString().split("T")[0]) : new Date().toISOString().split("T")[0];
 
-  const [cartridge] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, load.cartridgeId));
-  if (cartridge) {
-    await db.update(cartridgesTable).set({
-      timesFired: cartridge.timesFired + 1,
-      currentStep: "Fired",
-    }).where(eq(cartridgesTable.id, cartridge.id));
-  }
+  try {
+    const updated = await db.transaction(async (tx) => {
+      // Lock the load row — prevents duplicate fire requests from incrementing
+      // timesFired multiple times.
+      const [load] = await tx.select().from(loadsTable).where(eq(loadsTable.id, id)).for("update");
+      if (!load) throw new HttpError(404, "Not found");
+      if (!load.completed) throw new HttpError(400, "Load must be completed before firing");
+      if (load.fired) throw new HttpError(400, "Already marked as fired");
 
-  const [updated] = await db.update(loadsTable).set({ fired: true, h2oWeightGr, firedDate }).where(eq(loadsTable.id, id)).returning();
-  await sendNotification(
-    `Load Fired: #${String(load.loadNumber).padStart(5, "0")} — ${load.caliber}`,
-    `Load #${String(load.loadNumber).padStart(5, "0")} (${load.caliber}, ${load.cartridgeQuantityUsed} rounds) has been marked as fired.${h2oWeightGr ? ` H₂O: ${h2oWeightGr} gr` : ""}`,
-    "loadFired"
-  );
-  res.json(updated);
+      await tx.update(cartridgesTable).set({
+        timesFired: sql`${cartridgesTable.timesFired} + 1`,
+        currentStep: "Fired",
+      }).where(eq(cartridgesTable.id, load.cartridgeId));
+
+      const [result] = await tx.update(loadsTable)
+        .set({ fired: true, h2oWeightGr, firedDate })
+        .where(and(eq(loadsTable.id, id), eq(loadsTable.fired, false)))
+        .returning();
+      if (!result) throw new HttpError(400, "Already marked as fired");
+      return result;
+    });
+
+    await sendNotification(
+      `Load Fired: #${String(updated.loadNumber).padStart(5, "0")} — ${updated.caliber}`,
+      `Load #${String(updated.loadNumber).padStart(5, "0")} (${updated.caliber}, ${updated.cartridgeQuantityUsed} rounds) has been marked as fired.${h2oWeightGr ? ` H₂O: ${h2oWeightGr} gr` : ""}`,
+      "loadFired"
+    );
+    return res.json(updated);
+  } catch (err: any) {
+    return res.status(err instanceof HttpError ? err.statusCode : 500).json({ error: err.message ?? "Internal error" });
+  }
 });
 
 router.post("/loads/:id/undo-complete", async (req, res) => {
@@ -368,10 +393,9 @@ router.post("/loads/:id/undo-fire", async (req, res) => {
 
   const [updated] = await db.update(loadsTable).set({ fired: false, h2oWeightGr: null }).where(eq(loadsTable.id, id)).returning();
 
-  const [cartridge] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, load.cartridgeId));
-  if (cartridge && cartridge.timesFired > 0) {
-    await db.update(cartridgesTable).set({ timesFired: cartridge.timesFired - 1 }).where(eq(cartridgesTable.id, cartridge.id));
-  }
+  await db.update(cartridgesTable).set({
+    timesFired: sql`GREATEST(0, ${cartridgesTable.timesFired} - 1)`,
+  }).where(eq(cartridgesTable.id, load.cartridgeId));
 
   res.json(updated);
 });
