@@ -82,7 +82,7 @@ function PhotoHoverCell({ src, alt }: { src: string | null | undefined; alt: str
       <img
         src={src} alt={alt}
         className="w-8 h-8 object-cover rounded border border-border cursor-zoom-in"
-        onClick={() => { const w = window.open(); if (w) { w.document.write(`<body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${src}" style="max-width:none" /></body>`); w.document.close(); } }}
+        onClick={() => { const w = window.open(); if (w) { w.document.body.style.cssText = "margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"; const img = w.document.createElement("img"); img.src = src; img.style.maxWidth = "none"; w.document.body.appendChild(img); w.document.close(); } }}
       />
       <AnimatePresence>
         {hovered && (
@@ -136,7 +136,7 @@ function PhotoGallery({
           <div key={p.id} className="relative group">
             <img src={p.photoBase64} alt={`Photo ${p.id}`}
               className="w-20 h-20 object-cover rounded border border-border cursor-zoom-in hover:border-primary/50 transition-colors"
-              onClick={() => { const w = window.open(); if (w) { w.document.write(`<body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${p.photoBase64}" style="max-width:none" /></body>`); w.document.close(); } }} />
+              onClick={() => { const w = window.open(); if (w) { w.document.body.style.cssText = "margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"; const img = w.document.createElement("img"); img.src = p.photoBase64; img.style.maxWidth = "none"; w.document.body.appendChild(img); w.document.close(); } }} />
             <button onClick={() => setDeletePhotoId(p.id)}
               className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <X className="w-3 h-3" />

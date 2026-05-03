@@ -29,8 +29,13 @@ const WeaponBody = z.object({
   notes: z.string().optional().nullable(),
 });
 
+const SAFE_IMAGE_DATA_URL = /^data:image\/(jpeg|png|gif|webp|bmp|tiff|svg\+xml);base64,[A-Za-z0-9+/]+=*$/;
+
 const PhotoBody = z.object({
-  photoBase64: z.string().min(1),
+  photoBase64: z.string().min(1).refine(
+    (val) => SAFE_IMAGE_DATA_URL.test(val),
+    { message: "photoBase64 must be a valid image data URL (jpeg, png, gif, webp, bmp, tiff, or svg+xml)" }
+  ),
   caption: z.string().optional().nullable(),
   sortOrder: z.number().optional(),
 });
