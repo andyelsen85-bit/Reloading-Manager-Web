@@ -41,7 +41,7 @@ router.patch("/powders/:id", async (req, res) => {
   if (body.photoBase64 !== undefined) updates.photoBase64 = body.photoBase64;
   const [row] = await db.update(powdersTable).set(updates).where(eq(powdersTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  return res.json(row);
 });
 
 router.delete("/powders/:id", async (req, res) => {

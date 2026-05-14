@@ -106,7 +106,7 @@ router.patch("/weapons/:id", async (req, res) => {
   const [row] = await db.update(weaponsTable).set(updates).where(eq(weaponsTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   const photos = await db.select().from(weaponPhotosTable).where(eq(weaponPhotosTable.weaponId, id)).orderBy(asc(weaponPhotosTable.sortOrder), asc(weaponPhotosTable.id));
-  res.json({ ...row, photos });
+  return res.json({ ...row, photos });
 });
 
 router.delete("/weapons/:id", async (req, res) => {
@@ -157,7 +157,7 @@ router.patch("/weapons/:id/magazines/:magId", async (req, res) => {
   if (body.notes !== undefined) updates.notes = body.notes;
   const [mag] = await db.update(weaponMagazinesTable).set(updates).where(eq(weaponMagazinesTable.id, magId)).returning();
   if (!mag) return res.status(404).json({ error: "Not found" });
-  res.json(mag);
+  return res.json(mag);
 });
 
 router.delete("/weapons/:id/magazines/:magId", async (req, res) => {
@@ -273,7 +273,7 @@ router.patch("/weapon-licenses/:id", async (req, res) => {
 
   const result = await buildLicense(id);
   if (!result) return res.status(404).json({ error: "Not found" });
-  res.json(result);
+  return res.json(result);
 });
 
 router.delete("/weapon-licenses/:id", async (req, res) => {

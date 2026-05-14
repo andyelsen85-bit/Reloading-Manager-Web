@@ -92,7 +92,7 @@ router.get("/charge-ladders/:id", async (req, res) => {
   const [ladder] = await db.select().from(chargeLaddersTable).where(eq(chargeLaddersTable.id, id));
   if (!ladder) return res.status(404).json({ error: "Not found" });
   const levels = await db.select().from(chargeLevelsTable).where(eq(chargeLevelsTable.ladderId, id)).orderBy(asc(chargeLevelsTable.sortOrder));
-  res.json({ ladder, levels });
+  return res.json({ ladder, levels });
 });
 
 router.patch("/charge-ladders/:id", async (req, res) => {
@@ -106,7 +106,7 @@ router.patch("/charge-ladders/:id", async (req, res) => {
   if (body.primerId !== undefined) updates.primerId = body.primerId;
   const [row] = await db.update(chargeLaddersTable).set(updates).where(eq(chargeLaddersTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  return res.json(row);
 });
 
 router.delete("/charge-ladders/:id", async (req, res) => {
@@ -144,7 +144,7 @@ router.patch("/charge-ladders/:id/levels/:levelId", async (req, res) => {
   if (body.velocityFps !== undefined) updates.velocityFps = body.velocityFps;
   const [row] = await db.update(chargeLevelsTable).set(updates).where(eq(chargeLevelsTable.id, levelId)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  return res.json(row);
 });
 
 router.delete("/charge-ladders/:id/levels/:levelId", async (req, res) => {
@@ -161,7 +161,7 @@ router.post("/charge-ladders/:id/select-best", async (req, res) => {
     .where(eq(chargeLaddersTable.id, id))
     .returning();
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  return res.json(row);
 });
 
 export default router;

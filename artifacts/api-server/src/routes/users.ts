@@ -78,9 +78,9 @@ router.post("/users", async (req, res) => {
       notificationsEnabled: usersTable.notificationsEnabled,
       createdAt: usersTable.createdAt,
     });
-    res.status(201).json(row);
+    return res.status(201).json(row);
   } catch (err) {
-    sendUserError(res, err);
+    return sendUserError(res, err);
   }
 });
 
@@ -106,9 +106,9 @@ router.patch("/users/:id", async (req, res) => {
       createdAt: usersTable.createdAt,
     });
     if (!row) return res.status(404).json({ error: "Not found" });
-    res.json(row);
+    return res.json(row);
   } catch (err) {
-    sendUserError(res, err);
+    return sendUserError(res, err);
   }
 });
 
@@ -125,9 +125,9 @@ router.post("/users/:id/reset-password", async (req, res) => {
     const passwordHash = await bcrypt.hash(body.newPassword, 12);
     const [row] = await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, id)).returning({ id: usersTable.id });
     if (!row) return res.status(404).json({ error: "Not found" });
-    res.status(204).send();
+    return res.status(204).send();
   } catch (err) {
-    sendUserError(res, err);
+    return sendUserError(res, err);
   }
 });
 

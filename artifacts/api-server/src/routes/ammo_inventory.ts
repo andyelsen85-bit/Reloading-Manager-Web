@@ -82,9 +82,9 @@ router.patch("/ammo-inventory/:id", async (req, res) => {
     if (body.photoBase64 !== undefined) updates.photoBase64 = body.photoBase64;
     const [row] = await db.update(ammoInventoryTable).set(updates).where(eq(ammoInventoryTable.id, id)).returning();
     if (!row) return res.status(404).json({ error: "Not found" });
-    res.json(row);
+    return res.json(row);
   } catch (err: any) {
-    res.status(500).json({ error: err?.message ?? "Failed to update" });
+    return res.status(500).json({ error: err?.message ?? "Failed to update" });
   }
 });
 
@@ -113,9 +113,9 @@ router.post("/ammo-inventory/:id/fire", async (req, res) => {
       return res.status(400).json({ error: `Cannot fire ${count} — only ${remaining} rounds remaining` });
     }
 
-    res.json(row);
+    return res.json(row);
   } catch (err: any) {
-    res.status(500).json({ error: err?.message ?? "Failed to record fired rounds" });
+    return res.status(500).json({ error: err?.message ?? "Failed to record fired rounds" });
   }
 });
 

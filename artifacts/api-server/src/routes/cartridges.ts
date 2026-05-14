@@ -42,7 +42,7 @@ router.get("/cartridges/:id", async (req, res) => {
   const { id } = GetCartridgeParams.parse({ id: Number(req.params.id) });
   const [row] = await db.select().from(cartridgesTable).where(eq(cartridgesTable.id, id));
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  return res.json(row);
 });
 
 router.patch("/cartridges/:id", async (req, res) => {
@@ -67,7 +67,7 @@ router.patch("/cartridges/:id", async (req, res) => {
   if (body.ampPilotNumber !== undefined) updates.ampPilotNumber = body.ampPilotNumber;
   const [row] = await db.update(cartridgesTable).set(updates).where(eq(cartridgesTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  return res.json(row);
 });
 
 router.delete("/cartridges/:id", async (req, res) => {

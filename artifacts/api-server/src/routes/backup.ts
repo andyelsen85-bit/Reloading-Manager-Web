@@ -90,9 +90,9 @@ router.get("/backup", async (_req, res) => {
       "Content-Disposition",
       `attachment; filename="reloading-backup-${new Date().toISOString().slice(0, 10)}.json"`
     );
-    res.json(backup);
+    return res.json(backup);
   } catch (err: any) {
-    res.status(500).json({ error: err?.message ?? "Backup failed" });
+    return res.status(500).json({ error: err?.message ?? "Backup failed" });
   }
 });
 
@@ -267,9 +267,9 @@ router.post("/restore", async (req, res) => {
       }
     });
 
-    res.json({ ok: true, message: "Restore complete" });
+    return res.json({ ok: true, message: "Restore complete" });
   } catch (err: any) {
-    res.status(500).json({ error: err?.message ?? "Restore failed" });
+    return res.status(500).json({ error: err?.message ?? "Restore failed" });
   }
 });
 

@@ -60,9 +60,9 @@ router.post("/settings/test-mail", async (req, res) => {
   );
 
   if (result.ok) {
-    res.json({ ok: true, message: "Test email sent successfully" });
+    return res.json({ ok: true, message: "Test email sent successfully" });
   } else {
-    res.status(500).json({ ok: false, error: result.error });
+    return res.status(500).json({ ok: false, error: result.error });
   }
 });
 

@@ -29,6 +29,9 @@ app.use(
   }),
 );
 app.use(cors({ origin: true, credentials: true }));
+// Restore backups can be large (many base64 photos); give that one route a higher limit
+// while keeping everything else at 10 mb.
+app.use("/api/restore", express.json({ limit: "200mb" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 

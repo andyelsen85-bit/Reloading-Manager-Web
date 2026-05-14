@@ -135,14 +135,14 @@ router.post("/loads", async (req, res) => {
     "loadCreated"
   );
 
-  res.status(201).json(row);
+  return res.status(201).json(row);
 });
 
 router.get("/loads/:id", async (req, res) => {
   const { id } = GetLoadParams.parse({ id: Number(req.params.id) });
   const [row] = await db.select().from(loadsTable).where(eq(loadsTable.id, id));
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  return res.json(row);
 });
 
 router.patch("/loads/:id", async (req, res) => {
@@ -204,7 +204,7 @@ router.patch("/loads/:id", async (req, res) => {
     }
   }
 
-  res.json(row);
+  return res.json(row);
 });
 
 router.delete("/loads/:id", async (req, res) => {
@@ -376,7 +376,7 @@ router.post("/loads/:id/undo-complete", async (req, res) => {
   if (load.fired) return res.status(400).json({ error: "Cannot undo completion after firing" });
 
   const [updated] = await db.update(loadsTable).set({ completed: false }).where(eq(loadsTable.id, id)).returning();
-  res.json(updated);
+  return res.json(updated);
 });
 
 router.post("/loads/:id/undo-fire", async (req, res) => {
@@ -397,7 +397,7 @@ router.post("/loads/:id/undo-fire", async (req, res) => {
     timesFired: sql`GREATEST(0, ${cartridgesTable.timesFired} - 1)`,
   }).where(eq(cartridgesTable.id, load.cartridgeId));
 
-  res.json(updated);
+  return res.json(updated);
 });
 
 export default router;

@@ -389,13 +389,21 @@ export default function Settings() {
         credentials: "include",
         body: JSON.stringify(data),
       });
-      const result = await res.json();
+      let result: { error?: string } = {};
+      try { result = await res.json(); } catch { /* non-JSON response (e.g. 413 Too Large) */ }
       if (res.ok) {
         toast({ title: "Restore complete", description: "Data has been restored from backup" });
         qc.invalidateQueries();
       } else {
-        toast({ title: "Restore failed", description: result.error, variant: "destructive" });
+        const msg =
+          result.error ??
+          (res.status === 413
+            ? "Backup file is too large. Contact your administrator to raise the server body limit."
+            : `Server error ${res.status} — restore failed.`);
+        toast({ title: "Restore failed", description: msg, variant: "destructive" });
       }
+    } catch (err: any) {
+      toast({ title: "Restore failed", description: err?.message ?? "Unexpected error", variant: "destructive" });
     } finally {
       setRestoreBusy(false);
       if (restoreRef.current) restoreRef.current.value = "";

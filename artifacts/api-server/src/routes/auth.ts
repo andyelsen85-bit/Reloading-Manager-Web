@@ -53,7 +53,7 @@ router.post("/auth/setup-admin", async (req, res) => {
   if (!user) return res.status(500).json({ error: "Failed to set password" });
 
   (req.session as any).userId = user.id;
-  res.json({ id: user.id, username: user.username, email: user.email, role: user.role, notificationsEnabled: user.notificationsEnabled });
+  return res.json({ id: user.id, username: user.username, email: user.email, role: user.role, notificationsEnabled: user.notificationsEnabled });
 });
 
 router.post("/auth/login", async (req, res) => {
@@ -78,7 +78,7 @@ router.post("/auth/login", async (req, res) => {
 
   (req.session as any).userId = user.id;
   await writeAudit(user.id, user.username, "login_success", req).catch(() => {});
-  res.json({ id: user.id, username: user.username, email: user.email, role: user.role, notificationsEnabled: user.notificationsEnabled });
+  return res.json({ id: user.id, username: user.username, email: user.email, role: user.role, notificationsEnabled: user.notificationsEnabled });
 });
 
 router.post("/auth/logout", async (req, res) => {
@@ -98,7 +98,7 @@ router.get("/auth/me", async (req, res) => {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   if (!user || !user.active) return res.status(401).json({ error: "Not authenticated" });
 
-  res.json({ id: user.id, username: user.username, email: user.email, role: user.role, notificationsEnabled: user.notificationsEnabled });
+  return res.json({ id: user.id, username: user.username, email: user.email, role: user.role, notificationsEnabled: user.notificationsEnabled });
 });
 
 const UpdateProfileBody = z.object({
@@ -127,7 +127,7 @@ router.patch("/auth/profile", requireAuth as any, async (req, res) => {
 
   const [user] = await db.update(usersTable).set(updates).where(eq(usersTable.id, userId)).returning();
   if (!user) return res.status(404).json({ error: "Not found" });
-  res.json({ id: user.id, username: user.username, email: user.email, role: user.role, notificationsEnabled: user.notificationsEnabled });
+  return res.json({ id: user.id, username: user.username, email: user.email, role: user.role, notificationsEnabled: user.notificationsEnabled });
 });
 
 router.get("/auth/notification-prefs", requireAuth as any, async (req, res) => {
@@ -136,7 +136,7 @@ router.get("/auth/notification-prefs", requireAuth as any, async (req, res) => {
   if (!user) return res.status(404).json({ error: "Not found" });
   let prefs = { loadCreated: true, loadCompleted: true, loadFired: true, lowStock: true };
   try { const saved = JSON.parse(user.notificationPrefs ?? "{}"); prefs = { ...prefs, ...saved }; } catch {}
-  res.json(prefs);
+  return res.json(prefs);
 });
 
 router.patch("/auth/notification-prefs", requireAuth as any, async (req, res) => {
@@ -153,7 +153,7 @@ router.patch("/auth/notification-prefs", requireAuth as any, async (req, res) =>
   const merged = { ...current, ...prefs };
   const [user] = await db.update(usersTable).set({ notificationPrefs: JSON.stringify(merged) }).where(eq(usersTable.id, userId)).returning();
   if (!user) return res.status(404).json({ error: "Not found" });
-  res.json(merged);
+  return res.json(merged);
 });
 
 router.post("/auth/change-password", requireAuth as any, async (req, res) => {
@@ -162,7 +162,7 @@ router.post("/auth/change-password", requireAuth as any, async (req, res) => {
   const passwordHash = await bcrypt.hash(body.newPassword, 12);
   const [user] = await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, userId)).returning({ id: usersTable.id });
   if (!user) return res.status(404).json({ error: "Not found" });
-  res.status(204).send();
+  return res.status(204).send();
 });
 
 router.get("/auth/audit-log", requireAuth as any, requireAdmin as any, async (_req, res) => {

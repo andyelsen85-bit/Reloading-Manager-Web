@@ -32,7 +32,7 @@ router.patch("/reference/:category/:id", async (req, res) => {
   if (body.sortOrder !== undefined) updates.sortOrder = body.sortOrder;
   const [row] = await db.update(referenceDataTable).set(updates).where(eq(referenceDataTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  return res.json(row);
 });
 
 router.delete("/reference/:category/:id", async (req, res) => {

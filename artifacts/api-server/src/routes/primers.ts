@@ -39,7 +39,7 @@ router.patch("/primers/:id", async (req, res) => {
   if (body.photoBase64 !== undefined) updates.photoBase64 = body.photoBase64;
   const [row] = await db.update(primersTable).set(updates).where(eq(primersTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Not found" });
-  res.json(row);
+  return res.json(row);
 });
 
 router.delete("/primers/:id", async (req, res) => {
